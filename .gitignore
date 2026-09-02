@@ -6,6 +6,7 @@ dist/
 !.env.example
 *.log
 .vite/
+_doc_extract.txt
 
 # Documentación confidencial de trabajo
 PROMPT MAESTRO PARA DESARROLLAR PROTOTIPO BreveMente.md

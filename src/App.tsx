@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Patients } from './pages/Patients';
 import { Agenda } from './pages/Agenda';
 import { ClinicalRecord } from './pages/ClinicalRecord';
+
 import { AIAssistant } from './pages/AIAssistant';
 import { Library } from './pages/Library';
 import { Reports } from './pages/Reports';
@@ -26,7 +27,10 @@ import { Role, Patient, Appointment } from './types/clinical';
 import { mockPatients, mockAppointments } from './data/mockData';
 import { auditLogService } from './services/auditLogService';
 import { demoStateService } from './services/demoStateService';
+import { patientService } from './services/patientService';
+import { appointmentService } from './services/appointmentService';
 import { hasPermission } from './utils/permissions';
+
 
 const USER_NAMES: Record<Role, string> = {
   admin_platform: 'Ing. Rodrigo Pérez',
@@ -51,9 +55,9 @@ function App() {
   const [isSendaOpen, setIsSendaOpen] = useState(false);
 
   // Carga inicial y listeners de eventos de demo
-  const loadLocalData = () => {
-    setPatients(JSON.parse(localStorage.getItem('brevemente_patients') || '[]'));
-    setAppointments(JSON.parse(localStorage.getItem('brevemente_appointments') || '[]'));
+  const loadLocalData = async () => {
+    setPatients(await patientService.getAll());
+    setAppointments(await appointmentService.getAll());
   };
 
   useEffect(() => {
@@ -94,22 +98,41 @@ function App() {
     };
   }, []);
 
-  const handleAddPatient = (newPat: Patient) => {
-    const updated = [...patients, newPat];
-    setPatients(updated);
-    localStorage.setItem('brevemente_patients', JSON.stringify(updated));
+  const handleAddPatient = async (newPat: Patient) => {
+    await patientService.create(newPat);
+    setPatients([...patients, newPat]);
   };
 
-  const handleUpdatePatient = (updatedPat: Patient) => {
-    const updated = patients.map(p => p.id === updatedPat.id ? updatedPat : p);
-    setPatients(updated);
-    localStorage.setItem('brevemente_patients', JSON.stringify(updated));
+  const handleUpdatePatient = async (updatedPat: Patient) => {
+    await patientService.update(updatedPat);
+    setPatients(patients.map(p => p.id === updatedPat.id ? updatedPat : p));
   };
 
-  const handleAddAppointment = (newApp: Appointment) => {
-    const updated = [...appointments, newApp];
-    setAppointments(updated);
-    localStorage.setItem('brevemente_appointments', JSON.stringify(updated));
+  const handleDeletePatient = async (id: string) => {
+    // 1. Borrar al paciente
+    await patientService.remove(id);
+    // 2. Borrar sus citas (¡el removeByPatientId que creaste para esto!)
+    await appointmentService.removeByPatientId(id);
+    // 3. Borrar su expediente y sesiones si existen (por ahora directo; en el paso 3 lo haremos con servicios)
+    const recs = JSON.parse(localStorage.getItem('brevemente_clinical_records') || '{}');
+    delete recs[id];
+    localStorage.setItem('brevemente_clinical_records', JSON.stringify(recs));
+    const sess = JSON.parse(localStorage.getItem('brevemente_sessions') || '{}');
+    delete sess[id];
+    localStorage.setItem('brevemente_sessions', JSON.stringify(sess));
+    // 4. Actualizar la interfaz
+    setPatients(patients.filter(p => p.id !== id));
+    setAppointments(appointments.filter(a => a.patientId !== id));
+  };
+
+  const handleAddAppointment = async (newApp: Appointment) => {
+    await appointmentService.create(newApp);
+    setAppointments([...appointments, newApp]);
+  };
+
+  const handleDeleteAppointment = async (id: string) => {           
+    await appointmentService.remove(id);
+    setAppointments(appointments.filter(a => a.id !== id));
   };
 
   const handleRoleChange = (role: Role) => {
@@ -138,7 +161,7 @@ function App() {
     if (tourType !== 'none') {
       demoStateService.setActiveTour(tourType);
       demoStateService.setActiveStep(1);
-      
+
       // Registrar log auditoría
       auditLogService.addLog(
         'Inicio de Demo Guiada',
@@ -161,13 +184,13 @@ function App() {
     <Router>
       <Routes>
         {/* Flujo de Paciente (Intake) sin Layout general */}
-        <Route 
-          path="/intake" 
+        <Route
+          path="/intake"
           element={
             <div className="min-h-screen bg-slate-100 py-10 px-4">
               <IntakeForm patients={patients} onUpdatePatient={handleUpdatePatient} />
             </div>
-          } 
+          }
         />
 
         {/* Layout de Profesionales */}
@@ -183,10 +206,10 @@ function App() {
               {/* Contenedor Principal */}
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Cabecera */}
-                <Header 
-                  currentRole={currentRole} 
-                  onChangeRole={handleRoleChange} 
-                  userName={USER_NAMES[currentRole]} 
+                <Header
+                  currentRole={currentRole}
+                  onChangeRole={handleRoleChange}
+                  userName={USER_NAMES[currentRole]}
                   onStartDemo={() => setIsLauncherOpen(true)}
                 />
 
@@ -194,204 +217,206 @@ function App() {
                 <main className="flex-1 overflow-y-auto p-6">
                   <Routes>
                     {/* Dashboard de Inicio */}
-                    <Route 
-                      path="/" 
+                    <Route
+                      path="/"
                       element={
                         hasPermission(currentRole, 'dashboard') ? (
-                          <Dashboard 
-                            userRole={currentRole} 
-                            appointments={appointments} 
-                            patients={patients} 
-                            userName={USER_NAMES[currentRole]} 
+                          <Dashboard
+                            userRole={currentRole}
+                            appointments={appointments}
+                            patients={patients}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : currentRole === 'student' ? (
                           <Navigate to="/campus" replace />
                         ) : (
                           <Navigate to="/agenda" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Campus BreveMente */}
-                    <Route 
-                      path="/campus" 
+                    <Route
+                      path="/campus"
                       element={
                         hasPermission(currentRole, 'campus') ? (
-                          <Campus 
-                            userRole={currentRole} 
-                            userName={USER_NAMES[currentRole]} 
+                          <Campus
+                            userRole={currentRole}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Mi Consulta */}
-                    <Route 
-                      path="/mi-consulta" 
+                    <Route
+                      path="/mi-consulta"
                       element={
                         !['student', 'patient'].includes(currentRole) ? (
-                          <MiConsulta 
-                            userRole={currentRole} 
-                            appointments={appointments} 
-                            patients={patients} 
-                            userName={USER_NAMES[currentRole]} 
+                          <MiConsulta
+                            userRole={currentRole}
+                            appointments={appointments}
+                            patients={patients}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Directorio de Pacientes */}
-                    <Route 
-                      path="/pacientes" 
+                    <Route
+                      path="/pacientes"
                       element={
                         hasPermission(currentRole, 'patients') ? (
-                          <Patients 
-                            userRole={currentRole} 
-                            patients={patients} 
-                            userName={USER_NAMES[currentRole]} 
+                          <Patients
+                            userRole={currentRole}
+                            patients={patients}
+                            userName={USER_NAMES[currentRole]}
+                            onDeletePatient={handleDeletePatient}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Agenda */}
-                    <Route 
-                      path="/agenda" 
+                    <Route
+                      path="/agenda"
                       element={
                         hasPermission(currentRole, 'agenda') ? (
-                          <Agenda 
-                            userRole={currentRole} 
-                            appointments={appointments} 
-                            patients={patients} 
-                            onAddAppointment={handleAddAppointment} 
-                            onAddPatient={handleAddPatient} 
-                            userName={USER_NAMES[currentRole]} 
+                          <Agenda
+                            userRole={currentRole}
+                            appointments={appointments}
+                            patients={patients}
+                            onAddAppointment={handleAddAppointment}
+                            onAddPatient={handleAddPatient}
+                            onDeleteAppointment={handleDeleteAppointment}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Expedientes */}
-                    <Route 
-                      path="/expedientes" 
+                    <Route
+                      path="/expedientes"
                       element={
                         hasPermission(currentRole, 'expedientes') ? (
-                          <ClinicalRecord 
-                            userRole={currentRole} 
-                            patients={patients} 
-                            userName={USER_NAMES[currentRole]} 
+                          <ClinicalRecord
+                            userRole={currentRole}
+                            patients={patients}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Senda - Redirección e Integración completa */}
                     <Route path="/ia-assistant" element={<Navigate to="/senda" replace />} />
                     <Route path="/brifi" element={<Navigate to="/senda" replace />} />
-                    
-                    <Route 
-                      path="/senda" 
+
+                    <Route
+                      path="/senda"
                       element={
                         hasPermission(currentRole, 'senda') ? (
-                          <AIAssistant 
-                            userRole={currentRole} 
-                            userName={USER_NAMES[currentRole]} 
+                          <AIAssistant
+                            userRole={currentRole}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Biblioteca Digital */}
-                    <Route 
-                      path="/biblioteca" 
+                    <Route
+                      path="/biblioteca"
                       element={
                         hasPermission(currentRole, 'biblioteca') ? (
-                          <Library 
-                            userRole={currentRole} 
-                            userName={USER_NAMES[currentRole]} 
+                          <Library
+                            userRole={currentRole}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Reportes y Constancias */}
-                    <Route 
-                      path="/reportes" 
+                    <Route
+                      path="/reportes"
                       element={
                         hasPermission(currentRole, 'reportes') ? (
-                          <Reports 
-                            userRole={currentRole} 
-                            patients={patients} 
-                            userName={USER_NAMES[currentRole]} 
+                          <Reports
+                            userRole={currentRole}
+                            patients={patients}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Bitácora de Supervisión */}
-                    <Route 
-                      path="/supervision" 
+                    <Route
+                      path="/supervision"
                       element={
                         hasPermission(currentRole, 'supervision') ? (
-                          <Supervision 
-                            userRole={currentRole} 
-                            patients={patients} 
-                            userName={USER_NAMES[currentRole]} 
+                          <Supervision
+                            userRole={currentRole}
+                            patients={patients}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Tu Desempeño */}
-                    <Route 
-                      path="/desempeno" 
+                    <Route
+                      path="/desempeno"
                       element={
                         hasPermission(currentRole, 'desempeno') ? (
-                          <Analytics 
-                            userRole={currentRole} 
+                          <Analytics
+                            userRole={currentRole}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Auditoría y Seguridad */}
-                    <Route 
-                      path="/auditoria" 
+                    <Route
+                      path="/auditoria"
                       element={
                         hasPermission(currentRole, 'auditoria') ? (
-                          <SecurityAudit 
-                            userRole={currentRole} 
-                            userName={USER_NAMES[currentRole]} 
+                          <SecurityAudit
+                            userRole={currentRole}
+                            userName={USER_NAMES[currentRole]}
                           />
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Configuración */}
-                    <Route 
-                      path="/configuracion" 
+                    <Route
+                      path="/configuracion"
                       element={
                         hasPermission(currentRole, 'configuracion') ? (
                           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-xs text-slate-650 space-y-4">
@@ -404,7 +429,7 @@ function App() {
                         ) : (
                           <Navigate to="/" replace />
                         )
-                      } 
+                      }
                     />
 
                     {/* Fallback */}
@@ -416,17 +441,17 @@ function App() {
               {/* Botón flotante y panel derecho de Senda */}
               {hasPermission(currentRole, 'senda') && (
                 <>
-                  <SendaButton 
-                    onClick={() => setIsSendaOpen(true)} 
-                    hasNotification={activeTour !== 'none'} 
+                  <SendaButton
+                    onClick={() => setIsSendaOpen(true)}
+                    hasNotification={activeTour !== 'none'}
                   />
-                  <SendaSidebarPanel 
-                    isOpen={isSendaOpen} 
-                    onClose={() => setIsSendaOpen(false)} 
-                    userRole={currentRole} 
-                    userName={USER_NAMES[currentRole]} 
-                    patientName="Sofía Martínez" 
-                    activeProtocol="Ataque de Pánico" 
+                  <SendaSidebarPanel
+                    isOpen={isSendaOpen}
+                    onClose={() => setIsSendaOpen(false)}
+                    userRole={currentRole}
+                    userName={USER_NAMES[currentRole]}
+                    patientName="Sofía Martínez"
+                    activeProtocol="Ataque de Pánico"
                     onAcceptSuggestion={(text) => {
                       // Dispara evento global de inyección para ClinicalRecord
                       window.dispatchEvent(new CustomEvent('brevemente_brifi_inject', { detail: text }));
@@ -436,20 +461,20 @@ function App() {
               )}
 
               {/* Componente Overlay de la Demo Guiada */}
-              <GuidedDemo 
-                activeTour={activeTour} 
-                currentStep={currentDemoStep} 
+              <GuidedDemo
+                activeTour={activeTour}
+                currentStep={currentDemoStep}
                 onChangeStep={(step) => demoStateService.setActiveStep(step)}
-                onCloseTour={handleCloseTour} 
-                userRole={currentRole} 
+                onCloseTour={handleCloseTour}
+                userRole={currentRole}
                 onChangeRole={handleRoleChange}
               />
 
               {/* Launcher Modal de Selección de Demo */}
-              <DemoLauncher 
-                isOpen={isLauncherOpen} 
-                onClose={() => setIsLauncherOpen(false)} 
-                onStartTour={handleStartTour} 
+              <DemoLauncher
+                isOpen={isLauncherOpen}
+                onClose={() => setIsLauncherOpen(false)}
+                onStartTour={handleStartTour}
               />
             </div>
           }
