@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { 
-  FolderHeart, Activity, FileText, Volume2, Mic, Square, 
-  Sparkles, Plus, Save, AlertTriangle, TrendingUp, GitBranch, 
-  ShieldAlert, Clipboard, User, Heart, AlertOctagon, Check 
+import {
+  FolderHeart, Activity, FileText, Volume2, Mic, Square,
+  Sparkles, Plus, Save, AlertTriangle, TrendingUp, GitBranch,
+  ShieldAlert, Clipboard, User, Heart, AlertOctagon, Check
 } from 'lucide-react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  Legend, ResponsiveContainer, BarChart, Bar 
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 
 import { Role, Patient, ClinicalRecord as ClinicalRecordType, Session, AuditLog } from '../types/clinical';
@@ -15,6 +15,8 @@ import { ProtocolDecisionPanel } from '../components/ProtocolDecisionPanel';
 import { RiskAlertBanner } from '../components/RiskAlertBanner';
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
+import { recordService } from '../services/recordService';
+import { sessionService } from '../services/sessionService';
 
 interface ClinicalRecordProps {
   userRole: Role;
@@ -25,7 +27,7 @@ interface ClinicalRecordProps {
 export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patients, userName }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const patientId = searchParams.get('id') || 'patient-1'; // Por defecto Sofía Martínez
   const activePatient = patients.find(p => p.id === patientId);
 
@@ -39,7 +41,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   // Estados para creación de nueva sesión
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionMode, setSessionMode] = useState<'ia' | 'manual'>('ia');
-  
+
   // Audio e IA simulation
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -163,7 +165,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           status: 'validado' as const
         }
       ];
-      
+
       const sess = patientId === 'patient-1' ? initialSess : [];
       setSessions(sess);
       if (sess.length > 0) setActiveSessionDetail(sess[sess.length - 1]);
@@ -185,7 +187,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       riskLevel: activePatient?.riskLevel || 'bajo',
       modality: patientId === 'patient-1' ? 'online' : 'presencial',
       motif: activePatient?.motif || 'Motivo de consulta inicial.',
-      description: patientId === 'patient-1' 
+      description: patientId === 'patient-1'
         ? 'Paciente femenina de 28 años que refiere inicio de crisis de angustia súbitas hace 3 meses. Asocia síntomas con miedo a desmayarse en público y perder el control. Ha evitado lugares concurridos.'
         : 'Paciente masculino de 35 años que reporta bloqueos de habla al exponer en público.',
       trastornoEstrategico: patientId === 'patient-1' ? 'Ataque de Pánico' : 'Miedo a hablar en público',
@@ -197,7 +199,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       objectivePatient: 'Poder salir a trabajar y estar sola en su casa sin temor.',
       objectiveTherapist: 'Reestructurar la percepción de peligro físico, disolver la paradoja del control que hace perder el control.'
     };
-    
+
     setClinicalRecord(allRecords[patientId] || mockRecord);
 
     // Cargar modo inicial
@@ -254,7 +256,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   const handleStopRecording = () => {
     setIsRecording(false);
     setAudioBlobUrl('blob:http://localhost:5173/mock-audio-uuid');
-    
+
     // Registrar evento de grabación en la auditoría
     auditLogService.addLog(
       'Grabación de audio',
@@ -282,7 +284,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       setNewSessRss('Mejoría significativa');
       setNewSessEff('Excelente respuesta');
       setNewSessObsNext('Programar exposición autónoma en transporte público.');
-      
+
       // Texto que gatillará la detección de riesgo clínico simulado
       const notesWithRisk = 'La paciente refiere haber estado estable, sin embargo, en momentos de frustración extrema describe ideación de escape recurrente, mencionando un par de veces el deseo de lastimarse física o emocionalmente si la presión continúa.';
       setNewSessNotes(notesWithRisk);
@@ -317,7 +319,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     }
   };
 
-  const handleSaveSession = (e: React.FormEvent) => {
+  const handleSaveSession = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newSessionNumber = sessions.length + 1;
@@ -348,10 +350,8 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     setSessions(updatedSessions);
     setActiveSessionDetail(newSession);
 
-    // Guardar en localStorage
-    const allSessions = JSON.parse(localStorage.getItem('brevemente_sessions') || '{}');
-    allSessions[patientId] = updatedSessions;
-    localStorage.setItem('brevemente_sessions', JSON.stringify(allSessions));
+    // Guardar a través del servicio (la "costura")
+    await sessionService.saveByPatientId(patientId, updatedSessions);
 
     // Agregar entrada de Valoración de Cambio para esta sesión
     const updatedVc = [
@@ -397,14 +397,11 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     alert('Sesión guardada y validada con éxito.');
   };
 
-  const handleSaveDx = (e: React.FormEvent) => {
+  const handleSaveDx = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clinicalRecord) return;
 
-    localStorage.setItem('brevemente_clinical_records', JSON.stringify({
-      ...JSON.parse(localStorage.getItem('brevemente_clinical_records') || '{}'),
-      [patientId]: clinicalRecord
-    }));
+        await recordService.saveByPatientId(patientId, clinicalRecord);
 
     // Registrar en auditoría
     auditLogService.addLog(
@@ -417,7 +414,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     alert('Diagnóstico estratégico actualizado.');
   };
 
-  const handleSavePsychiatry = (e: React.FormEvent) => {
+  const handleSavePsychiatry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clinicalRecord) return;
 
@@ -433,9 +430,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
     setClinicalRecord(updatedRecord);
 
-    const allRecords = JSON.parse(localStorage.getItem('brevemente_clinical_records') || '{}');
-    allRecords[patientId] = updatedRecord;
-    localStorage.setItem('brevemente_clinical_records', JSON.stringify(allRecords));
+    await recordService.saveByPatientId(patientId, updatedRecord);
 
     // Registrar en auditoría
     auditLogService.addLog(
@@ -478,7 +473,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   }));
 
   // Obtener logs de auditoría locales para este paciente
-  const patientLogs = auditLogService.getLogs().filter(log => 
+  const patientLogs = auditLogService.getLogs().filter(log =>
     log.details.includes(activePatient?.name || '')
   );
 
@@ -508,10 +503,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                   <span className="text-[10px] px-2 py-0.5 border rounded-full font-bold uppercase bg-slate-50 border-slate-200 text-slate-500">
                     Folio: {clinicalRecord.folio}
                   </span>
-                  <span className={`w-2.5 h-2.5 rounded-full ${
-                    clinicalRecord.riskLevel === 'alto' ? 'bg-red-500' :
+                  <span className={`w-2.5 h-2.5 rounded-full ${clinicalRecord.riskLevel === 'alto' ? 'bg-red-500' :
                     clinicalRecord.riskLevel === 'medio' ? 'bg-amber-500' : 'bg-green-500'
-                  }`} title={`Riesgo ${clinicalRecord.riskLevel}`} />
+                    }`} title={`Riesgo ${clinicalRecord.riskLevel}`} />
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[10px] text-clinical-textMuted font-medium">
                   <span>Edad: {clinicalRecord.age} años</span>
@@ -527,11 +521,10 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
             <div className="flex items-center gap-2 self-end md:self-center">
               <span className="text-[10px] text-slate-400 font-bold uppercase">Registro:</span>
-              <span className={`text-[10px] px-2.5 py-1 border rounded-md font-bold uppercase ${
-                activePatient?.registryMode === 'ia'
-                  ? 'bg-clinical-teal/10 border-clinical-teal/30 text-clinical-teal'
-                  : 'bg-slate-100 border-slate-200 text-slate-500'
-              }`}>
+              <span className={`text-[10px] px-2.5 py-1 border rounded-md font-bold uppercase ${activePatient?.registryMode === 'ia'
+                ? 'bg-clinical-teal/10 border-clinical-teal/30 text-clinical-teal'
+                : 'bg-slate-100 border-slate-200 text-slate-500'
+                }`}>
                 {activePatient?.registryMode === 'ia' ? 'Grabación e IA activa' : '100% Manual'}
               </span>
             </div>
@@ -543,41 +536,37 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       <div className="border-b border-slate-200 flex gap-2">
         <button
           onClick={() => setActiveTab('tbe')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${
-            activeTab === 'tbe'
-              ? 'border-clinical-accent text-clinical-accent'
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'tbe'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
         >
           Tratamiento Psicoterapéutico TBE
         </button>
         <button
           onClick={() => setActiveTab('psiquiatria')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${
-            activeTab === 'psiquiatria'
-              ? 'border-clinical-accent text-clinical-accent'
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'psiquiatria'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
         >
           Tratamiento Psiquiátrico
         </button>
         <button
           onClick={() => setActiveTab('datos')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${
-            activeTab === 'datos'
-              ? 'border-clinical-accent text-clinical-accent'
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'datos'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
         >
           Datos de Admisión e Historia Clínica
         </button>
         <button
           onClick={() => setActiveTab('auditoria')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${
-            activeTab === 'auditoria'
-              ? 'border-clinical-accent text-clinical-accent'
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'auditoria'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
         >
           Auditoría del Expediente
         </button>
@@ -621,7 +610,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           </div>
 
           {/* SUBTABS - CONTENIDO */}
-          
+
           {/* DX ESTRATÉGICO */}
           {tbeSubTab === 'dx' && clinicalRecord && (
             <form onSubmit={handleSaveDx} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 text-xs">
@@ -637,7 +626,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                     rows={3}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
                     value={clinicalRecord.motif || ''}
-                    onChange={(e) => setClinicalRecord({...clinicalRecord, motif: e.target.value})}
+                    onChange={(e) => setClinicalRecord({ ...clinicalRecord, motif: e.target.value })}
                   />
                 </div>
                 <div>
@@ -646,7 +635,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                     rows={3}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
                     value={clinicalRecord.description || ''}
-                    onChange={(e) => setClinicalRecord({...clinicalRecord, description: e.target.value})}
+                    onChange={(e) => setClinicalRecord({ ...clinicalRecord, description: e.target.value })}
                   />
                 </div>
                 <div>
@@ -654,7 +643,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                   <select
                     className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
                     value={clinicalRecord.trastornoEstrategico || ''}
-                    onChange={(e) => setClinicalRecord({...clinicalRecord, trastornoEstrategico: e.target.value})}
+                    onChange={(e) => setClinicalRecord({ ...clinicalRecord, trastornoEstrategico: e.target.value })}
                   >
                     <option value="Ataque de Pánico">Ataque de Pánico</option>
                     <option value="Miedo a perder el control tipo 1: hablar en público">Miedo a hablar en público</option>
@@ -667,7 +656,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                   <select
                     className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
                     value={clinicalRecord.evolutionType || 'progresivo'}
-                    onChange={(e) => setClinicalRecord({...clinicalRecord, evolutionType: e.target.value as any})}
+                    onChange={(e) => setClinicalRecord({ ...clinicalRecord, evolutionType: e.target.value as any })}
                   >
                     <option value="progresivo">Progresivo</option>
                     <option value="agudo">Agudo</option>
@@ -681,7 +670,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                     rows={2}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
                     value={clinicalRecord.objectivePatient || ''}
-                    onChange={(e) => setClinicalRecord({...clinicalRecord, objectivePatient: e.target.value})}
+                    onChange={(e) => setClinicalRecord({ ...clinicalRecord, objectivePatient: e.target.value })}
                   />
                 </div>
                 <div>
@@ -690,7 +679,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                     rows={2}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
                     value={clinicalRecord.objectiveTherapist || ''}
-                    onChange={(e) => setClinicalRecord({...clinicalRecord, objectiveTherapist: e.target.value})}
+                    onChange={(e) => setClinicalRecord({ ...clinicalRecord, objectiveTherapist: e.target.value })}
                   />
                 </div>
               </div>
@@ -738,11 +727,10 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           setActiveSessionDetail(sess);
                           setIsCreatingSession(false);
                         }}
-                        className={`p-3.5 cursor-pointer text-xs transition-all flex items-center justify-between ${
-                          activeSessionDetail?.id === sess.id && !isCreatingSession
-                            ? 'bg-blue-50/50 border-l-4 border-clinical-accent font-semibold'
-                            : 'hover:bg-slate-50'
-                        }`}
+                        className={`p-3.5 cursor-pointer text-xs transition-all flex items-center justify-between ${activeSessionDetail?.id === sess.id && !isCreatingSession
+                          ? 'bg-blue-50/50 border-l-4 border-clinical-accent font-semibold'
+                          : 'hover:bg-slate-50'
+                          }`}
                       >
                         <div>
                           <span className="text-clinical-dark block">Sesión {sess.number}</span>
@@ -822,7 +810,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                                 {isRecording ? 'Grabando Audio...' : audioBlobUrl ? 'Audio Grabado' : 'Haga click para iniciar'}
                               </span>
                               <span className="text-[10px] text-slate-400 font-semibold uppercase">
-                                {isRecording 
+                                {isRecording
                                   ? `Tiempo: ${Math.floor(recordingSeconds / 60).toString().padStart(2, '0')}:${(recordingSeconds % 60).toString().padStart(2, '0')}`
                                   : audioBlobUrl ? `Duración: ${recordingSeconds}s` : 'Sin audio registrado'}
                               </span>
@@ -1461,7 +1449,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           {/* Fármacos Prescritos por Sesión */}
           <div className="space-y-3">
             <span className="font-bold text-clinical-dark block border-b border-slate-100 pb-2">Esquema Psicotrópico Farmacológico</span>
-            
+
             <div className="border border-slate-200 rounded-lg overflow-hidden">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -1566,7 +1554,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 <span className="text-[10px] text-slate-400">Firmado digitalmente el {activePatient.registrationDate}</span>
               </div>
             </div>
-            
+
             <button
               onClick={() => navigate(`/intake?id=${activePatient.id}`)}
               className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded font-semibold text-[10px] transition-colors"
