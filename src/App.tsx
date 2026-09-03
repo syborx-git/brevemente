@@ -39,8 +39,7 @@ const USER_NAMES: Record<Role, string> = {
   assistant: 'Marta Gómez',
   supervisor: 'Dra. Isabel Cárdenas',
   patient: 'Sofía Martínez',
-  student: 'Carlos Mendoza',
-  academic_coordinator: 'Dra. Patricia Ortiz'
+  student: 'Carlos Mendoza'
 };
 
 function App() {

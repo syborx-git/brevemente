@@ -16,8 +16,7 @@ const ROLES_INFO: Record<Role, { name: string; color: string }> = {
   assistant: { name: 'Asistente Clínico', color: 'bg-orange-100 text-orange-800 border-orange-200' },
   supervisor: { name: 'Supervisor Clínico', color: 'bg-purple-100 text-purple-800 border-purple-200' },
   patient: { name: 'Paciente (Simulador)', color: 'bg-slate-100 text-slate-800 border-slate-200' },
-  student: { name: 'Alumno (En Formación)', color: 'bg-teal-100 text-teal-800 border-teal-200' },
-  academic_coordinator: { name: 'Coordinador Académico', color: 'bg-amber-100 text-amber-800 border-amber-200' }
+  student: { name: 'Alumno (En Formación)', color: 'bg-teal-100 text-teal-800 border-teal-200' }
 };
 
 export const Header: React.FC<HeaderProps> = ({ currentRole, onChangeRole, userName, onStartDemo }) => {
@@ -28,7 +27,6 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onChangeRole, userN
     { value: 'assistant', label: 'Asistente / Secretaria' },
     { value: 'supervisor', label: 'Supervisor Clínico' },
     { value: 'student', label: 'Alumno (En Formación)' },
-    { value: 'academic_coordinator', label: 'Coordinador Académico' },
     { value: 'admin_clinical', label: 'Administrador Clínico' },
     { value: 'admin_platform', label: 'Administrador Plataforma' },
     { value: 'patient', label: 'Paciente (Vistas de Ingreso)' }

@@ -398,7 +398,7 @@ export const Supervision: React.FC<SupervisionProps> = ({ userRole, patients, us
                     </div>
 
                     <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-                      {['supervisor', 'academic_coordinator', 'admin_clinical'].includes(userRole) && (
+                      {['supervisor', 'admin_clinical'].includes(userRole) && (
                         <button
                           onClick={() => handleSendTherapist(log.therapistName)}
                           className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 rounded text-[10px] font-bold text-slate-600 transition-colors shadow-sm"
@@ -437,7 +437,7 @@ export const Supervision: React.FC<SupervisionProps> = ({ userRole, patients, us
             </div>
 
             {/* Listado de Casos pendientes de supervisión */}
-            {['supervisor', 'academic_coordinator', 'admin_clinical'].includes(userRole) && (
+            {['supervisor', 'admin_clinical'].includes(userRole) && (
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3 text-xs">
                 <span className="font-bold text-clinical-dark block uppercase tracking-wide border-b border-slate-100 pb-1.5">Casos Pendientes de Auditoría</span>
                 <div className="space-y-2 font-semibold">

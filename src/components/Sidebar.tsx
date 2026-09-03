@@ -25,7 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole, onLogout }) => {
     {
       title: 'INICIO',
       items: [
-        { path: '/', label: 'Panel Principal', icon: Home, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor', 'academic_coordinator'] },
+        { path: '/', label: 'Panel Principal', icon: Home, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'] },
         { path: '/mi-consulta', label: getPracticeLabel(userRole), icon: Activity, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor'] }
       ]
     },
@@ -35,22 +35,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole, onLogout }) => {
         { path: '/pacientes', label: 'Pacientes', icon: Users, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'] },
         { path: '/agenda', label: 'Agenda', icon: Calendar, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor', 'patient'] },
         { path: '/expedientes', label: 'Expedientes', icon: FolderHeart, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor'] },
-        { path: '/biblioteca', label: 'Biblioteca Clínica', icon: BookOpen, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student', 'academic_coordinator'] },
-        { path: '/senda', label: 'Senda', subtitle: 'Inteligencia asistiva', icon: MessageSquareCode, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student', 'academic_coordinator'] }
+        { path: '/biblioteca', label: 'Biblioteca Clínica', icon: BookOpen, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] },
+        { path: '/senda', label: 'Senda', subtitle: 'Inteligencia asistiva', icon: MessageSquareCode, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] }
       ]
     },
     {
       title: 'FORMACIÓN Y DESARROLLO',
       items: [
-        { path: '/campus', label: 'Campus BreveMente', icon: GraduationCap, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student', 'academic_coordinator'] },
-        { path: '/desempeno', label: 'Mi Desarrollo Profesional', icon: BarChart3, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student', 'academic_coordinator'] }
+        { path: '/campus', label: 'Campus BreveMente', icon: GraduationCap, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] },
+        { path: '/desempeno', label: 'Mi Desarrollo Profesional', icon: BarChart3, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] }
       ]
     },
     {
       title: 'ADMINISTRACIÓN',
       items: [
-        { path: '/configuracion', label: 'Configuración', icon: Settings, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor', 'academic_coordinator'] },
-        { path: '/auditoria', label: 'Auditoría y Seguridad', icon: ShieldAlert, roles: ['admin_platform', 'admin_clinical', 'supervisor', 'academic_coordinator'] }
+        { path: '/configuracion', label: 'Configuración', icon: Settings, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'] },
+        { path: '/auditoria', label: 'Auditoría y Seguridad', icon: ShieldAlert, roles: ['admin_platform', 'admin_clinical', 'supervisor'] }
       ]
     }
   ];
