@@ -119,88 +119,90 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   // Cargar datos del paciente
   useEffect(() => {
-    // Cargar historial de sesiones simulado
-    const allSessions = JSON.parse(localStorage.getItem('brevemente_sessions') || '{}');
-    if (!allSessions[patientId]) {
-      // Cargar mocks iniciales si no hay en localStorage
-      const initialSess = [
-        {
-          id: 'session-1-1',
-          patientId: 'patient-1',
-          number: 1,
-          date: '2026-08-10',
-          phase: 'Socialización',
-          protocol: 'Ataque de Pánico',
-          dxOp: 'SPR Fóbico',
-          px: ['Diario de abordo', 'Cómo empeorar'],
-          f1: 'Redefinición del control: "Quien busca el control, lo pierde; quien lo entrega, lo gana."',
-          f2: 'Evitación que confirma el peligro.',
-          oss: 'Paciente muy receptiva. Se identificó la solución intentada de pedir ayuda a su madre y esposo.',
-          add: '100%',
-          rss: 'Mejoría leve',
-          eff: 'Bueno',
-          notes: 'La paciente reporta que escribir en el diario de abordo redujo la duración de la crisis de 20 a 5 minutos.',
-          observationsNextSession: 'Profundizar en la maniobra de "cómo empeorar" para bloquear el control voluntario.',
-          situation: 'Estable con crisis de menor intensidad.',
-          status: 'validado' as const
-        },
-        {
-          id: 'session-1-2',
-          patientId: 'patient-1',
-          number: 2,
-          date: '2026-08-17',
-          phase: 'Intervención',
-          protocol: 'Ataque de Pánico',
-          dxOp: 'SPR Fóbico',
-          px: ['Diario de abordo', 'WF 30 min'],
-          f1: 'La fantasía del peor escenario: "Míralo a los ojos y el fantasma desaparecerá."',
-          f2: 'Prescribir el síntoma en un horario fijo.',
-          oss: 'Se prescribe la Peor Fantasía (Worry-Time / WF 30 min) de 30 minutos diarios a las 18:00.',
-          add: '80%',
-          rss: 'Mejoría significativa',
-          eff: 'Excelente',
-          notes: 'Al colocarse voluntariamente en el peor escenario durante 30 minutos, la paciente reporta que le costaba sentir miedo y terminaba relajándose.',
-          observationsNextSession: 'Evaluar autonomía al salir sola a la calle sin pedir ayuda.',
-          situation: 'Muy mejorada. Solo reporta un amago de crisis en la semana.',
-          status: 'validado' as const
-        }
-      ];
+    // Cargar historial de sesiones a través del servicio
+    sessionService.getByPatientId(patientId).then((sessions) => {
+      if (sessions.length === 0) {
+        // No hay sesiones guardadas: usar mocks iniciales (solo demo)
+        const initialSess = [
+          {
+            id: 'session-1-1',
+            patientId: 'patient-1',
+            number: 1,
+            date: '2026-08-10',
+            phase: 'Socialización',
+            protocol: 'Ataque de Pánico',
+            dxOp: 'SPR Fóbico',
+            px: ['Diario de abordo', 'Cómo empeorar'],
+            f1: 'Redefinición del control: "Quien busca el control, lo pierde; quien lo entrega, lo gana."',
+            f2: 'Evitación que confirma el peligro.',
+            oss: 'Paciente muy receptiva. Se identificó la solución intentada de pedir ayuda a su madre y esposo.',
+            add: '100%',
+            rss: 'Mejoría leve',
+            eff: 'Bueno',
+            notes: 'La paciente reporta que escribir en el diario de abordo redujo la duración de la crisis de 20 a 5 minutos.',
+            observationsNextSession: 'Profundizar en la maniobra de "cómo empeorar" para bloquear el control voluntario.',
+            situation: 'Estable con crisis de menor intensidad.',
+            status: 'validado' as const
+          },
+          {
+            id: 'session-1-2',
+            patientId: 'patient-1',
+            number: 2,
+            date: '2026-08-17',
+            phase: 'Intervención',
+            protocol: 'Ataque de Pánico',
+            dxOp: 'SPR Fóbico',
+            px: ['Diario de abordo', 'WF 30 min'],
+            f1: 'La fantasía del peor escenario: "Míralo a los ojos y el fantasma desaparecerá."',
+            f2: 'Prescribir el síntoma en un horario fijo.',
+            oss: 'Se prescribe la Peor Fantasía (Worry-Time / WF 30 min) de 30 minutos diarios a las 18:00.',
+            add: '80%',
+            rss: 'Mejoría significativa',
+            eff: 'Excelente',
+            notes: 'Al colocarse voluntariamente en el peor escenario durante 30 minutos, la paciente reporta que le costaba sentir miedo y terminaba relajándose.',
+            observationsNextSession: 'Evaluar autonomía al salir sola a la calle sin pedir ayuda.',
+            situation: 'Muy mejorada. Solo reporta un amago de crisis en la semana.',
+            status: 'validado' as const
+          }
+        ];
 
-      const sess = patientId === 'patient-1' ? initialSess : [];
-      setSessions(sess);
-      if (sess.length > 0) setActiveSessionDetail(sess[sess.length - 1]);
-    } else {
-      setSessions(allSessions[patientId]);
-      if (allSessions[patientId].length > 0) setActiveSessionDetail(allSessions[patientId][allSessions[patientId].length - 1]);
-    }
+        const sess = patientId === 'patient-1' ? initialSess : [];
+        setSessions(sess);
+        if (sess.length > 0) setActiveSessionDetail(sess[sess.length - 1]);
+      } else {
+        setSessions(sessions);
+        if (sessions.length > 0) setActiveSessionDetail(sessions[sessions.length - 1]);
+      }
+    });
 
-    // Cargar ficha
-    const allRecords = JSON.parse(localStorage.getItem('brevemente_clinical_records') || '{}');
-    const mockRecord: ClinicalRecordType = {
-      patientId: patientId,
-      patientName: activePatient?.name || 'Paciente',
-      folio: patientId === 'patient-1' ? 'EXP-8849' : 'EXP-9012',
-      startDate: activePatient?.registrationDate || '2026-08-20',
-      age: patientId === 'patient-1' ? 28 : 35,
-      therapistName: 'Dr. Alejandro Silva',
-      status: 'Activo - En Tratamiento',
-      riskLevel: activePatient?.riskLevel || 'bajo',
-      modality: patientId === 'patient-1' ? 'online' : 'presencial',
-      motif: activePatient?.motif || 'Motivo de consulta inicial.',
-      description: patientId === 'patient-1'
-        ? 'Paciente femenina de 28 años que refiere inicio de crisis de angustia súbitas hace 3 meses. Asocia síntomas con miedo a desmayarse en público y perder el control. Ha evitado lugares concurridos.'
-        : 'Paciente masculino de 35 años que reporta bloqueos de habla al exponer en público.',
-      trastornoEstrategico: patientId === 'patient-1' ? 'Ataque de Pánico' : 'Miedo a hablar en público',
-      firstAppearance: 'Hace 3 meses tras periodo de alto estrés.',
-      precipitatingFactors: 'Alta demanda y discusiones de trabajo.',
-      evolutionType: 'episódico',
-      dxOpInicial: 'SPR Fóbico',
-      sprInicial: 'Marcador de inicio',
-      objectivePatient: 'Poder salir a trabajar y estar sola en su casa sin temor.',
-      objectiveTherapist: 'Reestructurar la percepción de peligro físico, disolver la paradoja del control que hace perder el control.'
-    };
+    // Cargar ficha a través del servicio
+    recordService.getByPatientId(patientId).then((record) => {
+      const mockRecord: ClinicalRecordType = {
+        patientId: patientId,
+        patientName: activePatient?.name || 'Paciente',
+        folio: patientId === 'patient-1' ? 'EXP-8849' : 'EXP-9012',
+        startDate: activePatient?.registrationDate || '2026-08-20',
+        age: patientId === 'patient-1' ? 28 : 35,
+        therapistName: 'Dr. Alejandro Silva',
+        status: 'Activo - En Tratamiento',
+        riskLevel: activePatient?.riskLevel || 'bajo',
+        modality: patientId === 'patient-1' ? 'online' : 'presencial',
+        motif: activePatient?.motif || 'Motivo de consulta inicial.',
+        description: patientId === 'patient-1'
+          ? 'Paciente femenina de 28 años que refiere inicio de crisis de angustia súbitas hace 3 meses. Asocia síntomas con miedo a desmayarse en público y perder el control. Ha evitado lugares concurridos.'
+          : 'Paciente masculino de 35 años que reporta bloqueos de habla al exponer en público.',
+        trastornoEstrategico: patientId === 'patient-1' ? 'Ataque de Pánico' : 'Miedo a hablar en público',
+        firstAppearance: 'Hace 3 meses tras periodo de alto estrés.',
+        precipitatingFactors: 'Alta demanda y discusiones de trabajo.',
+        evolutionType: 'episódico',
+        dxOpInicial: 'SPR Fóbico',
+        sprInicial: 'Marcador de inicio',
+        objectivePatient: 'Poder salir a trabajar y estar sola en su casa sin temor.',
+        objectiveTherapist: 'Reestructurar la percepción de peligro físico, disolver la paradoja del control que hace perder el control.'
+      };
 
-    setClinicalRecord(allRecords[patientId] || mockRecord);
+      setClinicalRecord(record || mockRecord);
+    });
 
     // Cargar modo inicial
     if (activePatient) {
@@ -401,7 +403,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     e.preventDefault();
     if (!clinicalRecord) return;
 
-        await recordService.saveByPatientId(patientId, clinicalRecord);
+    await recordService.saveByPatientId(patientId, clinicalRecord);
 
     // Registrar en auditoría
     auditLogService.addLog(
