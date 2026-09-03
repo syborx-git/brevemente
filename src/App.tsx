@@ -29,6 +29,8 @@ import { auditLogService } from './services/auditLogService';
 import { demoStateService } from './services/demoStateService';
 import { patientService } from './services/patientService';
 import { appointmentService } from './services/appointmentService';
+import { recordService } from './services/recordService';
+import { sessionService } from './services/sessionService';
 import { hasPermission } from './utils/permissions';
 
 
@@ -112,13 +114,9 @@ function App() {
     await patientService.remove(id);
     // 2. Borrar sus citas (¡el removeByPatientId que creaste para esto!)
     await appointmentService.removeByPatientId(id);
-    // 3. Borrar su expediente y sesiones si existen (por ahora directo; en el paso 3 lo haremos con servicios)
-    const recs = JSON.parse(localStorage.getItem('brevemente_clinical_records') || '{}');
-    delete recs[id];
-    localStorage.setItem('brevemente_clinical_records', JSON.stringify(recs));
-    const sess = JSON.parse(localStorage.getItem('brevemente_sessions') || '{}');
-    delete sess[id];
-    localStorage.setItem('brevemente_sessions', JSON.stringify(sess));
+    // 3. Borrar su expediente y sesiones a través de los servicios (la "costura")
+    await recordService.removeByPatientId(id);
+    await sessionService.removeByPatientId(id);
     // 4. Actualizar la interfaz
     setPatients(patients.filter(p => p.id !== id));
     setAppointments(appointments.filter(a => a.patientId !== id));
@@ -129,7 +127,7 @@ function App() {
     setAppointments([...appointments, newApp]);
   };
 
-  const handleDeleteAppointment = async (id: string) => {           
+  const handleDeleteAppointment = async (id: string) => {
     await appointmentService.remove(id);
     setAppointments(appointments.filter(a => a.id !== id));
   };
