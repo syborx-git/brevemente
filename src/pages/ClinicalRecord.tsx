@@ -308,6 +308,19 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     }, 2000);
   };
 
+    // [DEMO] Disparador de un clic para simular una señal de riesgo en presentaciones
+  const handleSimulateRisk = () => {
+    if (!activePatient) return;
+    const demoNote =
+      'La paciente se mostró muy angustiada y mencionó en dos ocasiones que en los momentos más difíciles ha pensado en hacerse daño y que a veces siente que ya no puede más.';
+    setNewSessNotes(demoNote);
+    const risk = riskSimulationService.checkTextForRisk(demoNote);
+    if (risk.isRisk) {
+      setActiveRiskAlert({ isRisk: true, message: risk.reason });
+      setIsNotesGeneratedByIa(true);
+    }
+  };
+
   const handleEscalateRisk = () => {
     if (activeRiskAlert && activePatient) {
       riskSimulationService.escalateRisk(
@@ -481,14 +494,16 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   return (
     <div className="space-y-6">
-      {/* Risk alert banner */}
+      {/* Risk alert banner (sticky: te sigue al hacer scroll) */}
       {activeRiskAlert && activePatient && (
-        <RiskAlertBanner
-          patientName={activePatient.name}
-          message={activeRiskAlert.message}
-          onEscalate={handleEscalateRisk}
-          userRole={userRole}
-        />
+        <div className="sticky top-0 z-40">
+          <RiskAlertBanner
+            patientName={activePatient.name}
+            message={activeRiskAlert.message}
+            onEscalate={handleEscalateRisk}
+            userRole={userRole}
+          />
+        </div>
       )}
 
       {/* Ficha Cabecera Paciente */}
@@ -966,7 +981,18 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                             }}
                           />
                         </div>
-
+                        
+                        {/* [DEMO] Botón para simular señal de riesgo en presentaciones */}
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handleSimulateRisk}
+                            className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-bold shadow-sm transition-colors flex items-center gap-1.5"
+                          >
+                            🎬 Simular señal de riesgo (demo)
+                          </button>
+                        </div>
+                        
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
                             <label className="block text-slate-500 font-semibold mb-1">Observaciones del Terapeuta (OSS):</label>

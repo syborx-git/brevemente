@@ -9,6 +9,16 @@ interface SecurityAuditProps {
   userName: string;
 }
 
+// Formatea el tiempo transcurrido desde una fecha ISO (ej. "hace 5 min")
+const timeAgo = (iso: string): string => {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return `hace ${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  return `hace ${hours} h ${minutes % 60} min`;
+};
+
 export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [alerts, setAlerts] = useState<RiskAlert[]>([]);
@@ -101,11 +111,22 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
           <div className="divide-y divide-red-100 bg-white border border-red-150 rounded-lg overflow-hidden text-xs">
             {activeAlerts.map(a => (
               <div key={a.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
+                                <div className="space-y-1.5">
                   <span className="font-bold text-clinical-dark text-xs block">
-                    Paciente: {a.patientName} (Escalado hace: {new Date(a.timestamp).toLocaleTimeString()})
+                    Paciente: {a.patientName}
                   </span>
                   <p className="text-red-700 leading-normal font-medium">{a.message}</p>
+
+                  {/* Tiempo transcurrido + canales notificados (notificación redundante) */}
+                  <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-semibold">
+                    <span className="text-slate-500">⏱️ Escalado <b className="text-red-700">{timeAgo(a.timestamp)}</b></span>
+                    <span className="text-slate-300">|</span>
+                    <span className="text-slate-400">Canal notificado:</span>
+                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">Bitácora auditoría ✓</span>
+                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">Supervisor en vivo ✓</span>
+                    <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">Guardia (simulado)</span>
+                  </div>
+
                   <span className="text-[10px] text-slate-400 block">{a.note}</span>
                 </div>
 
@@ -117,6 +138,40 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
                     Marcar como Atendido
                   </button>
                 )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      
+      {/* Sección Historial de Alertas Atendidas */}
+      {resolvedAlerts.length > 0 && (
+        <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 shadow-sm space-y-3.5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-emerald-600" />
+            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+              Historial de Alertas Atendidas ({resolvedAlerts.length})
+            </span>
+          </div>
+
+          <div className="divide-y divide-emerald-100 bg-white border border-emerald-200 rounded-lg overflow-hidden text-xs">
+            {resolvedAlerts.map(a => (
+              <div key={a.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="font-bold text-clinical-dark text-xs block">
+                    Paciente: {a.patientName}
+                  </span>
+                  <p className="text-slate-600 leading-normal font-medium">{a.message}</p>
+                  <span className="text-[10px] text-slate-400 block">
+                    Escalado {timeAgo(a.timestamp)} · Resuelto {a.resolvedAt
+                      ? new Date(a.resolvedAt).toLocaleString('es-MX')
+                      : '—'} por <b className="text-emerald-700">{a.resolvedBy}</b>
+                  </span>
+                </div>
+                <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded font-bold uppercase text-[10px] shrink-0">
+                  ✓ Atendida
+                </span>
               </div>
             ))}
           </div>
