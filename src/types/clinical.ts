@@ -1,4 +1,4 @@
-export type Role = 'admin_platform' | 'admin_clinical' | 'therapist' | 'assistant' | 'supervisor' | 'patient' | 'student' | 'academic_coordinator';
+export type Role = 'admin_platform' | 'admin_clinical' | 'therapist' | 'assistant' | 'supervisor' | 'patient' | 'student';
 
 export interface User {
   id: string;

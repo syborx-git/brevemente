@@ -59,8 +59,8 @@ export const GuidedDemo: React.FC<GuidedDemoProps> = ({
         onChangeRole('student');
       } else if (currentStep === 7 && userRole !== 'supervisor') {
         onChangeRole('supervisor');
-      } else if (currentStep === 11 && userRole !== 'academic_coordinator') {
-        onChangeRole('academic_coordinator');
+      } else if (currentStep === 11 && userRole !== 'supervisor') {
+        onChangeRole('supervisor');
       }
     }
   }, [activeStepObj, currentStep, activeTour, navigate, onChangeRole, userRole]);

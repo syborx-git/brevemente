@@ -11,8 +11,8 @@ export const DemoLauncher: React.FC<DemoLauncherProps> = ({ isOpen, onClose, onS
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col animate-scaleUp">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="my-auto bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col animate-scaleUp">
         {/* Banner Superior */}
         <div className="bg-clinical-dark p-6 text-white text-center space-y-3 relative">
           <div className="mx-auto w-fit bg-slate-800 p-2 rounded-xl border border-slate-700">
@@ -40,7 +40,7 @@ export const DemoLauncher: React.FC<DemoLauncherProps> = ({ isOpen, onClose, onS
 
           <div className="space-y-3">
             <span className="font-bold text-clinical-dark block text-center">¿Cómo deseas explorar BreveMente hoy?</span>
-            
+
             <div className="grid grid-cols-1 gap-2.5">
               {/* Opción Demo Ejecutiva */}
               <button

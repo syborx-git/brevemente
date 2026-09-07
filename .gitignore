@@ -6,6 +6,15 @@ dist/
 !.env.example
 *.log
 .vite/
+_doc_extract.txt
+hallazgos_demo.md
+cuestionario_doctores.md
 
 # Documentación confidencial de trabajo
 PROMPT MAESTRO PARA DESARROLLAR PROTOTIPO BreveMente.md
+
+# Documentos de trabajo desechables (solo desarrollo)
+hallazgos_demo.md
+demo_scope.md
+_doc_extract.txt
+_memorandum_extract.txt

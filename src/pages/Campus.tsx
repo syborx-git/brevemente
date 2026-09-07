@@ -208,7 +208,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
         <div className="flex items-center gap-2 relative z-10">
           <span className="text-xs font-semibold text-slate-300">Rol Educativo Activo:</span>
           <span className="px-3 py-1 bg-clinical-accent text-white border border-[#75AFBC]/30 rounded-lg text-xs font-bold uppercase">
-            {userRole === 'student' ? 'Alumno' : userRole === 'academic_coordinator' ? 'Coordinador Académico' : userRole === 'supervisor' ? 'Supervisor Clínico' : userRole.toUpperCase()}
+                        {userRole === 'student' ? 'Alumno' : userRole === 'supervisor' ? 'Supervisor Clínico' : userRole.toUpperCase()}
           </span>
         </div>
       </div>
@@ -235,7 +235,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
             Simulador Clínico con Senda
           </button>
         )}
-        {['admin_platform', 'admin_clinical', 'academic_coordinator', 'supervisor'].includes(userRole) && (
+        {['admin_platform', 'admin_clinical', 'supervisor'].includes(userRole) && (
           <button
             onClick={() => setActiveTab('cohortes')}
             className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'cohortes' ? 'bg-clinical-dark text-white shadow-sm' : 'hover:text-slate-800'}`}
@@ -243,7 +243,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
             Cohortes y Programas
           </button>
         )}
-        {['admin_platform', 'admin_clinical', 'academic_coordinator', 'supervisor'].includes(userRole) && (
+        {['admin_platform', 'admin_clinical', 'supervisor'].includes(userRole) && (
           <button
             onClick={() => setActiveTab('alertas')}
             className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'alertas' ? 'bg-clinical-dark text-white shadow-sm' : 'hover:text-slate-800'}`}

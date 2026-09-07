@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Filter, 
-  MapPin, Video, AlertTriangle, MessageSquare, Clipboard, User, 
-  PlusCircle, RefreshCw, X, ShieldAlert, Sparkles, Check, CheckSquare 
+import {
+  Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Filter,
+  MapPin, Video, AlertTriangle, MessageSquare, Clipboard, User,
+  PlusCircle, RefreshCw, X, ShieldAlert, Sparkles, Check, CheckSquare
 } from 'lucide-react';
 import { Role, Appointment, Patient } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
@@ -14,6 +14,7 @@ interface AgendaProps {
   patients: Patient[];
   onAddAppointment: (app: Appointment) => void;
   onAddPatient: (pat: Patient) => void;
+  onDeleteAppointment: (id: string) => void;
   userName: string;
 }
 
@@ -35,6 +36,7 @@ export const Agenda: React.FC<AgendaProps> = ({
   patients,
   onAddAppointment,
   onAddPatient,
+  onDeleteAppointment,
   userName
 }) => {
   const navigate = useNavigate();
@@ -83,7 +85,7 @@ export const Agenda: React.FC<AgendaProps> = ({
   const allowedAppointments = initialAppointments.filter(app => {
     if (userRole === 'patient') {
       // El paciente SOLO puede ver sus propias citas
-      return app.patientId === 'patient-2'; 
+      return app.patientId === 'patient-2';
     }
     return true;
   });
@@ -91,12 +93,12 @@ export const Agenda: React.FC<AgendaProps> = ({
   // Filtrar citas según controles de cabecera
   const filteredAppointments = allowedAppointments.filter(app => {
     const pat = patients.find(p => p.id === app.patientId);
-    
+
     const matchesTherapist = filterTherapist === 'all' || (pat && pat.therapistName.includes(filterTherapist));
     const matchesModality = filterModality === 'all' || (pat && pat.registryMode === filterModality);
-    
+
     // Filtro por estado
-    const matchesStatus = filterStatus === 'all' || 
+    const matchesStatus = filterStatus === 'all' ||
       (filterStatus === 'confirmada' && app.status === 'confirmada') ||
       (filterStatus === 'pendiente' && app.status === 'pendiente') ||
       (filterStatus === 'riesgo' && pat && pat.riskLevel === 'alto') ||
@@ -175,7 +177,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     setWhatsappTriggerId(patientId);
     setShowAddModal(false);
-    
+
     // Reset
     setName('');
     setPhone('');
@@ -189,7 +191,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     selectedApp.time = reprogrammingTime;
     selectedApp.date = reprogrammingDate;
-    
+
     // Registrar en auditoría
     auditLogService.addLog(
       'Reprogramación de cita',
@@ -203,7 +205,7 @@ export const Agenda: React.FC<AgendaProps> = ({
   };
 
   // Buscar pacientes existentes
-  const filteredPatientsSearch = patients.filter(p => 
+  const filteredPatientsSearch = patients.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -349,7 +351,7 @@ export const Agenda: React.FC<AgendaProps> = ({
           {/* Navegación del Período */}
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 onClick={() => setCurrentDateIndex(prev => prev - 1)}
                 className="p-1 hover:bg-slate-200 rounded text-slate-600 transition-colors"
               >
@@ -358,14 +360,14 @@ export const Agenda: React.FC<AgendaProps> = ({
               <span className="text-xs font-bold text-clinical-dark uppercase">
                 {calendarView === 'mes' ? 'Agosto 2026' : 'Semana del 24 al 30 de Agosto, 2026'}
               </span>
-              <button 
+              <button
                 onClick={() => setCurrentDateIndex(prev => prev + 1)}
                 className="p-1 hover:bg-slate-200 rounded text-slate-600 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-            <button 
+            <button
               onClick={() => setCurrentDateIndex(0)}
               className="px-2.5 py-1 border border-slate-200 hover:bg-slate-100 rounded text-[10px] font-bold text-slate-600 transition-colors"
             >
@@ -396,16 +398,16 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <td className="p-3 text-center border-r border-slate-150 font-bold text-slate-400 align-top">
                           {hour}
                         </td>
-                        
+
                         {DAYS.map((day) => {
                           // Buscar citas en este día y esta hora
-                          const slotApps = filteredAppointments.filter(app => 
-                            app.date === day.date && app.time === hour
+                          const slotApps = filteredAppointments.filter(app =>
+                            app.date === day.date && app.time.split(':')[0] === hour.split(':')[0]
                           );
 
                           return (
-                            <td 
-                              key={day.date} 
+                            <td
+                              key={day.date}
                               className="border-r border-slate-150 last:border-r-0 p-1.5 align-top relative group"
                               style={{ width: '13%' }}
                             >
@@ -419,7 +421,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                               {slotApps.map((app) => {
                                 const pat = patients.find(p => p.id === app.patientId);
                                 const isCarlos = app.patientId === 'patient-2';
-                                
+
                                 // Conflict validation (colisión)
                                 const isConflict = slotApps.length > 1;
 
@@ -438,9 +440,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     key={app.id}
                                     onClick={() => handleSelectAppointment(app)}
                                     data-tour={isCarlos ? 'agenda-carlos-mendoza' : undefined}
-                                    className={`p-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex flex-col gap-1 overflow-hidden h-full ${borderClass} ${
-                                      isConflict ? 'border-dashed border-amber-400 ring-1 ring-amber-300' : ''
-                                    }`}
+                                    className={`p-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex flex-col gap-1 overflow-hidden h-full ${borderClass} ${isConflict ? 'border-dashed border-amber-400 ring-1 ring-amber-300' : ''
+                                      }`}
                                   >
                                     <div className="flex items-center justify-between font-bold text-clinical-dark">
                                       <span className="truncate">{app.patientName}</span>
@@ -478,13 +479,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                 const dayNum = i + 1;
                 const dayDate = `2026-08-${dayNum.toString().padStart(2, '0')}`;
                 const dayApps = filteredAppointments.filter(a => a.date === dayDate);
-                
+
                 return (
                   <div key={i} className="bg-white border border-slate-150 min-h-20 rounded p-1.5 text-left flex flex-col justify-between">
                     <span className="font-bold text-slate-400">{dayNum}</span>
                     <div className="space-y-0.5 overflow-hidden">
                       {dayApps.slice(0, 2).map(app => (
-                        <div 
+                        <div
                           key={app.id}
                           onClick={() => handleSelectAppointment(app)}
                           className="bg-blue-50 border-l-2 border-clinical-accent px-1 py-0.5 rounded text-[8px] truncate font-semibold text-clinical-dark cursor-pointer"
@@ -506,7 +507,7 @@ export const Agenda: React.FC<AgendaProps> = ({
           {calendarView === 'dia' && (
             <div className="divide-y divide-slate-100 p-4 space-y-2">
               {HOURS.map((hour) => {
-                const hourApps = filteredAppointments.filter(a => a.date === '2026-08-24' && a.time === hour);
+                const hourApps = filteredAppointments.filter(a => a.date === '2026-08-24' && a.time.split(':')[0] === hour.split(':')[0]);
                 return (
                   <div key={hour} className="py-3 flex items-start gap-4 hover:bg-slate-50/50">
                     <span className="w-16 font-bold text-slate-400 text-xs shrink-0">{hour}</span>
@@ -514,8 +515,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                       {hourApps.map(app => {
                         const pat = patients.find(p => p.id === app.patientId);
                         return (
-                          <div 
-                            key={app.id} 
+                          <div
+                            key={app.id}
                             onClick={() => handleSelectAppointment(app)}
                             className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer shadow-sm hover:border-[#75AFBC] transition-all flex justify-between items-center"
                           >
@@ -574,8 +575,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                 <span className="text-[9px] text-slate-300 block">BreveMente Clinical Workflow</span>
               </div>
             </div>
-            <button 
-              onClick={() => setSelectedApp(null)} 
+            <button
+              onClick={() => setSelectedApp(null)}
               className="text-slate-300 hover:text-white p-1"
             >
               ✕
@@ -592,7 +593,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {/* Ficha de Estado Consentimiento/Intake */}
             <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">
               <span className="font-bold text-clinical-dark block border-b border-slate-200 pb-1 mb-1">Estatus del Paciente</span>
-              
+
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 <div className="flex items-center gap-1.5">
                   <div className={`w-2 h-2 rounded-full ${patients.find(p => p.id === selectedApp.patientId)?.status === 'pendiente' ? 'bg-amber-500' : 'bg-green-500'}`} />
@@ -609,7 +610,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {/* Reprogramación */}
             <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">
               <span className="font-bold text-clinical-dark block">Reprogramación de Fecha y Hora</span>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Fecha:</label>
@@ -666,6 +667,17 @@ export const Agenda: React.FC<AgendaProps> = ({
             >
               Cerrar
             </button>
+            <button
+              onClick={() => {
+                if (confirm(`¿Eliminar la cita de ${selectedApp.patientName}?`)) {
+                  onDeleteAppointment(selectedApp.id);
+                  setSelectedApp(null);
+                }
+              }}
+              className="px-4 py-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg font-bold"
+            >
+              Eliminar cita
+            </button>
           </div>
         </div>
       )}
@@ -715,7 +727,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                   {searchTerm && filteredPatientsSearch.length > 0 && !selectedPatientId && (
                     <div className="border border-slate-200 bg-white rounded shadow-inner max-h-24 overflow-y-auto divide-y divide-slate-100">
                       {filteredPatientsSearch.map(p => (
-                        <div 
+                        <div
                           key={p.id}
                           className="p-2 hover:bg-slate-50 cursor-pointer font-semibold text-slate-700"
                           onClick={() => {

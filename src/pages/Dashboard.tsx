@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users, Calendar, Clock, BookOpen, FileText, 
-  ShieldAlert, Sparkles, PlusCircle, ArrowRight, 
-  AlertTriangle, Filter, RotateCcw, Building, CheckCircle, 
-  Search, Check, Trash2, Shield, GraduationCap, Eye, BarChart3, HelpCircle 
+import {
+  Users, Calendar, Clock, BookOpen, FileText,
+  ShieldAlert, Sparkles, PlusCircle, ArrowRight,
+  AlertTriangle, Filter, RotateCcw, Building, CheckCircle,
+  Search, Check, Trash2, Shield, GraduationCap, Eye, BarChart3, HelpCircle
 } from 'lucide-react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell 
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
 import { Role, Appointment, Patient } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
@@ -125,6 +125,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   const todayAppsCount = todayAppointments.length;
   const pendingRecordsCount = filteredPatients.filter(p => p.status === 'pendiente').length || 1;
   const alertsCount = filteredPatients.filter(p => p.riskLevel === 'medio' || p.id === 'patient-1').length;
+  // --- PENDIENTES PRIORITARIOS (derivados de datos reales) ---
+  const pendingPatients = filteredPatients.filter(p => p.status === 'pendiente');
 
   // --- SEGREGACIÓN DE DATOS DEL PACIENTE ---
   if (userRole === 'patient') {
@@ -170,10 +172,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
 
         {/* Grid Principal del Paciente */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
+
           {/* Citas y Tareas */}
           <div className="md:col-span-2 space-y-6">
-            
+
             {/* Próxima Consulta */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
               <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-100 pb-2">Mi Próxima Consulta</span>
@@ -198,7 +200,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
               <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-100 pb-2">Mis Tareas Terapéuticas Activas</span>
               <p className="text-[11px] text-slate-455 leading-normal font-semibold">Realiza tus tareas asignadas tal como las indicó tu especialista. Esto forma parte central del tratamiento estratégico.</p>
-              
+
               <div className="space-y-3 leading-normal font-semibold text-slate-705">
                 <div className="bg-slate-50 border-l-4 border-l-[#75AFBC] p-4 rounded-r-xl">
                   <div className="flex justify-between items-start gap-2">
@@ -228,7 +230,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
               <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-100 pb-2">Mi Evolución de Cambio</span>
               <p className="text-[11px] text-slate-400 leading-normal font-semibold">Gráfica agregada que muestra tus niveles de bienestar percibido en las esferas relacionales.</p>
-              
+
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={[
@@ -261,7 +263,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               <p className="text-slate-600 font-semibold leading-relaxed text-xs">
                 Hola, Sofía. Soy <b>Senda Paciente</b>. Puedo resolver dudas sobre cómo realizar tus tareas asignadas o explicarte el modelo de terapia de Arezzo.
               </p>
-              
+
               <div className="bg-white p-3 rounded-lg border border-slate-100 space-y-2">
                 <span className="text-[10px] text-slate-400 font-bold block uppercase">Preguntas sugeridas:</span>
                 <button
@@ -302,7 +304,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               <p className="font-bold text-slate-700 text-xs leading-relaxed">
                 ⚠️ Se ha notificado inmediatamente al **Dr. Alejandro Silva** y al **Supervisor de Guardia** sobre tu estado de crisis. Un profesional se comunicará contigo de forma prioritaria.
               </p>
-              
+
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
                 <span className="font-bold text-red-800 text-[11px] block uppercase">Recursos de Apoyo Inmediatos (Gratuitos 24/7):</span>
                 <div className="space-y-1.5 font-extrabold text-xs text-red-950">
@@ -389,7 +391,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
 
   return (
     <div className="space-y-8 animate-fadeIn text-xs text-slate-650 font-semibold leading-normal">
-      
+
       {/* ZONA 1: BIENVENIDA Y CONTEXTO */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4" data-tour="dashboard-header">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-150 pb-4">
@@ -402,7 +404,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               Visión ejecutiva de la operación clínica, las alertas y la efectividad general.
             </p>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
               Actualizado: {lastUpdated}
@@ -481,9 +483,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
 
       {/* ZONA 2: ESTADO GENERAL (MÁXIMO 4 INDICADORES VISUALES NO IDÉNTICOS, MÁXIMO 1 ANILLO DE PROGRESO) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" data-tour="dashboard-kpis">
-        
+
         {/* Indicador 1: Compacto Numérico (Citas) */}
-        <div 
+        <div
           onClick={() => setActiveDrilldown('citas')}
           className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-clinical-teal transition-all"
         >
@@ -498,7 +500,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
         </div>
 
         {/* Indicador 2: Anillo de Progreso (Pacientes Activos - MÁXIMO 1 ANILLO EN VIEWPORT) */}
-        <div 
+        <div
           onClick={() => setActiveDrilldown('pacientes')}
           className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex items-center justify-between cursor-pointer hover:border-clinical-teal transition-all"
         >
@@ -520,7 +522,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
         </div>
 
         {/* Indicador 3: Barra de Estado (Pendientes Clínicos) */}
-        <div 
+        <div
           onClick={() => setActiveDrilldown('consentimientos')}
           className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-clinical-teal transition-all"
         >
@@ -536,7 +538,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
         </div>
 
         {/* Indicador 4: Semáforo / Badge (Alertas Clínicas - Oculto para asistente) */}
-        <div 
+        <div
           onClick={() => { if (!isAssistant) setActiveDrilldown('risk'); }}
           className={`bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between ${!isAssistant ? 'cursor-pointer hover:border-red-500' : ''}`}
         >
@@ -610,12 +612,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
 
       {/* ZONA 4: AGENDA Y PENDIENTES */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Columna Agenda (Línea de Tiempo Compacta de Citas) */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
           <div className="flex justify-between items-center border-b border-slate-100 pb-2">
             <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block">Agenda del Día</span>
-            <button 
+            <button
               onClick={() => navigate('/agenda')}
               className="text-[10px] text-clinical-teal font-bold hover:underline"
             >
@@ -648,7 +650,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
           <div className="flex justify-between items-center border-b border-slate-100 pb-2">
             <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block">Pendientes Prioritarios</span>
-            <button 
+            <button
               onClick={() => navigate('/expedientes')}
               className="text-[10px] text-clinical-teal font-bold hover:underline"
             >
@@ -657,24 +659,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           </div>
 
           <div className="space-y-3 text-[11px] font-semibold text-slate-650">
-            {/* Pendiente 1 */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-2 gap-2">
-              <div>
-                <span className="font-bold text-clinical-dark block">Firma digital de Carlos Mendoza</span>
-                <span className="text-[10px] text-slate-500 block">Debe firmar consentimiento de audio antes de su cita a las 11:30.</span>
-              </div>
-              <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[8px] font-bold uppercase rounded">Crítico</span>
-            </div>
-
-            {/* Pendiente 2 (Oculto para asistente) */}
-            {!isAssistant && (
-              <div className="flex items-start justify-between border-b border-slate-100 pb-2 gap-2">
-                <div>
-                  <span className="font-bold text-clinical-dark block">Borrador de nota en Sofía Martínez</span>
-                  <span className="text-[10px] text-slate-500 block">Validar borrador sugerido por Senda en la Sesión 2.</span>
-                </div>
-                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[8px] font-bold uppercase rounded">Pendiente</span>
-              </div>
+            {pendingPatients.length === 0 ? (
+              <p className="text-[11px] text-slate-400 font-semibold italic text-center py-4">
+                No hay pendientes clínicos. Todo al día ✅
+              </p>
+            ) : (
+              pendingPatients.map(p => {
+                const nextApp = filteredAppointments.find(a => a.patientId === p.id);
+                return (
+                  <div key={p.id} className="flex items-start justify-between border-b border-slate-100 pb-2 gap-2">
+                    <div>
+                      <span className="font-bold text-clinical-dark block">Admisión de {p.name}</span>
+                      <span className="text-[10px] text-slate-500 block">
+                        {nextApp
+                          ? `Debe completar historia clínica y firmar consentimiento antes de su cita a las ${nextApp.time}.`
+                          : 'Pendiente de historia clínica y consentimiento de audio.'}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[8px] font-bold uppercase rounded">Crítico</span>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -689,7 +694,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide block">Perspectiva Clínica Unificada</span>
               <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Selecciona el ángulo analítico a visualizar en el viewport principal.</p>
             </div>
-            
+
             {/* Selector de Perspectiva (Dropdown) */}
             <select
               className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
@@ -780,8 +785,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                 <Users className="w-5 h-5 text-[#75AFBC]" />
                 Detalle del Centro de Control
               </h3>
-              <button 
-                onClick={() => setActiveDrilldown(null)} 
+              <button
+                onClick={() => setActiveDrilldown(null)}
                 className="text-slate-400 hover:text-white font-bold text-sm"
               >
                 ✕

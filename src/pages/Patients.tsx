@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert } from 'lucide-react';
+import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert, Trash2 } from 'lucide-react';
 import { Patient, Role } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
+
 
 interface PatientsProps {
   userRole: Role;
   patients: Patient[];
   userName: string;
+  onDeletePatient: (id: string) => void;
 }
 
-export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName }) => {
+export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName, onDeletePatient }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredPatients = patients.filter(p => 
+  const filteredPatients = patients.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.curp.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.phone.includes(searchTerm) ||
@@ -42,7 +44,7 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
             Búsqueda de expedientes, estados de tratamiento y niveles de riesgo clínico.
           </p>
         </div>
-        
+
         {['admin_platform', 'admin_clinical', 'therapist', 'assistant'].includes(userRole) && (
           <button
             onClick={() => navigate('/agenda')}
@@ -92,16 +94,16 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                 </tr>
               ) : (
                 filteredPatients.map((p) => {
-                  const riskColor = 
+                  const riskColor =
                     p.riskLevel === 'alto' ? 'bg-red-100 text-red-800 border-red-200' :
-                    p.riskLevel === 'medio' ? 'bg-amber-100 text-amber-800 border-amber-200' : 
-                    'bg-green-100 text-green-800 border-green-200';
+                      p.riskLevel === 'medio' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                        'bg-green-100 text-green-800 border-green-200';
 
-                  const statusColor = 
+                  const statusColor =
                     p.status === 'activo' ? 'bg-blue-100 text-blue-800' :
-                    p.status === 'completado' ? 'bg-teal-100 text-teal-800' :
-                    p.status === 'archivado' ? 'bg-slate-100 text-slate-800' :
-                    'bg-amber-100 text-amber-800';
+                      p.status === 'completado' ? 'bg-teal-100 text-teal-800' :
+                        p.status === 'archivado' ? 'bg-slate-100 text-slate-800' :
+                          'bg-amber-100 text-amber-800';
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
@@ -150,6 +152,20 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                               Ver Expediente
                             </button>
                           )}
+                          {
+                            <button
+                              onClick={() => {
+                                if (confirm(`¿Eliminar a ${p.name}? Esta acción no se puede deshacer.`)) {
+                                  onDeletePatient(p.id);
+                                }
+                              }}
+                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded font-semibold transition-colors flex items-center gap-1"
+                              title="Eliminar paciente"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Eliminar
+                            </button>
+                          }
                         </div>
                       </td>
                     </tr>
