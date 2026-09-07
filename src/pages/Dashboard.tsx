@@ -123,8 +123,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   // --- CÁLCULO DE MÉTRICAS OPERATIVAS DINDÁMICAS ---
   const activePatientsCount = filteredPatients.filter(p => p.status === 'activo').length;
   const todayAppsCount = todayAppointments.length;
-  const pendingRecordsCount = filteredPatients.filter(p => p.status === 'pendiente').length || 1;
-  const alertsCount = filteredPatients.filter(p => p.riskLevel === 'medio' || p.id === 'patient-1').length;
+  const pendingRecordsCount = filteredPatients.filter(p => p.status === 'pendiente').length;
+  const atRiskPatients = filteredPatients.filter(p => p.riskLevel === 'medio' || p.riskLevel === 'alto');
+  const alertsCount = atRiskPatients.length;
+  const confirmedTodayCount = todayAppointments.filter(a => a.status === 'confirmada').length;
+  const capacityPercent = Math.round((activePatientsCount / 10) * 100);
   // --- PENDIENTES PRIORITARIOS (derivados de datos reales) ---
   const pendingPatients = filteredPatients.filter(p => p.status === 'pendiente');
 
@@ -493,7 +496,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Citas Programadas</span>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-2xl font-extrabold text-clinical-dark block">{todayAppsCount}</span>
-              <span className="text-[10px] text-emerald-600 font-bold block">+1 vs ayer</span>
+              <span className="text-[10px] text-emerald-600 font-bold block">{confirmedTodayCount} confirmadas hoy</span>
             </div>
           </div>
           <span className="text-[9px] text-slate-450 mt-3 block border-t border-slate-50 pt-2 font-bold uppercase">Clic para ver agenda</span>
@@ -507,7 +510,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           <div className="space-y-1">
             <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Pacientes Activos</span>
             <span className="text-xl font-extrabold text-clinical-dark block">{activePatientsCount}</span>
-            <span className="text-[9px] text-emerald-600 font-bold block">Capacidad al 40%</span>
+            <span className="text-[9px] text-emerald-600 font-bold block">Capacidad al {capacityPercent}%</span>
           </div>
           {/* Anillo de Progreso SVG */}
           <div className="relative w-12 h-12 shrink-0">
@@ -797,28 +800,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             <div className="p-5 space-y-4 max-h-[350px] overflow-y-auto leading-normal">
               {activeDrilldown === 'risk' && (
                 <div className="space-y-3">
-                  <span className="font-bold text-clinical-dark block uppercase border-b border-slate-100 pb-1.5">Pacientes en Riesgo Elevado</span>
-                  <div className="bg-red-50/50 border border-red-200 rounded-lg p-3">
-                    <span className="font-extrabold text-red-750 block">Roberto Valdés</span>
-                    <span className="text-[10px] text-slate-500">Motivo: Ideación autolítica • Estado: Escalamiento Urgente</span>
-                    <p className="text-slate-600 mt-1 leading-normal font-medium">Canalizado con la Dra. Patricia Ortiz y en contacto prioritario.</p>
-                  </div>
-                  <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
-                    <span className="font-extrabold text-amber-755 block">Sofía Martínez</span>
-                    <span className="text-[10px] text-slate-500">Motivo: Pánico Severo • Estado: Pendiente de Supervisión</span>
-                    <p className="text-slate-600 mt-1 leading-normal font-medium">Requiere auditoría del Diario de a Bordo de la última sesión.</p>
-                  </div>
+                  <span className="font-bold text-clinical-dark block uppercase border-b border-slate-100 pb-1.5">
+                    Pacientes en Riesgo (Nivel medio/alto) — {atRiskPatients.length}
+                  </span>
+                  {atRiskPatients.length === 0 ? (
+                    <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 text-center text-slate-400">
+                      Sin pacientes en riesgo en el filtro actual.
+                    </div>
+                  ) : (
+                    atRiskPatients.map(p => (
+                      <div key={p.id} className="bg-red-50/50 border border-red-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-extrabold text-red-700 block">{p.name}</span>
+                          <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-red-100 text-red-800 border border-red-200">
+                            Riesgo {p.riskLevel}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 block mt-1">
+                          Estado: {p.status} • Terapeuta: {p.therapistName}
+                        </span>
+                        <p className="text-slate-600 mt-1 leading-normal font-medium">{p.motif}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
 
               {activeDrilldown === 'consentimientos' && (
                 <div className="space-y-3">
-                  <span className="font-bold text-clinical-dark block uppercase border-b border-slate-100 pb-1.5">Consentimientos Pendientes de Firma</span>
-                  <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
-                    <span className="font-extrabold text-amber-700 block">Carlos Mendoza</span>
-                    <span className="text-[10px] text-slate-500">Motivo: Primera Sesión • Estatus: Documentación de Admisión</span>
-                    <p className="text-slate-600 mt-1 leading-normal font-medium">Debe firmar consentimiento de audio antes de la cita de las 11:30.</p>
-                  </div>
+                  <span className="font-bold text-clinical-dark block uppercase border-b border-slate-100 pb-1.5">
+                    Pacientes con Trámite Pendiente — {pendingPatients.length}
+                  </span>
+                  {pendingPatients.length === 0 ? (
+                    <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 text-center text-slate-400">
+                      Sin pacientes con trámite pendiente en el filtro actual.
+                    </div>
+                  ) : (
+                    pendingPatients.map(p => (
+                      <div key={p.id} className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-extrabold text-amber-700 block">{p.name}</span>
+                          <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                            {p.status}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 block mt-1">Terapeuta: {p.therapistName}</span>
+                        <p className="text-slate-600 mt-1 leading-normal font-medium">{p.motif}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
 
