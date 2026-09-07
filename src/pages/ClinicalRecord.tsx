@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   FolderHeart, Activity, FileText, Volume2, Mic, Square,
   Sparkles, Plus, Save, AlertTriangle, TrendingUp, GitBranch,
-  ShieldAlert, Clipboard, User, Heart, AlertOctagon, Check
+  ShieldAlert, Clipboard, User, Heart, AlertOctagon, Check,
+  Lock, ShieldCheck, UserCheck
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -17,6 +18,8 @@ import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
 import { recordService } from '../services/recordService';
 import { sessionService } from '../services/sessionService';
+import { patientService } from '../services/patientService';
+import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP } from '../utils/legalConsent';
 
 interface ClinicalRecordProps {
   userRole: Role;
@@ -31,12 +34,50 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   const patientId = searchParams.get('id') || 'patient-1'; // Por defecto Sofía Martínez
   const activePatient = patients.find(p => p.id === patientId);
 
+  // Verificación de bloqueo legal de grabación
+  const legalBlockCheck = isActionBlockedByLegalConsent(activePatient);
+  const isRecordingBlocked = legalBlockCheck.isBlocked;
+  const [showConsentSignModal, setShowConsentSignModal] = useState(false);
+  const [repSignatureName, setRepSignatureName] = useState('');
+  const [signatureError, setSignatureError] = useState('');
+
   // Estados locales para simular persistencia
   const [clinicalRecord, setClinicalRecord] = useState<ClinicalRecordType | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria'>('tbe');
   const [tbeSubTab, setTbeSubTab] = useState<'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'>('sesiones');
   const [activeSessionDetail, setActiveSessionDetail] = useState<Session | null>(null);
+
+  const handleSignRepresentativeConsent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activePatient || !activePatient.representante) return;
+
+    if (!repSignatureName.trim()) {
+      setSignatureError('Debe ingresar el nombre completo del representante legal para firmar.');
+      return;
+    }
+
+    const updatedPatient: Patient = {
+      ...activePatient,
+      consentimientoRepresentanteFirmado: true
+    };
+
+    await patientService.update(updatedPatient);
+    activePatient.consentimientoRepresentanteFirmado = true;
+
+    // Registrar en auditoría
+    auditLogService.addLog(
+      'Firma de consentimiento de representante',
+      `El representante legal ${activePatient.representante.nombreCompleto} formalizó la firma de consentimiento informado para ${activePatient.name}. Acciones clínicas desbloqueadas.`,
+      'expediente',
+      { id: 'user-current', name: userName, role: userRole }
+    );
+
+    setShowConsentSignModal(false);
+    setRepSignatureName('');
+    setSignatureError('');
+    alert('✓ Consentimiento del representante legal formalizado con éxito. Grabación, citas y constancias habilitadas.');
+  };
 
   // Estados para creación de nueva sesión
   const [isCreatingSession, setIsCreatingSession] = useState(false);
@@ -250,6 +291,10 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   }, []);
 
   const handleStartRecording = () => {
+    if (isRecordingBlocked) {
+      alert(LEGAL_CONSENT_TOOLTIP);
+      return;
+    }
     setIsRecording(true);
     setRecordingSeconds(0);
     setAudioBlobUrl(null);
@@ -549,6 +594,82 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         </div>
       )}
 
+      {/* Ficha de Representación Legal y Consentimiento */}
+      {activePatient && (activePatient.representante || activePatient.capacidadConsentimiento?.estado !== 'AUTONOMO') && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-clinical-accent" />
+              <h3 className="font-bold text-clinical-dark text-xs uppercase tracking-wider">
+                Régimen Legal y Capacidad de Consentimiento
+              </h3>
+            </div>
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
+              activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD'
+                ? 'bg-slate-100 text-slate-700 border-slate-300'
+                : activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_CONDICION'
+                  ? 'bg-teal-50 text-teal-800 border-teal-200'
+                  : 'bg-slate-100 text-slate-800 border-slate-300'
+            }`}>
+              {activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD'
+                ? 'Menor de edad'
+                : activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_CONDICION'
+                  ? 'Con persona de apoyo'
+                  : 'Pendiente de determinación'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            {activePatient.representante && (
+              <>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Representante / Apoyo:</span>
+                  <span className="font-bold text-clinical-dark">{activePatient.representante.nombreCompleto}</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    ({activePatient.representante.parentesco === 'PERSONA_DE_APOYO' ? 'Persona de apoyo designada' : activePatient.representante.parentesco})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Contacto:</span>
+                  <span className="font-semibold text-slate-700">{activePatient.representante.telefono}</span>
+                  <span className="text-[10px] text-slate-400 block">{activePatient.representante.correo}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Acreditación:</span>
+                  <span className="font-semibold text-slate-700">
+                    {activePatient.representante.documentoIdentificacion ? '✓ ID Oficial' : 'Sin ID'} • {activePatient.representante.documentoVinculo ? '✓ Vínculo' : 'Sin acreditar'}
+                  </span>
+                  {activePatient.representante.otroProgenitorInformado && (
+                    <span className="text-[10px] text-slate-500 block">
+                      Otro progenitor informado: {activePatient.representante.otroProgenitorInformado === 'SI' ? 'Sí' : activePatient.representante.otroProgenitorInformado === 'NO' ? 'No' : 'No aplica'}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] text-slate-400 block uppercase font-bold">Consentimiento:</span>
+                <span className={`text-[11px] font-bold ${activePatient.consentimientoRepresentanteFirmado ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {activePatient.consentimientoRepresentanteFirmado ? '✓ Formalizado y Válido' : 'Pendiente de Formalización'}
+                </span>
+              </div>
+              {!activePatient.consentimientoRepresentanteFirmado && activePatient.representante && (
+                <button
+                  type="button"
+                  onClick={() => setShowConsentSignModal(true)}
+                  className="mt-2 px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-[11px] font-bold shadow-sm transition-all flex items-center justify-center gap-1"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Formalizar Consentimiento
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tabs Principales */}
       <div className="border-b border-slate-200 flex gap-2">
         <button
@@ -801,6 +922,17 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           Graba la interacción de la sesión (o una porción) y permite al Asistente IA rellenar el expediente, mapeando protocolos y diagnosticando conductas según el modelo Arezzo.
                         </p>
 
+                        {/* Alerta de bloqueo normativo si aplica */}
+                        {isRecordingBlocked && (
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs flex items-start gap-2">
+                            <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-bold block">Grabación de sesión bloqueada:</span>
+                              <span>{LEGAL_CONSENT_TOOLTIP}</span>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-slate-100 pt-3.5">
                           {/* Botón micrófono */}
                           <div className="flex items-center gap-2.5">
@@ -815,10 +947,16 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                             ) : (
                               <button
                                 type="button"
+                                disabled={isRecordingBlocked}
+                                title={isRecordingBlocked ? LEGAL_CONSENT_TOOLTIP : 'Haga click para iniciar'}
                                 onClick={handleStartRecording}
-                                className="w-12 h-12 rounded-full bg-clinical-risk text-white flex items-center justify-center hover:opacity-90 transition-all shadow"
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow ${
+                                  isRecordingBlocked
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                                    : 'bg-clinical-risk text-white hover:opacity-90'
+                                }`}
                               >
-                                <Mic className="w-5 h-5" />
+                                {isRecordingBlocked ? <Lock className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                               </button>
                             )}
 
@@ -1638,6 +1776,79 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Formalizar Consentimiento del Representante Legal */}
+      {showConsentSignModal && activePatient && activePatient.representante && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+            <div className="p-4 bg-clinical-dark text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-clinical-accent" />
+                <h3 className="font-bold text-xs uppercase tracking-wider">Formalizar Consentimiento del Representante</h3>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowConsentSignModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSignRepresentativeConsent} className="p-5 space-y-4 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                El consentimiento informado para <b>{activePatient.name}</b> será formalizado por su representante legal o persona de apoyo: <b>{activePatient.representante.nombreCompleto}</b> ({activePatient.representante.parentesco === 'PERSONA_DE_APOYO' ? 'persona de apoyo designada' : activePatient.representante.parentesco.toLowerCase()}).
+              </p>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-600 space-y-1">
+                <span className="font-bold text-clinical-dark block">Alcance del consentimiento:</span>
+                <p>• Autorización de tratamiento psicoterapéutico en Terapia Breve Estratégica.</p>
+                <p>• Habilitación de grabación de sesiones y asistencia documental con IA.</p>
+                <p>• Habilitación de confirmación de citas y emisión de constancias.</p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">
+                  Firma Digital (Escribe el nombre completo del representante):
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={`Ej. ${activePatient.representante.nombreCompleto}`}
+                  value={repSignatureName}
+                  onChange={(e) => {
+                    setRepSignatureName(e.target.value);
+                    setSignatureError('');
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none font-semibold text-clinical-dark"
+                />
+              </div>
+
+              {signatureError && (
+                <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-lg font-semibold text-[11px]">
+                  {signatureError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConsentSignModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow-sm"
+                >
+                  Confirmar Firma y Desbloquear Acciones
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
