@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GitBranch, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { GitBranch, AlertTriangle, CheckCircle, Info, ArrowRight } from 'lucide-react';
 
 interface ProtocolDecisionPanelProps {
   selectedProtocol: string;
@@ -8,6 +8,7 @@ interface ProtocolDecisionPanelProps {
   selectedPx: string[];
   onChangePx: (px: string[]) => void;
   onLogAudit: (action: string, details: string) => void;
+  onAdvancePhase?: (nextPhase: string) => void;
 }
 
 const PROTOCOL_DATABASE: Record<string, {
@@ -17,32 +18,32 @@ const PROTOCOL_DATABASE: Record<string, {
   advanceCondition: Record<string, string>;
 }> = {
   'Ataque de Pánico': {
-    phases: ['Socialización', 'Intervención', 'Consolidación', 'Cierre'],
+    phases: ['Definición del problema', 'Desbloqueo', 'Consolidación', 'Cierre'],
     dxOpMatches: ['SPR Fóbico', 'SPR Fóbico Obsesivo', 'SPR Obsesivo Fóbico'],
     suggestedManeuvers: {
-      'Socialización': ['Diario de abordo', 'Cómo empeorar'],
-      'Intervención': ['Diario de abordo', 'WF 30 min', 'WF 5 veces x 5 min', 'WF preventivo - necesidad'],
+      'Definición del problema': ['Diario de abordo', 'Cómo empeorar'],
+      'Desbloqueo': ['Diario de abordo', 'WF 30 min', 'WF 5 veces x 5 min', 'WF preventivo - necesidad'],
       'Consolidación': ['Exposición controlada', 'Diario de abordo residual', 'Disminución de citas'],
       'Cierre': ['Seguimiento a 3 meses', 'Seguimiento a 6 meses', 'Alta definitiva']
     },
     advanceCondition: {
-      'Socialización': 'Reducción de crisis agudas o contención mediante registro del Diario de a bordo.',
-      'Intervención': 'Extinción de crisis espontáneas mediante la práctica de la Peor Fantasía (Worry-Time).',
+      'Definición del problema': 'Reducción de crisis agudas o contención mediante registro del Diario de a bordo.',
+      'Desbloqueo': 'Extinción de crisis espontáneas mediante la práctica de la Peor Fantasía (Worry-Time).',
       'Consolidación': 'Evidencia de autonomía completa y desaparición de conductas de evitación.',
       'Cierre': 'Mantenimiento del equilibrio a lo largo del tiempo.'
     }
   },
-  'Miedo a perder el control tipo 1: hablar en público': {
-    phases: ['Socialización', 'Intervención', 'Cierre'],
+    'Miedo a perder el control tipo 1: hablar en público': {
+    phases: ['Definición del problema', 'Desbloqueo', 'Consolidación', 'Cierre'],
     dxOpMatches: ['SPR Fóbico', 'SPR Paranoico'],
     suggestedManeuvers: {
-      'Socialización': ['Declarar el secreto', 'Cómo empeorar'],
-      'Intervención': ['Declarar el secreto', 'Exposición voluntaria corta', 'Temblor intencional'],
+      'Definición del problema': ['Declarar el secreto', 'Cómo empeorar'],
+      'Desbloqueo': ['Declarar el secreto', 'Exposición voluntaria corta', 'Temblor intencional'],
       'Cierre': ['Seguimiento', 'Alta']
     },
     advanceCondition: {
-      'Socialización': 'Aceptación de la declaración voluntaria y reducción del bloqueo inicial.',
-      'Intervención': 'Exposiciones exitosas sin evitación.',
+      'Definición del problema': 'Aceptación de la declaración voluntaria y reducción del bloqueo inicial.',
+      'Desbloqueo': 'Exposiciones exitosas sin evitación.',
       'Cierre': 'Autonomía en exposiciones públicas.'
     }
   }
@@ -54,20 +55,29 @@ export const ProtocolDecisionPanel: React.FC<ProtocolDecisionPanelProps> = ({
   currentPhase,
   selectedPx,
   onChangePx,
-  onLogAudit
+  onLogAudit,
+  onAdvancePhase
 }) => {
   const [justification, setJustification] = useState('');
   const [showJustification, setShowJustification] = useState(false);
+  const [advanceConfirmed, setAdvanceConfirmed] = useState(false);
 
+    // Fallback: protocolos aún no definidos usan el MOLDE GENERAL del modelo TBE
   const protocolData = PROTOCOL_DATABASE[selectedProtocol] || {
-    phases: ['Fase única'],
+    phases: ['Definición del problema', 'Desbloqueo', 'Consolidación', 'Cierre'],
     dxOpMatches: [],
-    suggestedManeuvers: { 'Fase única': ['General TBE'] },
-    advanceCondition: { 'Fase única': 'Criterio clínico del terapeuta' }
+    suggestedManeuvers: {},
+    advanceCondition: {}
   };
 
   const suggested = protocolData.suggestedManeuvers[currentPhase] || [];
   const advanceConditionText = protocolData.advanceCondition[currentPhase] || 'Criterio general';
+  // [Opción B] Siguiente fase según el orden del protocolo
+  const phaseList = protocolData.phases;
+  const currentPhaseIndex = phaseList.indexOf(currentPhase);
+  const nextPhase = currentPhaseIndex >= 0 && currentPhaseIndex < phaseList.length - 1
+    ? phaseList[currentPhaseIndex + 1]
+    : null;
 
   // Verificar si hay desviación del diagnóstico operativo
   const isDxOpDeviated = selectedDxOp && protocolData.dxOpMatches.length > 0 && !protocolData.dxOpMatches.includes(selectedDxOp);
@@ -138,13 +148,12 @@ export const ProtocolDecisionPanel: React.FC<ProtocolDecisionPanelProps> = ({
           <span className="text-slate-400 block mt-2 font-medium">Dx.OP Sugeridos para {selectedProtocol}:</span>
           <div className="flex flex-wrap gap-1 mt-1">
             {protocolData.dxOpMatches.map(dx => (
-              <span 
-                key={dx} 
-                className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                  selectedDxOp === dx 
+              <span
+                key={dx}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${selectedDxOp === dx
                     ? 'bg-clinical-teal/10 border-clinical-teal text-clinical-teal'
                     : 'bg-white border-slate-200 text-slate-500'
-                }`}
+                  }`}
               >
                 {dx}
               </span>
@@ -152,6 +161,41 @@ export const ProtocolDecisionPanel: React.FC<ProtocolDecisionPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* [Opción B] Avance de Fase Guiado por Condición */}
+      {nextPhase && onAdvancePhase && (
+        <div className="bg-teal-50/60 border border-teal-200 rounded-lg p-3 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <GitBranch className="w-4 h-4 text-clinical-teal" />
+            <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Avance de Fase</span>
+          </div>
+          <p className="text-xs text-teal-900/80 leading-relaxed">
+            Para avanzar de <b>{currentPhase}</b> a <b>{nextPhase}</b> debe cumplirse la condición de avance descrita arriba.
+          </p>
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={advanceConfirmed}
+              onChange={(e) => setAdvanceConfirmed(e.target.checked)}
+              className="mt-0.5 rounded border-teal-300 text-clinical-teal focus:ring-clinical-teal w-3.5 h-3.5"
+            />
+            <span className="text-[11px] font-semibold text-teal-900">
+              Confirmo que se cumplió la condición de avance y autorizo pasar la sesión a la fase <b>{nextPhase}</b>.
+            </span>
+          </label>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={!advanceConfirmed}
+              onClick={() => { onAdvancePhase(nextPhase); setAdvanceConfirmed(false); }}
+              className="px-3 py-1.5 bg-clinical-teal hover:bg-clinical-tealHover text-white rounded-lg text-xs font-semibold shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              Avanzar a {nextPhase}
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Alertas de Desviación */}
       {isDeviated && (
@@ -209,11 +253,10 @@ export const ProtocolDecisionPanel: React.FC<ProtocolDecisionPanelProps> = ({
               <div
                 key={pxName}
                 onClick={() => handleTogglePx(pxName)}
-                className={`p-3 rounded-lg border cursor-pointer select-none transition-all flex items-center justify-between ${
-                  isChecked
+                className={`p-3 rounded-lg border cursor-pointer select-none transition-all flex items-center justify-between ${isChecked
                     ? 'bg-clinical-accent/5 border-clinical-accent text-clinical-accent font-semibold'
                     : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <input
@@ -232,11 +275,10 @@ export const ProtocolDecisionPanel: React.FC<ProtocolDecisionPanelProps> = ({
           {/* Opción de agregar otra prescripción */}
           <div
             onClick={() => handleTogglePx('Intervención personalizada')}
-            className={`p-3 rounded-lg border cursor-pointer select-none transition-all flex items-center justify-between ${
-              selectedPx.includes('Intervención personalizada')
+            className={`p-3 rounded-lg border cursor-pointer select-none transition-all flex items-center justify-between ${selectedPx.includes('Intervención personalizada')
                 ? 'bg-amber-50 border-amber-400 text-amber-800 font-semibold'
                 : 'bg-white border-dashed border-slate-300 text-slate-400 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <div className="flex items-center gap-2">
               <input
