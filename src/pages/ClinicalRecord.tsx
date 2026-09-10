@@ -520,6 +520,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     Pensamientos: getVcValue(vc.pensamientos),
     Sensaciones: getVcValue(vc.sensaciones),
     Sintomas: getVcValue(vc.sintomas),
+    Reacciones: getVcValue(vc.reacciones),
     Crisis: getVcValue(vc.crisis)
   }));
 
@@ -673,13 +674,13 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       {/* Tabs Principales */}
       <div className="border-b border-slate-200 flex gap-2">
         <button
-          onClick={() => setActiveTab('tbe')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'tbe'
+          onClick={() => setActiveTab('datos')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'datos'
             ? 'border-clinical-accent text-clinical-accent'
             : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
         >
-          Tratamiento Psicoterapéutico TBE
+          Datos de Admisión e Historia Clínica
         </button>
         <button
           onClick={() => setActiveTab('psiquiatria')}
@@ -691,13 +692,13 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           Tratamiento Psiquiátrico
         </button>
         <button
-          onClick={() => setActiveTab('datos')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'datos'
+          onClick={() => setActiveTab('tbe')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'tbe'
             ? 'border-clinical-accent text-clinical-accent'
             : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
         >
-          Datos de Admisión e Historia Clínica
+          Tratamiento Psicoterapéutico TBE
         </button>
         <button
           onClick={() => setActiveTab('auditoria')}
@@ -1427,9 +1428,10 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                       <Line type="monotone" dataKey="Percepción" stroke="#0284c7" strokeWidth={2} activeDot={{ r: 8 }} />
                       <Line type="monotone" dataKey="Pensamientos" stroke="#0d9488" strokeWidth={2} />
                       <Line type="monotone" dataKey="Sensaciones" stroke="#4f46e5" strokeWidth={2} />
+                      <Line type="monotone" dataKey="Reacciones" stroke="rgb(182, 12, 234)" strokeWidth={2} />
                       <Line type="monotone" dataKey="Sintomas" stroke="#ea580c" strokeWidth={2} />
                       <Line type="monotone" dataKey="Crisis" stroke="#ef4444" strokeWidth={2} />
-                    </LineChart>
+                    </LineChart>  
                   </ResponsiveContainer>
                 </div>
               </div>

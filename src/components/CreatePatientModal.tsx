@@ -558,7 +558,7 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
               {/* Pregunta neutral obligatoria al pie del paso 1 */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 mt-4">
                 <span className="font-bold text-clinical-dark text-xs block">
-                  ¿Quién está completando este registro? <span className="text-red-500">*</span>
+                  ¿La persona está en situación de dependencia y requiere asistencia? <span className="text-red-500">*</span>
                 </span>
                 
                 <div className="space-y-2.5">
@@ -572,7 +572,7 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
                       className="w-4 h-4 text-clinical-accent focus:ring-clinical-accent"
                     />
                     <span className="text-xs font-semibold text-slate-700">
-                      La persona que va a recibir la atención
+                      No
                     </span>
                   </label>
 
@@ -586,7 +586,7 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
                       className="w-4 h-4 text-clinical-accent focus:ring-clinical-accent"
                     />
                     <span className="text-xs font-semibold text-slate-700">
-                      Un familiar o persona de apoyo, en su nombre
+                      Si
                     </span>
                   </label>
                 </div>
