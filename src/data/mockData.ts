@@ -7,6 +7,8 @@ export const mockPatients: Patient[] = [
     phone: '+52 55 1234 5678',
     email: 'sofia.martinez@email.com',
     birthDate: '1998-05-14',
+    fechaNacimiento: '1998-05-14',
+    edadCalculada: 28,
     curp: 'MAVS980514MDFRR09',
     registrationDate: '2026-08-10',
     status: 'activo',
@@ -14,7 +16,18 @@ export const mockPatients: Patient[] = [
     registryMode: 'ia',
     motif: 'Ataques de pánico intensos y repentinos con sudoración, taquicardia y miedo a morir.',
     therapistId: 'therapist-1',
-    therapistName: 'Dr. Alejandro Silva'
+    therapistName: 'Dr. Alejandro Silva',
+    quienCompletaRegistro: 'PACIENTE',
+    capacidadConsentimiento: {
+      estado: 'AUTONOMO',
+      determinadoPor: null,
+      fechaDeterminacion: '2026-08-10',
+      fechaRevision: null,
+      motivo: null
+    },
+    representante: null,
+    telefonoPaciente: '+52 55 1234 5678',
+    consentimientoRepresentanteFirmado: true
   },
   {
     id: 'patient-2',
@@ -22,6 +35,8 @@ export const mockPatients: Patient[] = [
     phone: '+52 55 9876 5432',
     email: 'carlos.mendoza@email.com',
     birthDate: '1991-10-22',
+    fechaNacimiento: '1991-10-22',
+    edadCalculada: 34,
     curp: 'MECC911022HDFLN03',
     registrationDate: '2026-08-20',
     status: 'pendiente',
@@ -29,7 +44,26 @@ export const mockPatients: Patient[] = [
     registryMode: 'manual',
     motif: 'Ansiedad severa y sudoración al tener que hablar ante audiencias o juntas laborales.',
     therapistId: 'therapist-1',
-    therapistName: 'Dr. Alejandro Silva'
+    therapistName: 'Dr. Alejandro Silva',
+    quienCompletaRegistro: 'FAMILIAR_O_APOYO',
+    capacidadConsentimiento: {
+      estado: 'PENDIENTE_DETERMINACION',
+      determinadoPor: null,
+      fechaDeterminacion: null,
+      fechaRevision: null,
+      motivo: 'Registro realizado por familiar o persona de apoyo; pendiente juicio clínico en admisión'
+    },
+    representante: {
+      nombreCompleto: 'Elena Mendoza Gómez',
+      parentesco: 'MADRE',
+      telefono: '+52 55 9876 5430',
+      correo: 'elena.mendoza@email.com',
+      documentoIdentificacion: { name: 'INE_ElenaMendoza.pdf', size: 1048576 },
+      documentoVinculo: { name: 'ActaNacimiento_Carlos.pdf', size: 2097152 },
+      otroProgenitorInformado: 'NO_APLICA'
+    },
+    telefonoPaciente: '+52 55 9876 5432',
+    consentimientoRepresentanteFirmado: false
   },
   {
     id: 'patient-3',
@@ -37,6 +71,8 @@ export const mockPatients: Patient[] = [
     phone: '+52 55 4567 8901',
     email: 'ana.ruiz@email.com',
     birthDate: '1984-03-08',
+    fechaNacimiento: '1984-03-08',
+    edadCalculada: 42,
     curp: 'RUZA840308MDFPP07',
     registrationDate: '2026-07-01',
     status: 'completado',
@@ -44,7 +80,26 @@ export const mockPatients: Patient[] = [
     registryMode: 'manual',
     motif: 'Pensamientos obsesivos sobre contaminación y rituales de lavado de manos repetitivos.',
     therapistId: 'therapist-1',
-    therapistName: 'Dr. Alejandro Silva'
+    therapistName: 'Dr. Alejandro Silva',
+    quienCompletaRegistro: 'FAMILIAR_O_APOYO',
+    capacidadConsentimiento: {
+      estado: 'REPRESENTADO_POR_CONDICION',
+      determinadoPor: 'therapist-1',
+      fechaDeterminacion: '2026-07-01',
+      fechaRevision: '2026-10-01',
+      motivo: 'Designación clínica formal de persona de apoyo para seguimiento terapéutico'
+    },
+    representante: {
+      nombreCompleto: 'Javier Ruiz Castro',
+      parentesco: 'PERSONA_DE_APOYO',
+      telefono: '+52 55 4567 8900',
+      correo: 'javier.ruiz@email.com',
+      documentoIdentificacion: null,
+      documentoVinculo: null,
+      otroProgenitorInformado: null
+    },
+    telefonoPaciente: '+52 55 4567 8901',
+    consentimientoRepresentanteFirmado: true
   },
   {
     id: 'patient-4',
@@ -52,6 +107,8 @@ export const mockPatients: Patient[] = [
     phone: '+52 55 8765 4321',
     email: 'roberto.valdes@email.com',
     birthDate: '1979-12-01',
+    fechaNacimiento: '1979-12-01',
+    edadCalculada: 46,
     curp: 'VARR791201HDFZZ01',
     registrationDate: '2026-08-15',
     status: 'archivado',
@@ -59,7 +116,91 @@ export const mockPatients: Patient[] = [
     registryMode: 'manual',
     motif: 'Problemas de pareja y comunicación destructiva.',
     therapistId: 'therapist-1',
-    therapistName: 'Dr. Alejandro Silva'
+    therapistName: 'Dr. Alejandro Silva',
+    quienCompletaRegistro: 'PACIENTE',
+    capacidadConsentimiento: {
+      estado: 'AUTONOMO',
+      determinadoPor: null,
+      fechaDeterminacion: '2026-08-15',
+      fechaRevision: null,
+      motivo: null
+    },
+    representante: null,
+    telefonoPaciente: '+52 55 8765 4321',
+    consentimientoRepresentanteFirmado: true
+  },
+  {
+    id: 'patient-5',
+    name: 'Mateo Morales Ruiz',
+    phone: '+52 55 3322 1100',
+    email: 'contacto.mateo@email.com',
+    birthDate: '2010-06-15',
+    fechaNacimiento: '2010-06-15',
+    edadCalculada: 16,
+    curp: 'MORM100615HDFRR02',
+    registrationDate: '2026-08-22',
+    status: 'pendiente',
+    riskLevel: 'bajo',
+    registryMode: 'ia',
+    motif: 'Fobia escolar y bloqueos de rendimiento ante exámenes.',
+    therapistId: 'therapist-1',
+    therapistName: 'Dr. Alejandro Silva',
+    quienCompletaRegistro: 'FAMILIAR_O_APOYO',
+    capacidadConsentimiento: {
+      estado: 'REPRESENTADO_POR_EDAD',
+      determinadoPor: null,
+      fechaDeterminacion: '2026-08-22',
+      fechaRevision: null,
+      motivo: 'Minoría de edad calculada automáticamente por sistema'
+    },
+    representante: {
+      nombreCompleto: 'Patricia Ruiz Hernández',
+      parentesco: 'MADRE',
+      telefono: '+52 55 3322 1100',
+      correo: 'patricia.ruiz@email.com',
+      documentoIdentificacion: { name: 'INE_PatriciaRuiz.pdf', size: 1024500 },
+      documentoVinculo: { name: 'ActaNacimiento_Mateo.pdf', size: 2048100 },
+      otroProgenitorInformado: 'SI'
+    },
+    telefonoPaciente: null,
+    consentimientoRepresentanteFirmado: false
+  },
+  {
+    id: 'patient-6',
+    name: 'Leonardo Salinas Vargas',
+    phone: '+52 55 7766 5544',
+    email: 'leonardo.salinas@email.com',
+    birthDate: '2008-08-20',
+    fechaNacimiento: '2008-08-20',
+    edadCalculada: 18,
+    curp: 'SAVL080820HDFNN01',
+    registrationDate: '2026-08-01',
+    status: 'activo',
+    riskLevel: 'bajo',
+    registryMode: 'ia',
+    motif: 'Transición vocacional y sintomatología ansiosa situacional.',
+    therapistId: 'therapist-1',
+    therapistName: 'Dr. Alejandro Silva',
+    quienCompletaRegistro: 'FAMILIAR_O_APOYO',
+    capacidadConsentimiento: {
+      estado: 'REPRESENTADO_POR_EDAD',
+      determinadoPor: null,
+      fechaDeterminacion: '2026-08-01',
+      fechaRevision: null,
+      motivo: 'Registrado originalmente como menor de edad (cumplió 18 años)'
+    },
+    representante: {
+      nombreCompleto: 'Guillermo Salinas',
+      parentesco: 'PADRE',
+      telefono: '+52 55 7766 5540',
+      correo: 'guillermo.salinas@email.com',
+      documentoIdentificacion: { name: 'INE_GuillermoSalinas.pdf', size: 1200000 },
+      documentoVinculo: { name: 'ActaNacimiento_Leonardo.pdf', size: 1900000 },
+      otroProgenitorInformado: 'SI'
+    },
+    telefonoPaciente: '+52 55 7766 5544',
+    consentimientoRepresentanteFirmado: true,
+    pendienteReconsentimiento: true
   }
 ];
 

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Filter,
   MapPin, Video, AlertTriangle, MessageSquare, Clipboard, User,
-  PlusCircle, RefreshCw, X, ShieldAlert, Sparkles, Check, CheckSquare
+  PlusCircle, RefreshCw, X, ShieldAlert, Sparkles, Check, CheckSquare, Lock
 } from 'lucide-react';
 import { Role, Appointment, Patient } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
+import { appointmentService } from '../services/appointmentService';
+import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP, calculateAge } from '../utils/legalConsent';
 
 interface AgendaProps {
   userRole: Role;
@@ -130,12 +132,15 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     if (isNewPatient) {
       patientId = `patient-${Date.now()}`;
+      const calculatedAge = calculateAge(birthDate);
       const newPatient: Patient = {
         id: patientId,
         name,
         phone,
         email,
         birthDate,
+        fechaNacimiento: birthDate,
+        edadCalculada: calculatedAge,
         curp: 'CURP-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
         registrationDate: new Date().toISOString().split('T')[0],
         status: 'pendiente',
@@ -143,7 +148,18 @@ export const Agenda: React.FC<AgendaProps> = ({
         registryMode: 'ia',
         motif,
         therapistId: 'therapist-1',
-        therapistName: 'Dr. Alejandro Silva'
+        therapistName: 'Dr. Alejandro Silva',
+        quienCompletaRegistro: 'PACIENTE',
+        capacidadConsentimiento: {
+          estado: calculatedAge >= 18 ? 'AUTONOMO' : 'REPRESENTADO_POR_EDAD',
+          determinadoPor: null,
+          fechaDeterminacion: new Date().toISOString().split('T')[0],
+          fechaRevision: null,
+          motivo: calculatedAge >= 18 ? null : 'Menor de edad registrado desde agenda'
+        },
+        representante: null,
+        telefonoPaciente: phone,
+        consentimientoRepresentanteFirmado: calculatedAge >= 18
       };
       onAddPatient(newPatient);
 
@@ -202,6 +218,29 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     alert('Cita reprogramada con éxito.');
     setSelectedApp(null);
+  };
+
+  const handleConfirmAppointment = async (app: Appointment) => {
+    const pat = patients.find(p => p.id === app.patientId);
+    const blockCheck = isActionBlockedByLegalConsent(pat);
+    if (blockCheck.isBlocked) {
+      alert(blockCheck.tooltip);
+      return;
+    }
+
+    const updated = { ...app, status: 'confirmada' as const };
+    await appointmentService.update(updated);
+    app.status = 'confirmada';
+    setSelectedApp({ ...app, status: 'confirmada' });
+
+    auditLogService.addLog(
+      'Confirmación de cita',
+      `Confirmó la cita en agenda de ${app.patientName} para el ${app.date} a las ${app.time}`,
+      'sesion',
+      { id: 'user-current', name: userName, role: userRole }
+    );
+
+    alert(`✓ Cita de ${app.patientName} confirmada con éxito.`);
   };
 
   // Buscar pacientes existentes
@@ -591,21 +630,70 @@ export const Agenda: React.FC<AgendaProps> = ({
             </div>
 
             {/* Ficha de Estado Consentimiento/Intake */}
-            <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">
-              <span className="font-bold text-clinical-dark block border-b border-slate-200 pb-1 mb-1">Estatus del Paciente</span>
+            {(() => {
+              const selectedAppPatient = patients.find(p => p.id === selectedApp.patientId);
+              const appointmentBlockCheck = isActionBlockedByLegalConsent(selectedAppPatient);
+              const isAppBlocked = appointmentBlockCheck.isBlocked;
 
-              <div className="grid grid-cols-2 gap-2 text-[10px]">
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${patients.find(p => p.id === selectedApp.patientId)?.status === 'pendiente' ? 'bg-amber-500' : 'bg-green-500'}`} />
-                  <span>Historia Clínica: <b>{patients.find(p => p.id === selectedApp.patientId)?.status === 'pendiente' ? 'Pendiente' : 'Completa'}</b></span>
-                </div>
+              return (
+                <>
+                  <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">
+                    <span className="font-bold text-clinical-dark block border-b border-slate-200 pb-1 mb-1">Estatus del Paciente</span>
 
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${patients.find(p => p.id === selectedApp.patientId)?.status === 'pendiente' ? 'bg-amber-500' : 'bg-green-500'}`} />
-                  <span>Consentimiento: <b>{patients.find(p => p.id === selectedApp.patientId)?.status === 'pendiente' ? 'Pendiente' : 'Firmado'}</b></span>
-                </div>
-              </div>
-            </div>
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-2 h-2 rounded-full ${selectedAppPatient?.status === 'pendiente' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                        <span>Historia Clínica: <b>{selectedAppPatient?.status === 'pendiente' ? 'Pendiente' : 'Completa'}</b></span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-2 h-2 rounded-full ${selectedAppPatient?.consentimientoRepresentanteFirmado === false ? 'bg-amber-500' : 'bg-green-500'}`} />
+                        <span>Consentimiento: <b>{selectedAppPatient?.consentimientoRepresentanteFirmado === false ? 'Pendiente Rep.' : 'Firmado'}</b></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sección de Confirmación de Cita con Bloqueo Normativo */}
+                  <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                      <span className="font-bold text-clinical-dark">Estado de Confirmación</span>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                        selectedApp.status === 'confirmada' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {selectedApp.status === 'confirmada' ? '✓ Confirmada' : 'Pendiente'}
+                      </span>
+                    </div>
+
+                    {isAppBlocked && (
+                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[10px] flex items-start gap-2">
+                        <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold block">Acción Bloqueada:</span>
+                          <span>{LEGAL_CONSENT_TOOLTIP}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedApp.status === 'pendiente' && (
+                      <button
+                        type="button"
+                        disabled={isAppBlocked}
+                        title={isAppBlocked ? LEGAL_CONSENT_TOOLTIP : 'Confirmar esta cita en la agenda'}
+                        onClick={() => handleConfirmAppointment(selectedApp)}
+                        className={`w-full py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm text-xs ${
+                          isAppBlocked
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {isAppBlocked ? <Lock className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
+                        Confirmar Cita en Agenda
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Reprogramación */}
             <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">

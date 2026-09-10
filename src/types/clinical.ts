@@ -9,6 +9,56 @@ export interface User {
   license?: string;
 }
 
+/**
+ * NOTA JURÍDICA — Puntos pendientes de validación con el área legal de BreveMente:
+ * 1. Si basta el consentimiento de un solo progenitor o se requieren ambos para menores de edad.
+ * 2. La edad a partir de la cual se solicita asentimiento del propio menor, además del consentimiento del representante.
+ * 3. Si la aceptación de términos de la plataforma se separa del consentimiento de tratamiento clínico.
+ *
+ * NOMENCLATURA OBLIGATORIA: Se utiliza estrictamente 'PERSONA_DE_APOYO' y la etiqueta visible "persona de apoyo designada".
+ * Prohibido el uso de los términos "interdicción", "incapacitado" o "incompetente".
+ */
+
+export type CapacidadConsentimientoEstado = 
+  | 'AUTONOMO' 
+  | 'REPRESENTADO_POR_EDAD' 
+  | 'REPRESENTADO_POR_CONDICION' 
+  | 'PENDIENTE_DETERMINACION';
+
+export type ParentescoRepresentante = 
+  | 'MADRE' 
+  | 'PADRE' 
+  | 'TUTOR_LEGAL' 
+  | 'PERSONA_DE_APOYO';
+
+export type QuienCompletaRegistro = 'PACIENTE' | 'FAMILIAR_O_APOYO';
+
+export interface ArchivoAdjunto {
+  name: string;
+  size: number;
+  type?: string;
+  url?: string;
+  uploadedAt?: string;
+}
+
+export interface CapacidadConsentimiento {
+  estado: CapacidadConsentimientoEstado;
+  determinadoPor: string | null;      // id del clínico; null si fue automático por edad
+  fechaDeterminacion: string | null;
+  fechaRevision: string | null;       // sólo para REPRESENTADO_POR_CONDICION
+  motivo: string | null;
+}
+
+export interface RepresentanteLegal {
+  nombreCompleto: string;
+  parentesco: ParentescoRepresentante;
+  telefono: string;
+  correo: string;
+  documentoIdentificacion: ArchivoAdjunto | File | null;
+  documentoVinculo: ArchivoAdjunto | File | null;
+  otroProgenitorInformado: 'SI' | 'NO' | 'NO_APLICA' | null;
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -23,7 +73,21 @@ export interface Patient {
   motif: string;
   therapistId: string;
   therapistName: string;
+
+  // Nuevos campos normativos de representación legal
+  fechaNacimiento: string; // ISO (YYYY-MM-DD), obligatorio
+  edadCalculada: number;   // derivado, no editable
+  capacidadConsentimiento: CapacidadConsentimiento;
+  quienCompletaRegistro: QuienCompletaRegistro;
+  representante: RepresentanteLegal | null;
+  telefonoPaciente: string | null; // opcional cuando hay representante
+
+  // Banderas operativas
+  consentimientoRepresentanteFirmado?: boolean;
+  pendienteReconsentimiento?: boolean;
+  notificacionesRepresentanteRevocadas?: boolean;
 }
+
 
 export interface Appointment {
   id: string;

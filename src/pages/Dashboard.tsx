@@ -4,7 +4,7 @@ import {
   Users, Calendar, Clock, BookOpen, FileText,
   ShieldAlert, Sparkles, PlusCircle, ArrowRight,
   AlertTriangle, Filter, RotateCcw, Building, CheckCircle,
-  Search, Check, Trash2, Shield, GraduationCap, Eye, BarChart3, HelpCircle
+  Search, Check, Trash2, Shield, GraduationCap, Eye, BarChart3, HelpCircle, UserCheck
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -14,6 +14,7 @@ import { Role, Appointment, Patient } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
 import { mockStudentProfile } from '../services/academicData';
+import { checkAgingMinorPatients } from '../utils/legalConsent';
 
 interface DashboardProps {
   userRole: Role;
@@ -130,6 +131,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   const capacityPercent = Math.round((activePatientsCount / 10) * 100);
   // --- PENDIENTES PRIORITARIOS (derivados de datos reales) ---
   const pendingPatients = filteredPatients.filter(p => p.status === 'pendiente');
+  // --- DETECCIÓN DE MAYORÍA DE EDAD (18 AÑOS CUMPLIDOS) ---
+  const agingPatients = checkAgingMinorPatients(patients);
 
   // --- SEGREGACIÓN DE DATOS DEL PACIENTE ---
   if (userRole === 'patient') {
@@ -483,6 +486,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           </button>
         </div>
       </div>
+
+      {/* ALERTA DE MAYORÍA DE EDAD — CUMPLIMIENTO DE 18 AÑOS */}
+      {agingPatients.length > 0 && (
+        <div className="bg-gradient-to-r from-slate-900 to-clinical-dark text-white p-5 rounded-2xl border border-slate-700 shadow-md space-y-3 animate-fadeIn">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-clinical-accent/20 border border-clinical-accent/30 rounded-lg text-clinical-accent">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm tracking-wide flex items-center gap-2">
+                  Alerta de Mayoría de Edad — Reconsentimiento Autónomo Requerido
+                  <span className="px-2 py-0.5 bg-clinical-accent text-clinical-dark rounded-full text-[9px] font-extrabold uppercase">
+                    {agingPatients.length} {agingPatients.length === 1 ? 'paciente' : 'pacientes'}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Se detectó que el paciente ha cumplido 18 años. El expediente pasa a requerir formalización de consentimiento autónomo directo y se prepara la revocación de notificaciones al representante.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {agingPatients.map(p => (
+              <div key={p.id} className="bg-white/10 border border-white/15 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-white block text-sm">{p.name}</span>
+                  <span className="text-[10px] text-slate-300 block">
+                    Nacimiento: {p.fechaNacimiento || p.birthDate} • Mayoría de edad cumplida (18+ años)
+                  </span>
+                  <span className="text-[10px] text-teal-300 block mt-0.5">
+                    Representante previo: {p.representante?.nombreCompleto || 'Padre/Madre/Tutor'} • Revocación preparada
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    auditLogService.addLog(
+                      'Revisión de mayoría de edad',
+                      `Acceso al expediente de ${p.name} tras detección de cumplimiento de 18 años. Requiere reconsentimiento autónomo.`,
+                      'expediente',
+                      { id: 'user-current', name: userName, role: userRole }
+                    );
+                    navigate(`/expedientes?id=${p.id}`);
+                  }}
+                  className="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-dark font-bold rounded-lg text-[11px] shrink-0 transition-colors shadow-sm"
+                >
+                  Ver Expediente
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ZONA 2: ESTADO GENERAL (MÁXIMO 4 INDICADORES VISUALES NO IDÉNTICOS, MÁXIMO 1 ANILLO DE PROGRESO) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" data-tour="dashboard-kpis">
