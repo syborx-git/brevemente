@@ -642,7 +642,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             </div>
             <div>
               <span className="text-sm font-extrabold text-clinical-dark block">Sofía Martínez</span>
-              <span className="text-[10px] text-slate-500 block mt-0.5">Protocolo: Ataque de Pánico • Fase 2 TBE • Sesión #3</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">Protocolo: Ataque de Pánico • Fase 2: Desbloqueo • Sesión #3</span>
               <div className="flex items-center gap-2 mt-2 text-[9px] text-slate-400 font-bold uppercase flex-wrap">
                 <span className="text-emerald-700">Intake: Listo</span>
                 <span>•</span>
@@ -774,10 +774,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Fase 1: Definición del SPR', value: 30 },
-                      { name: 'Fase 2: Desbloqueo Estratégico', value: 40 },
+                      { name: 'Fase 1: Definición del problema', value: 30 },
+                      { name: 'Fase 2: Desbloqueo', value: 40 },
                       { name: 'Fase 3: Consolidación', value: 20 },
-                      { name: 'Fase 4: Alta / Cierre', value: 10 }
+                      { name: 'Fase 4: Cierre', value: 10 }
                     ]}
                     cx="50%"
                     cy="50%"

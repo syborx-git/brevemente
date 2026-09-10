@@ -290,7 +290,7 @@ export const mockSessions: Record<string, Session[]> = {
       patientId: 'patient-1',
       number: 1,
       date: '2026-08-10',
-      phase: 'Socialización',
+      phase: 'Definición del problema',
       protocol: 'Ataque de Pánico',
       dxOp: 'SPR Fóbico',
       px: ['Diario de abordo', 'Cómo empeorar'],
@@ -310,7 +310,7 @@ export const mockSessions: Record<string, Session[]> = {
       patientId: 'patient-1',
       number: 2,
       date: '2026-08-17',
-      phase: 'Intervención',
+      phase: 'Desbloqueo',
       protocol: 'Ataque de Pánico',
       dxOp: 'SPR Fóbico',
       px: ['Diario de abordo', 'WF 30 min'],
@@ -351,7 +351,7 @@ export const mockLibrary: LibraryDocument[] = [
     category: 'protocolo',
     code: 'TBE-P-01',
     summary: 'Fases, maniobras y condiciones del protocolo clínico estandarizado para crisis de pánico y agorafobia.',
-    content: 'Protocolo Ataque de Pánico:\nFase 1: Socialización del síntoma y prescripción del Diario de a bordo. Bloqueo de la evitación y la petición de ayuda.\nFase 2: Introducción de la Peor Fantasía (Worry-Time / WF 30 min) en un horario específico diario para canalizar y agotar la carga ansiosa a través de la paradoja. Si se presenta una crisis espontánea fuera de horario, se aplica la Peor Fantasía preventivo-necesidad por 5 minutos.\nFase 3: Consolidación y autoprescripciones de exposición controlada progresiva.\nFase 4: Cierre del caso y seguimiento a 3, 6 y 12 meses.'
+    content: 'Protocolo Ataque de Pánico:\nFase 1: Definición del problema y prescripción del Diario de a bordo. Bloqueo de la evitación y la petición de ayuda.\nFase 2: Introducción de la Peor Fantasía (Worry-Time / WF 30 min) en un horario específico diario para canalizar y agotar la carga ansiosa a través de la paradoja. Si se presenta una crisis espontánea fuera de horario, se aplica la Peor Fantasía preventivo-necesidad por 5 minutos.\nFase 3: Consolidación y autoprescripciones de exposición controlada progresiva.\nFase 4: Cierre del caso y seguimiento a 3, 6 y 12 meses.'
   },
   {
     id: 'lib-4',

@@ -92,7 +92,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   const [aiValidated, setAiValidated] = useState(false);
 
   // Campos de formulario nueva sesión
-  const [newSessPhase, setNewSessPhase] = useState('Intervención');
+  const [newSessPhase, setNewSessPhase] = useState('Desbloqueo');
   const [newSessProtocol, setNewSessProtocol] = useState('Ataque de Pánico');
   const [newSessDxOp, setNewSessDxOp] = useState('SPR Fóbico');
   const [newSessPx, setNewSessPx] = useState<string[]>([]);
@@ -170,7 +170,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
             patientId: 'patient-1',
             number: 1,
             date: '2026-08-10',
-            phase: 'Socialización',
+            phase: 'Definición del problema',
             protocol: 'Ataque de Pánico',
             dxOp: 'SPR Fóbico',
             px: ['Diario de abordo', 'Cómo empeorar'],
@@ -190,7 +190,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
             patientId: 'patient-1',
             number: 2,
             date: '2026-08-17',
-            phase: 'Intervención',
+            phase: 'Desbloqueo',
             protocol: 'Ataque de Pánico',
             dxOp: 'SPR Fóbico',
             px: ['Diario de abordo', 'WF 30 min'],
@@ -320,7 +320,8 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       setAiValidated(true);
 
       // Pre-llenar campos clínicos con datos simulados
-      setNewSessPhase('Intervención');
+      // [Opción B] La IA no fuerza la fase: hereda la fase activa del tratamiento
+      setNewSessPhase(sessions.length > 0 ? sessions[sessions.length - 1].phase : 'Definición del problema');
       setNewSessProtocol('Ataque de Pánico');
       setNewSessDxOp('SPR Fóbico');
       setNewSessPx(['Diario de abordo', 'WF 30 min']);
@@ -353,7 +354,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     }, 2000);
   };
 
-    // [DEMO] Disparador de un clic para simular una señal de riesgo en presentaciones
+  // [DEMO] Disparador de un clic para simular una señal de riesgo en presentaciones
   const handleSimulateRisk = () => {
     if (!activePatient) return;
     const demoNote =
@@ -378,6 +379,28 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       setActiveRiskAlert(null);
     }
   };
+
+    // [Opción B] Override manual de fase (registrado en auditoría para trazabilidad)
+  const handleManualPhaseChange = (phase: string) => {
+    setNewSessPhase(phase);
+    auditLogService.addLog(
+      'Ajuste manual de fase clínica',
+      `El profesional fijó manualmente la fase de la sesión de ${activePatient?.name} en "${phase}" (Protocolo: ${newSessProtocol}).`,
+      'sesion',
+      { id: 'user-current', name: userName, role: userRole }
+    );
+  };
+
+
+  // [Opción B] Al abrir el formulario, la nueva sesión HEREDA la fase de la última sesión
+  const handleStartNewSession = () => {
+    const lastPhase = sessions.length > 0
+      ? sessions[sessions.length - 1].phase
+      : 'Definición del problema';
+    setNewSessPhase(lastPhase);
+    setIsCreatingSession(true);
+  };
+
 
   const handleSaveSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -844,7 +867,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                   <span className="font-bold text-xs text-clinical-dark uppercase">Historial Clínico</span>
                   {['admin_platform', 'admin_clinical', 'therapist'].includes(userRole) && !isCreatingSession && (
                     <button
-                      onClick={() => setIsCreatingSession(true)}
+                      onClick={handleStartNewSession}
                       className="px-2 py-1 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded text-[10px] font-bold shadow flex items-center gap-0.5"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -1023,28 +1046,45 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                             { id: 'user-current', name: userName, role: userRole }
                           );
                         }}
+                        onAdvancePhase={(nextPhase) => {
+                          setNewSessPhase(nextPhase);
+                          auditLogService.addLog(
+                            'Avance de fase clínica',
+                            `Se avanzó la fase del tratamiento de ${activePatient?.name} a "${nextPhase}" (Protocolo: ${newSessProtocol}). Condición de avance confirmada por el profesional.`,
+                            'sesion',
+                            { id: 'user-current', name: userName, role: userRole }
+                          );
+                        }}
                       />
                     )}
 
                     {/* CAMPOS CLÍNICOS EDITABLES */}
                     {(sessionMode === 'manual' || aiValidated) && (
                       <div className="space-y-4">
+                                                {/* [Opción B] Fase del tratamiento: se hereda, se puede avanzar o ajustar manualmente */}
+                        <div>
+                          <label className="block text-slate-500 font-semibold mb-1">
+                            Fase del tratamiento:
+                            <span className="ml-2 text-[10px] text-slate-400 font-normal">
+                              (se hereda de la última sesión · puedes ajustarla manualmente)
+                            </span>
+                          </label>
+                          <select
+                            className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
+                            value={newSessPhase}
+                            onChange={(e) => handleManualPhaseChange(e.target.value)}
+                          >
+                            <option value="Definición del problema">Definición del problema</option>
+                            <option value="Desbloqueo">Desbloqueo</option>
+                            <option value="Consolidación">Consolidación</option>
+                            <option value="Cierre">Cierre</option>
+                          </select>
+                        </div>
+
                         {/* Selector de Protocolo y DX.OP para manual */}
                         {sessionMode === 'manual' && (
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-slate-500 font-semibold mb-1">Fase:</label>
-                              <select
-                                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newSessPhase}
-                                onChange={(e) => setNewSessPhase(e.target.value)}
-                              >
-                                <option value="Socialización">Socialización</option>
-                                <option value="Intervención">Intervención</option>
-                                <option value="Consolidación">Consolidación</option>
-                                <option value="Cierre">Cierre</option>
-                              </select>
-                            </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
                             <div>
                               <label className="block text-slate-500 font-semibold mb-1">Protocolo:</label>
                               <select
@@ -1120,7 +1160,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                             }}
                           />
                         </div>
-                        
+
                         {/* [DEMO] Botón para simular señal de riesgo en presentaciones */}
                         <div className="flex justify-end">
                           <button
@@ -1131,7 +1171,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                             🎬 Simular señal de riesgo (demo)
                           </button>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
                             <label className="block text-slate-500 font-semibold mb-1">Observaciones del Terapeuta (OSS):</label>
