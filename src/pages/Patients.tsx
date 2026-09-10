@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert, Trash2 } from 'lucide-react';
+import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert, Trash2, Users, Clock, UserCheck } from 'lucide-react';
 import { Patient, Role } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
-
+import { CreatePatientModal } from '../components/CreatePatientModal';
 
 interface PatientsProps {
   userRole: Role;
   patients: Patient[];
   userName: string;
   onDeletePatient: (id: string) => void;
+  onAddPatient: (patient: Patient) => void;
 }
 
-export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName, onDeletePatient }) => {
+export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName, onDeletePatient, onAddPatient }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const filteredPatients = patients.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,13 +43,13 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
         <div>
           <h2 className="text-xl font-bold text-clinical-dark">Directorio de Pacientes</h2>
           <p className="text-xs text-clinical-textMuted">
-            Búsqueda de expedientes, estados de tratamiento y niveles de riesgo clínico.
+            Búsqueda de expedientes, estados de tratamiento, representación legal y niveles de riesgo clínico.
           </p>
         </div>
 
         {['admin_platform', 'admin_clinical', 'therapist', 'assistant'].includes(userRole) && (
           <button
-            onClick={() => navigate('/agenda')}
+            onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
           >
             <UserPlus className="w-4 h-4" />
@@ -81,6 +83,7 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                 <th className="p-4">Contacto</th>
                 <th className="p-4">Registro</th>
                 <th className="p-4">Estado</th>
+                <th className="p-4">Representación</th>
                 <th className="p-4">Riesgo</th>
                 <th className="p-4 text-right">Acciones</th>
               </tr>
@@ -88,7 +91,7 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
             <tbody className="divide-y divide-slate-100 text-slate-600">
               {filteredPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={8} className="p-8 text-center text-slate-400">
                     No se encontraron pacientes que coincidan con la búsqueda.
                   </td>
                 </tr>
@@ -104,6 +107,8 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                       p.status === 'completado' ? 'bg-teal-100 text-teal-800' :
                         p.status === 'archivado' ? 'bg-slate-100 text-slate-800' :
                           'bg-amber-100 text-amber-800';
+
+                  const estadoCapacidad = p.capacidadConsentimiento?.estado;
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
@@ -126,6 +131,30 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor}`}>
                           {p.status}
                         </span>
+                      </td>
+                      {/* Columna Indicador Visual de Representación Legal */}
+                      <td className="p-4">
+                        {estadoCapacidad === 'REPRESENTADO_POR_EDAD' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5 w-fit">
+                            <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
+                            Menor de edad
+                          </span>
+                        )}
+                        {estadoCapacidad === 'REPRESENTADO_POR_CONDICION' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1.5 w-fit">
+                            <Users className="w-3 h-3 text-teal-600 shrink-0" />
+                            Con persona de apoyo
+                          </span>
+                        )}
+                        {estadoCapacidad === 'PENDIENTE_DETERMINACION' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1.5 w-fit">
+                            <Clock className="w-3 h-3 text-slate-500 shrink-0" />
+                            Pendiente de determinación
+                          </span>
+                        )}
+                        {(!estadoCapacidad || estadoCapacidad === 'AUTONOMO') && (
+                          <span className="text-slate-300 font-bold px-2">—</span>
+                        )}
                       </td>
                       <td className="p-4">
                         <span className={`px-2 py-0.5 rounded border text-[9px] font-bold uppercase flex items-center gap-1 w-fit ${riskColor}`}>
@@ -176,6 +205,16 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
           </table>
         </div>
       </div>
+
+      {/* Modal Crear Paciente */}
+      <CreatePatientModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onAddPatient={onAddPatient}
+        userName={userName}
+        userRole={userRole}
+      />
     </div>
   );
 };
+

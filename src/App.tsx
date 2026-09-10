@@ -34,6 +34,8 @@ import { sessionService } from './services/sessionService';
 import { hasPermission } from './utils/permissions';
 
 
+import { therapistSettingsService } from './services/therapistSettingsService';
+
 const USER_NAMES: Record<Role, string> = {
   admin_platform: 'Ing. Rodrigo Pérez',
   admin_clinical: 'Dra. Patricia Ortiz',
@@ -48,6 +50,7 @@ function App() {
   const [currentRole, setCurrentRole] = useState<Role>('therapist');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [edadMinimaConfig, setEdadMinimaConfig] = useState<number>(0);
 
   // Estados de la Demo y Brifi
   const [activeTour, setActiveTour] = useState<'executiva' | 'clinica' | 'academic' | 'none'>('none');
@@ -59,19 +62,31 @@ function App() {
   const loadLocalData = async () => {
     setPatients(await patientService.getAll());
     setAppointments(await appointmentService.getAll());
+    setEdadMinimaConfig(therapistSettingsService.getEdadMinimaAtencion());
   };
 
   useEffect(() => {
     const localPatients = localStorage.getItem('brevemente_patients');
     const localAppointments = localStorage.getItem('brevemente_appointments');
 
-    if (!localPatients) {
+    let parsedPatients: Patient[] = [];
+    if (localPatients) {
+      try {
+        parsedPatients = JSON.parse(localPatients);
+      } catch {
+        parsedPatients = [];
+      }
+    }
+
+    // Si no existen o si provienen de la versión anterior sin capacidadConsentimiento, actualizar con mockPatients
+    if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento)) {
       localStorage.setItem('brevemente_patients', JSON.stringify(mockPatients));
     }
     if (!localAppointments) {
       localStorage.setItem('brevemente_appointments', JSON.stringify(mockAppointments));
     }
     loadLocalData();
+
 
     // Listeners para sincronizar estado de demo
     const handleDemoReset = () => {
@@ -274,6 +289,7 @@ function App() {
                             patients={patients}
                             userName={USER_NAMES[currentRole]}
                             onDeletePatient={handleDeletePatient}
+                            onAddPatient={handleAddPatient}
                           />
                         ) : (
                           <Navigate to="/" replace />
@@ -416,11 +432,51 @@ function App() {
                       path="/configuracion"
                       element={
                         hasPermission(currentRole, 'configuracion') ? (
-                          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-xs text-slate-650 space-y-4">
-                            <h3 className="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Configuración General de BreveMente</h3>
-                            <p>Configuración de consultorios, firmas digitales criptográficas y parámetros del motor de protocolos.</p>
+                          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-xs text-slate-650 space-y-6">
+                            <div>
+                              <h3 className="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">
+                                Configuración General de BreveMente
+                              </h3>
+                              <p className="text-slate-400 mt-1">
+                                Parámetros del terapeuta, reglas de admisión y resguardo legal.
+                              </p>
+                            </div>
+
+                            {/* Parámetros del Terapeuta */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+                              <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-200 pb-2">
+                                Parámetros de Atención y Criterio Clínico
+                              </span>
+
+                              <div className="max-w-md space-y-2">
+                                <label className="block font-bold text-clinical-dark text-xs">
+                                  Edad mínima por criterio de consulta (años cumplidos):
+                                </label>
+                                <p className="text-[11px] text-slate-500">
+                                  Define el umbral de edad de atención preferente. Si un paciente registrado tiene una edad menor a este parámetro, el sistema emitirá una advertencia no bloqueante en el paso 1 de creación.
+                                </p>
+                                <div className="flex items-center gap-3 pt-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={99}
+                                    value={edadMinimaConfig}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10) || 0;
+                                      setEdadMinimaConfig(val);
+                                      therapistSettingsService.setEdadMinimaAtencion(val);
+                                    }}
+                                    className="w-24 px-3 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-clinical-dark focus:ring-1 focus:ring-clinical-accent focus:outline-none"
+                                  />
+                                  <span className="text-[11px] font-semibold text-slate-600">
+                                    {edadMinimaConfig === 0 ? '(0 = Sin límite de edad mínima)' : `Aviso si menor a ${edadMinimaConfig} años`}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
                             <div className="bg-blue-50 border border-blue-200 rounded p-3 text-clinical-accent">
-                              Esta sección es una simulación. En producción se podrán configurar integraciones, bases de datos y APIs.
+                              Esta sección sincroniza en tiempo real los parámetros del clínico en almacenamiento seguro de sesión.
                             </div>
                           </div>
                         ) : (

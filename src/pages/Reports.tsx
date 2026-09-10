@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, Send, Paperclip, Download, ShieldCheck, HelpCircle } from 'lucide-react';
+import { FileText, Send, Paperclip, Download, ShieldCheck, HelpCircle, Lock, AlertTriangle } from 'lucide-react';
 import { Role, Patient } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
+import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP } from '../utils/legalConsent';
 
 interface ReportsProps {
   userRole: Role;
@@ -12,6 +13,9 @@ interface ReportsProps {
 export const Reports: React.FC<ReportsProps> = ({ userRole, patients, userName }) => {
   const [selectedPatientId, setSelectedPatientId] = useState('patient-1');
   const activePatient = patients.find(p => p.id === selectedPatientId);
+
+  const blockCheck = isActionBlockedByLegalConsent(activePatient);
+  const isBlocked = blockCheck.isBlocked;
 
   // Form states
   const [profName, setProfName] = useState(userName);
@@ -250,11 +254,28 @@ export const Reports: React.FC<ReportsProps> = ({ userRole, patients, userName }
             </div>
           </div>
 
+          {isBlocked && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs flex items-start gap-2">
+              <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block">Acción Bloqueada:</span>
+                <span>{LEGAL_CONSENT_TOOLTIP}</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
             <button
               type="submit"
-              className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow transition-colors"
+              disabled={isBlocked}
+              title={isBlocked ? LEGAL_CONSENT_TOOLTIP : 'Generar Vista Previa'}
+              className={`px-4 py-2 rounded-lg font-bold shadow transition-all flex items-center gap-1.5 ${
+                isBlocked
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                  : 'bg-clinical-accent hover:bg-clinical-accentHover text-white'
+              }`}
             >
+              {isBlocked && <Lock className="w-3.5 h-3.5" />}
               Generar Vista Previa
             </button>
           </div>
