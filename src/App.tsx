@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Patients } from './pages/Patients';
 import { Agenda } from './pages/Agenda';
 import { ClinicalRecord } from './pages/ClinicalRecord';
+import { PatientDashboard } from './pages/PatientDashboard';
 
 import { AIAssistant } from './pages/AIAssistant';
 import { Library } from './pages/Library';
@@ -51,6 +52,8 @@ function App() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [edadMinimaConfig, setEdadMinimaConfig] = useState<number>(0);
+  // Paciente actualmente simulado en la vista de demo de paciente
+  const [currentPatientId, setCurrentPatientId] = useState<string>('patient-1');
 
   // Estados de la Demo y Brifi
   const [activeTour, setActiveTour] = useState<'executiva' | 'clinica' | 'academic' | 'none'>('none');
@@ -82,7 +85,13 @@ function App() {
     if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento)) {
       localStorage.setItem('brevemente_patients', JSON.stringify(mockPatients));
     }
-    if (!localAppointments) {
+
+    // Migración de citas: si no existen o no tienen paymentStatus, recargar con mockAppointments enriquecidos
+    let parsedAppointments: Appointment[] = [];
+    if (localAppointments) {
+      try { parsedAppointments = JSON.parse(localAppointments); } catch { parsedAppointments = []; }
+    }
+    if (!localAppointments || parsedAppointments.length === 0 || !parsedAppointments.some(a => a.paymentStatus)) {
       localStorage.setItem('brevemente_appointments', JSON.stringify(mockAppointments));
     }
     loadLocalData();
@@ -223,6 +232,9 @@ function App() {
                   onChangeRole={handleRoleChange}
                   userName={USER_NAMES[currentRole]}
                   onStartDemo={() => setIsLauncherOpen(true)}
+                  patients={patients}
+                  currentPatientId={currentPatientId}
+                  onChangePatient={setCurrentPatientId}
                 />
 
                 {/* Área de Contenido */}
@@ -241,6 +253,8 @@ function App() {
                           />
                         ) : currentRole === 'student' ? (
                           <Navigate to="/campus" replace />
+                        ) : currentRole === 'patient' ? (
+                          <Navigate to="/mi-historial" replace />
                         ) : (
                           <Navigate to="/agenda" replace />
                         )
@@ -297,6 +311,28 @@ function App() {
                       }
                     />
 
+                    {/* Portal del Paciente — Historial de Citas */}
+                    <Route
+                      path="/mi-historial"
+                      element={
+                        hasPermission(currentRole, 'historial_paciente') ? (() => {
+                          const activePatient = patients.find(p => p.id === currentPatientId) ?? patients[0];
+                          return activePatient ? (
+                            <PatientDashboard
+                              patient={activePatient}
+                              appointments={appointments}
+                              userName={activePatient.name}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                              No hay pacientes registrados en el sistema.
+                            </div>
+                          );
+                        })() : (
+                          <Navigate to="/" replace />
+                        )
+                      }
+                    />
                     {/* Agenda */}
                     <Route
                       path="/agenda"

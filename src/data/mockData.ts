@@ -205,15 +205,48 @@ export const mockPatients: Patient[] = [
 ];
 
 export const mockAppointments: Appointment[] = [
+  // ─── Sofía Martínez (patient-1) ───────────────────────────────────────────
   {
     id: 'app-1',
     patientId: 'patient-1',
     patientName: 'Sofía Martínez',
     time: '09:00',
-    date: '2026-08-24', // Hoy
+    date: '2026-08-24',
     type: 'seguimiento',
-    status: 'confirmada'
+    status: 'completada',
+    paymentStatus: 'pagada'
   },
+  {
+    id: 'app-1b',
+    patientId: 'patient-1',
+    patientName: 'Sofía Martínez',
+    time: '09:00',
+    date: '2026-08-10',
+    type: 'primera',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-1c',
+    patientId: 'patient-1',
+    patientName: 'Sofía Martínez',
+    time: '09:00',
+    date: '2026-08-17',
+    type: 'seguimiento',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-1d',
+    patientId: 'patient-1',
+    patientName: 'Sofía Martínez',
+    time: '09:00',
+    date: '2026-08-31',
+    type: 'seguimiento',
+    status: 'confirmada',
+    paymentStatus: 'pendiente'
+  },
+  // ─── Carlos Mendoza (patient-2) ───────────────────────────────────────────
   {
     id: 'app-2',
     patientId: 'patient-2',
@@ -221,17 +254,122 @@ export const mockAppointments: Appointment[] = [
     time: '11:30',
     date: '2026-08-24',
     type: 'primera',
-    status: 'confirmada'
+    status: 'confirmada',
+    paymentStatus: 'pendiente'
   },
+  // ─── Ana María Ruiz (patient-3) ───────────────────────────────────────────
   {
     id: 'app-3',
     patientId: 'patient-3',
     patientName: 'Ana María Ruiz',
     time: '16:00',
-    date: '2026-08-24',
+    date: '2026-07-01',
+    type: 'primera',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-3b',
+    patientId: 'patient-3',
+    patientName: 'Ana María Ruiz',
+    time: '16:00',
+    date: '2026-07-08',
     type: 'seguimiento',
-    status: 'pendiente'
-  }
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-3c',
+    patientId: 'patient-3',
+    patientName: 'Ana María Ruiz',
+    time: '16:00',
+    date: '2026-07-15',
+    type: 'seguimiento',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-3d',
+    patientId: 'patient-3',
+    patientName: 'Ana María Ruiz',
+    time: '16:00',
+    date: '2026-07-22',
+    type: 'seguimiento',
+    status: 'ausente',
+    paymentStatus: 'pendiente'
+  },
+  {
+    id: 'app-3e',
+    patientId: 'patient-3',
+    patientName: 'Ana María Ruiz',
+    time: '16:00',
+    date: '2026-07-29',
+    type: 'seguimiento',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-3f',
+    patientId: 'patient-3',
+    patientName: 'Ana María Ruiz',
+    time: '16:00',
+    date: '2026-08-05',
+    type: 'cierre',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  // ─── Roberto Valdés (patient-4) ───────────────────────────────────────────
+  {
+    id: 'app-4',
+    patientId: 'patient-4',
+    patientName: 'Roberto Valdés',
+    time: '10:00',
+    date: '2026-08-15',
+    type: 'primera',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-4b',
+    patientId: 'patient-4',
+    patientName: 'Roberto Valdés',
+    time: '10:00',
+    date: '2026-08-22',
+    type: 'seguimiento',
+    status: 'cancelada',
+    paymentStatus: 'exenta'
+  },
+  // ─── Leonardo Salinas (patient-6) ─────────────────────────────────────────
+  {
+    id: 'app-6',
+    patientId: 'patient-6',
+    patientName: 'Leonardo Salinas Vargas',
+    time: '14:00',
+    date: '2026-08-01',
+    type: 'primera',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-6b',
+    patientId: 'patient-6',
+    patientName: 'Leonardo Salinas Vargas',
+    time: '14:00',
+    date: '2026-08-08',
+    type: 'seguimiento',
+    status: 'completada',
+    paymentStatus: 'pagada'
+  },
+  {
+    id: 'app-6c',
+    patientId: 'patient-6',
+    patientName: 'Leonardo Salinas Vargas',
+    time: '14:00',
+    date: '2026-08-15',
+    type: 'seguimiento',
+    status: 'confirmada',
+    paymentStatus: 'pendiente'
+  },
 ];
 
 export const mockClinicalRecords: Record<string, ClinicalRecord> = {

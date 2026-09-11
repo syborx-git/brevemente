@@ -97,6 +97,8 @@ export interface Appointment {
   date: string;
   type: 'primera' | 'seguimiento' | 'cierre';
   status: 'confirmada' | 'pendiente' | 'completada' | 'cancelada' | 'ausente';
+  /** Estado de pago de la sesión. Campo simulado en demo; editable por asistente en versión real. */
+  paymentStatus?: 'pagada' | 'pendiente' | 'exenta';
 }
 
 export interface ClinicalRecord {
