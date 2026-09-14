@@ -79,12 +79,12 @@ export const mockPatients: Patient[] = [
     riskLevel: 'bajo',
     registryMode: 'manual',
     motif: 'Pensamientos obsesivos sobre contaminación y rituales de lavado de manos repetitivos.',
-    therapistId: 'therapist-1',
-    therapistName: 'Dr. Alejandro Silva',
+    therapistId: 'therapist-2',
+    therapistName: 'Dra. Patricia Ortiz',
     quienCompletaRegistro: 'FAMILIAR_O_APOYO',
     capacidadConsentimiento: {
       estado: 'REPRESENTADO_POR_CONDICION',
-      determinadoPor: 'therapist-1',
+      determinadoPor: 'therapist-2',
       fechaDeterminacion: '2026-07-01',
       fechaRevision: '2026-10-01',
       motivo: 'Designación clínica formal de persona de apoyo para seguimiento terapéutico'
@@ -115,8 +115,8 @@ export const mockPatients: Patient[] = [
     riskLevel: 'bajo',
     registryMode: 'manual',
     motif: 'Problemas de pareja y comunicación destructiva.',
-    therapistId: 'therapist-1',
-    therapistName: 'Dr. Alejandro Silva',
+    therapistId: 'therapist-2',
+    therapistName: 'Dra. Patricia Ortiz',
     quienCompletaRegistro: 'PACIENTE',
     capacidadConsentimiento: {
       estado: 'AUTONOMO',

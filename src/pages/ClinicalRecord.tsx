@@ -16,6 +16,7 @@ import { ProtocolDecisionPanel } from '../components/ProtocolDecisionPanel';
 import { RiskAlertBanner } from '../components/RiskAlertBanner';
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
+import { supervisionRequestService } from '../services/supervisionRequestService';
 import { recordService } from '../services/recordService';
 import { sessionService } from '../services/sessionService';
 import { patientService } from '../services/patientService';
@@ -380,7 +381,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     }
   };
 
-    // [Opción B] Override manual de fase (registrado en auditoría para trazabilidad)
+  // [Opción B] Override manual de fase (registrado en auditoría para trazabilidad)
   const handleManualPhaseChange = (phase: string) => {
     setNewSessPhase(phase);
     auditLogService.addLog(
@@ -613,6 +614,21 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 }`}>
                 {activePatient?.registryMode === 'ia' ? 'Grabación e IA activa' : '100% Manual'}
               </span>
+              <button
+                onClick={() => {
+                  if (!activePatient) return;
+                  supervisionRequestService.createRequest(
+                    activePatient.id,
+                    activePatient.name,
+                    'Caso que requiere revisión del supervisor clínico.',
+                    { id: 'therapist-1', name: userName, role: userRole }
+                  );
+                  alert('✓ Solicitud de supervisión enviada al supervisor clínico y registrada en la bitácora de auditoría.');
+                }}
+                className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-bold shadow-sm transition-colors"
+              >
+                📋 Solicitar Supervisión
+              </button>
             </div>
           </div>
         </div>
@@ -628,13 +644,12 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 Régimen Legal y Capacidad de Consentimiento
               </h3>
             </div>
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
-              activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD'
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD'
                 ? 'bg-slate-100 text-slate-700 border-slate-300'
                 : activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_CONDICION'
                   ? 'bg-teal-50 text-teal-800 border-teal-200'
                   : 'bg-slate-100 text-slate-800 border-slate-300'
-            }`}>
+              }`}>
               {activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD'
                 ? 'Menor de edad'
                 : activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_CONDICION'
@@ -974,11 +989,10 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                                 disabled={isRecordingBlocked}
                                 title={isRecordingBlocked ? LEGAL_CONSENT_TOOLTIP : 'Haga click para iniciar'}
                                 onClick={handleStartRecording}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow ${
-                                  isRecordingBlocked
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow ${isRecordingBlocked
                                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
                                     : 'bg-clinical-risk text-white hover:opacity-90'
-                                }`}
+                                  }`}
                               >
                                 {isRecordingBlocked ? <Lock className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                               </button>
@@ -1061,7 +1075,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                     {/* CAMPOS CLÍNICOS EDITABLES */}
                     {(sessionMode === 'manual' || aiValidated) && (
                       <div className="space-y-4">
-                                                {/* [Opción B] Fase del tratamiento: se hereda, se puede avanzar o ajustar manualmente */}
+                        {/* [Opción B] Fase del tratamiento: se hereda, se puede avanzar o ajustar manualmente */}
                         <div>
                           <label className="block text-slate-500 font-semibold mb-1">
                             Fase del tratamiento:
@@ -1471,7 +1485,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                       <Line type="monotone" dataKey="Reacciones" stroke="rgb(182, 12, 234)" strokeWidth={2} />
                       <Line type="monotone" dataKey="Sintomas" stroke="#ea580c" strokeWidth={2} />
                       <Line type="monotone" dataKey="Crisis" stroke="#ef4444" strokeWidth={2} />
-                    </LineChart>  
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
@@ -1831,7 +1845,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 <ShieldCheck className="w-5 h-5 text-clinical-accent" />
                 <h3 className="font-bold text-xs uppercase tracking-wider">Formalizar Consentimiento del Representante</h3>
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowConsentSignModal(false)}
                 className="text-slate-400 hover:text-white"

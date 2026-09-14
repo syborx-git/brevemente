@@ -81,8 +81,8 @@ function App() {
       }
     }
 
-    // Si no existen o si provienen de la versión anterior sin capacidadConsentimiento, actualizar con mockPatients
-    if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento)) {
+    // Si no existen o si provienen de la versión anterior sin capacidadConsentimiento o sin múltiples terapeutas, actualizar con mockPatients
+    if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento) || !parsedPatients.some(p => p.therapistId === 'therapist-2')) {
       localStorage.setItem('brevemente_patients', JSON.stringify(mockPatients));
     }
 

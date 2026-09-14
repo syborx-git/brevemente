@@ -36,7 +36,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   const [lastUpdated, setLastUpdated] = useState<string>('Hace unos instantes');
 
   // --- SELECTOR DE PERSPECTIVA DE GRÁFICA (ZONA 5) ---
-  const [chartPerspective, setChartPerspective] = useState<string>('fases');
+  const [chartPerspective, setChartPerspective] = useState<string>('citas');
 
   // --- DRILLDOWNS (MODALES) ---
   const [activeDrilldown, setActiveDrilldown] = useState<string | null>(null);
@@ -76,13 +76,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   };
 
   const getPatientModality = (patientId: string): string => {
-    if (patientId === 'patient-2') return 'online';
+    if (patientId === 'patient-1' || patientId === 'patient-2') return 'online';
     return 'presencial';
   };
 
   const getPatientProtocol = (patientId: string): string => {
     if (patientId === 'patient-1') return 'Ataque de Pánico';
     if (patientId === 'patient-3') return 'TOC Control';
+    if (patientId === 'patient-5') return 'Fobia Escolar';
     return 'Fobia Social';
   };
 
@@ -121,7 +122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   // Citas de hoy específicas
   const todayAppointments = filteredAppointments.filter(app => app.date === todayStr);
 
-  // --- CÁLCULO DE MÉTRICAS OPERATIVAS DINDÁMICAS ---
+  // --- CÁLCULO DE MÉTRICAS OPERATIVAS DINÁMICAS ---
   const activePatientsCount = filteredPatients.filter(p => p.status === 'activo').length;
   const todayAppsCount = todayAppointments.length;
   const pendingRecordsCount = filteredPatients.filter(p => p.status === 'pendiente').length;
@@ -132,7 +133,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   // --- PENDIENTES PRIORITARIOS (derivados de datos reales) ---
   const pendingPatients = filteredPatients.filter(p => p.status === 'pendiente');
   // --- DETECCIÓN DE MAYORÍA DE EDAD (18 AÑOS CUMPLIDOS) ---
-  const agingPatients = checkAgingMinorPatients(patients);
+  const agingPatients = checkAgingMinorPatients(filteredPatients);
+
+  // --- PRÓXIMA ACCIÓN / CONSULTA DINÁMICA (ZONA 3) ---
+  const nextAppointment = todayAppointments.find(a => a.status === 'confirmada' || a.status === 'pendiente')
+    || todayAppointments[0]
+    || filteredAppointments[0];
+  const nextPatient = nextAppointment ? patients.find(p => p.id === nextAppointment.patientId) : null;
 
   // --- SEGREGACIÓN DE DATOS DEL PACIENTE ---
   if (userRole === 'patient') {
@@ -236,7 +243,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
               <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-100 pb-2">Mi Evolución de Cambio</span>
               <p className="text-[11px] text-slate-400 leading-normal font-semibold">Gráfica agregada que muestra tus niveles de bienestar percibido en las esferas relacionales.</p>
-
+              <p className="text-[10px] text-slate-500 leading-normal font-medium"></p>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={[
@@ -439,7 +446,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           </div>
 
           <select
-            className="px-2 py-1 border border-slate-250 bg-white rounded-lg focus:outline-none"
+            className="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
+            value={selectedModality}
+            onChange={(e) => { setSelectedModality(e.target.value); setLastUpdated('Hace unos instantes'); }}
+          >
+            <option value="all">Todas las Modalidades</option>
+            <option value="online">Online</option>
+            <option value="presencial">Presencial</option>
+          </select>
+
+          <select
+            className="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
             value={selectedSede}
             onChange={(e) => { setSelectedSede(e.target.value); setLastUpdated('Hace unos instantes'); }}
           >
@@ -449,7 +466,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           </select>
 
           <select
-            className="px-2 py-1 border border-slate-250 bg-white rounded-lg focus:outline-none"
+            className="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
             value={selectedPeriod}
             onChange={(e) => { setSelectedPeriod(e.target.value); setLastUpdated('Hace unos instantes'); }}
           >
@@ -459,12 +476,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           </select>
 
           <select
-            className="px-2 py-1 border border-slate-250 bg-white rounded-lg focus:outline-none"
+            className="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
             value={selectedTherapist}
             onChange={(e) => { setSelectedTherapist(e.target.value); setLastUpdated('Hace unos instantes'); }}
           >
             <option value="all">Todos los Terapeutas</option>
             <option value="therapist-1">Dr. Alejandro Silva</option>
+            <option value="therapist-2">Dra. Patricia Ortiz</option>
           </select>
 
           <select
@@ -628,47 +646,67 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
       </div>
 
       {/* ZONA 3: PRÓXIMA ACCIÓN (BLOQUE VISUAL MÁS IMPORTANTE - DESTACADO) */}
-      <div className="bg-slate-50 border border-slate-250 p-6 rounded-xl shadow-inner space-y-4" data-tour="dashboard-next-action">
+      <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl shadow-inner space-y-4" data-tour="dashboard-next-action">
         <div className="flex justify-between items-center border-b border-slate-200 pb-2">
           <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wider block">Acción Operativa Dominante</span>
-          <span className="text-[8px] bg-[#75AFBC]/25 text-clinical-dark border border-teal-200 px-2 py-0.5 rounded font-extrabold uppercase">Próxima Consulta</span>
+          <span className="text-[8px] bg-[#75AFBC]/25 text-clinical-dark border border-teal-200 px-2 py-0.5 rounded font-extrabold uppercase">
+            {nextAppointment ? 'Próxima Consulta' : 'Sin Consultas'}
+          </span>
         </div>
 
-        <div className="flex items-center justify-between gap-6 flex-wrap leading-normal font-semibold text-slate-650">
-          <div className="flex items-start gap-4">
-            <div className="bg-white p-3 rounded-lg border border-slate-200 text-center shrink-0">
-              <span className="text-xl font-extrabold text-clinical-dark block">09:00</span>
-              <span className="text-[9px] text-slate-400 font-extrabold block uppercase mt-0.5">AM</span>
-            </div>
-            <div>
-              <span className="text-sm font-extrabold text-clinical-dark block">Sofía Martínez</span>
-                            <span className="text-[10px] text-slate-500 block mt-0.5">Protocolo: Ataque de Pánico • Fase 2: Desbloqueo • Sesión #3</span>
-              <div className="flex items-center gap-2 mt-2 text-[9px] text-slate-400 font-bold uppercase flex-wrap">
-                <span className="text-emerald-700">Intake: Listo</span>
-                <span>•</span>
-                <span className="text-emerald-700">Consentimiento: Firmado</span>
-                <span>•</span>
-                <span className="text-clinical-teal">Grabación Senda: Autorizada</span>
+        {nextAppointment && nextPatient ? (
+          <div className="flex items-center justify-between gap-6 flex-wrap leading-normal font-semibold text-slate-650">
+            <div className="flex items-start gap-4">
+              <div className="bg-white p-3 rounded-lg border border-slate-200 text-center shrink-0">
+                <span className="text-xl font-extrabold text-clinical-dark block">{nextAppointment.time}</span>
+                <span className="text-[9px] text-slate-400 font-extrabold block uppercase mt-0.5">
+                  {parseInt(nextAppointment.time.split(':')[0], 10) >= 12 ? 'PM' : 'AM'}
+                </span>
+              </div>
+              <div>
+                <span className="text-sm font-extrabold text-clinical-dark block">{nextAppointment.patientName}</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  Protocolo: {getPatientProtocol(nextPatient.id)} • Modalidad: {getPatientModality(nextPatient.id).toUpperCase()} • Tipo: {nextAppointment.type.toUpperCase()}
+                </span>
+                <div className="flex items-center gap-2 mt-2 text-[9px] text-slate-400 font-bold uppercase flex-wrap">
+                  <span className={nextPatient.status !== 'pendiente' ? 'text-emerald-700' : 'text-amber-600'}>
+                    Intake: {nextPatient.status !== 'pendiente' ? 'Listo' : 'Pendiente'}
+                  </span>
+                  <span>•</span>
+                  <span className={nextPatient.consentimientoRepresentanteFirmado ? 'text-emerald-700' : 'text-amber-600'}>
+                    Consentimiento: {nextPatient.consentimientoRepresentanteFirmado ? 'Firmado' : 'Pendiente'}
+                  </span>
+                  <span>•</span>
+                  <span className="text-clinical-teal">
+                    Grabación Senda: {nextPatient.registryMode === 'ia' ? 'Autorizada' : 'Modo Manual'}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right hidden sm:block">
-              <span className="text-[9px] text-slate-400 font-bold uppercase block">Responsable</span>
-              <span className="text-xs font-bold text-clinical-dark block">Dr. Alejandro Silva</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="text-right hidden sm:block">
+                <span className="text-[9px] text-slate-400 font-bold uppercase block">Responsable</span>
+                <span className="text-xs font-bold text-clinical-dark block">{nextPatient.therapistName}</span>
+              </div>
+              {!isAssistant && (
+                <button
+                  onClick={() => navigate(`/expedientes?id=${nextPatient.id}`)}
+                  className="px-5 py-2.5 bg-[#75AFBC] hover:bg-[#6099a5] text-white rounded-lg font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
+                >
+                  Preparar Sesión
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            {!isAssistant && (
-              <button
-                onClick={() => navigate('/expedientes?id=patient-1')}
-                className="px-5 py-2.5 bg-[#75AFBC] hover:bg-[#6099a5] text-white rounded-lg font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
-              >
-                Preparar Sesión
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
           </div>
-        </div>
+        ) : (
+          <div className="py-4 text-center text-slate-400">
+            <Clock className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
+            <p className="text-xs font-semibold">No hay consultas programadas para los filtros seleccionados.</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Prueba cambiando la sede, terapeuta o modalidad para ver otras consultas.</p>
+          </div>
+        )}
       </div>
 
       {/* ZONA 4: AGENDA Y PENDIENTES */}
@@ -762,9 +800,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               value={chartPerspective}
               onChange={(e) => setChartPerspective(e.target.value)}
             >
+              <option value="citas">Citas completadas (Histórico)</option>
               <option value="fases">Distribución por Fase TBE</option>
               <option value="protocolos">Casos Activos por Protocolo</option>
-              <option value="citas">Citas completadas (Histórico)</option>
             </select>
           </div>
 
@@ -774,10 +812,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Fase 1: Definición del problema', value: 30 },
-                      { name: 'Fase 2: Desbloqueo', value: 40 },
-                      { name: 'Fase 3: Consolidación', value: 20 },
-                      { name: 'Fase 4: Cierre', value: 10 }
+                      { name: 'Fase 1: Admisión/Definición', value: filteredPatients.filter(p => p.status === 'pendiente').length || (filteredPatients.length === 0 ? 0 : 0) },
+                      { name: 'Fase 2: Desbloqueo', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel !== 'bajo').length },
+                      { name: 'Fase 3: Consolidación', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel === 'bajo').length },
+                      { name: 'Fase 4: Cierre/Alta', value: filteredPatients.filter(p => p.status === 'completado' || p.status === 'archivado').length }
                     ]}
                     cx="50%"
                     cy="50%"
@@ -800,9 +838,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             {chartPerspective === 'protocolos' && (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
-                  { name: 'Ataque Pánico', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length || 1 },
-                  { name: 'TOC Control', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'TOC Control').length || 1 },
-                  { name: 'Fobia Social', casos: 1 }
+                  { name: 'Ataque Pánico', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length },
+                  { name: 'TOC Control', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'TOC Control').length },
+                  { name: 'Fobia Escolar', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Escolar').length },
+                  { name: 'Fobia Social', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Social').length }
                 ]}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} />
@@ -812,6 +851,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                     <Cell fill="#304768" />
                     <Cell fill="#75AFBC" />
                     <Cell fill="#2C7A7B" />
+                    <Cell fill="#4A5568" />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -820,9 +860,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             {chartPerspective === 'citas' && (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={[
-                  { week: 'Sem 1', citas: 10 },
-                  { week: 'Sem 2', citas: 14 },
-                  { week: 'Sem 3', citas: todayAppsCount || 18 }
+                  { week: 'Sem 1', citas: Math.max(1, Math.round(filteredAppointments.length * 0.5)) },
+                  { week: 'Sem 2', citas: Math.max(1, Math.round(filteredAppointments.length * 0.8)) },
+                  { week: 'Sem 3 (Actual)', citas: filteredAppointments.length }
                 ]}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="week" tick={{ fontSize: 10, fontWeight: 'bold' }} />

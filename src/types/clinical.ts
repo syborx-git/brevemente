@@ -19,16 +19,16 @@ export interface User {
  * Prohibido el uso de los términos "interdicción", "incapacitado" o "incompetente".
  */
 
-export type CapacidadConsentimientoEstado = 
-  | 'AUTONOMO' 
-  | 'REPRESENTADO_POR_EDAD' 
-  | 'REPRESENTADO_POR_CONDICION' 
+export type CapacidadConsentimientoEstado =
+  | 'AUTONOMO'
+  | 'REPRESENTADO_POR_EDAD'
+  | 'REPRESENTADO_POR_CONDICION'
   | 'PENDIENTE_DETERMINACION';
 
-export type ParentescoRepresentante = 
-  | 'MADRE' 
-  | 'PADRE' 
-  | 'TUTOR_LEGAL' 
+export type ParentescoRepresentante =
+  | 'MADRE'
+  | 'PADRE'
+  | 'TUTOR_LEGAL'
   | 'PERSONA_DE_APOYO';
 
 export type QuienCompletaRegistro = 'PACIENTE' | 'FAMILIAR_O_APOYO';
@@ -111,7 +111,7 @@ export interface ClinicalRecord {
   status: string;
   riskLevel: 'bajo' | 'medio' | 'alto';
   modality: 'presencial' | 'online';
-  
+
   // DX Estratégico
   motif?: string;
   description?: string;
@@ -179,6 +179,19 @@ export interface AuditLog {
   action: string;
   details: string;
   category: 'expediente' | 'sesion' | 'ia' | 'reporte' | 'seguridad' | 'riesgo';
+}
+
+export interface SupervisionRequest {
+  id: string;
+  patientId: string;
+  patientName: string;
+  therapistId: string;
+  therapistName: string;
+  reason: string;
+  status: 'pendiente' | 'atendida';
+  createdAt: string;
+  attendedBy?: string;
+  attendedAt?: string;
 }
 
 export interface RiskAlert {
