@@ -4,8 +4,10 @@ import {
   ChevronDown, ChevronUp, ExternalLink, User, Clock,
   CheckCircle2, XCircle, AlertCircle, Ban
 } from "lucide-react";
-import { Appointment, Patient, Session } from "../types/clinical";
+import { Appointment, Patient, Session, RiskAlert } from "../types/clinical";
 import { sessionService } from "../services/sessionService";
+import { riskSimulationService } from "../services/riskSimulationService";
+import { therapistService } from "../services/therapistService";
 
 interface PatientDashboardProps {
   patient: Patient;
@@ -214,6 +216,38 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     sessionService.getByPatientId(patient.id).then(setSessions);
   }, [patient.id]);
 
+  // Alertas de riesgo activas para ESTE paciente (conexión alerta ↔ portal)
+  const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>(riskSimulationService.getAlerts());
+  useEffect(() => {
+    const refresh = () => setRiskAlerts(riskSimulationService.getAlerts());
+    window.addEventListener('brevemente_risk_alert_added', refresh);
+    return () => window.removeEventListener('brevemente_risk_alert_added', refresh);
+  }, []);
+  const activePatientAlerts = riskAlerts.filter(a => a.patientId === patient.id && !a.resolved);
+
+  // ¿Ya se envió un aviso de crisis activo (sin resolver)? Evita alertas repetidas.
+  const hasActiveCrisisAlert = activePatientAlerts.some(
+    (a) => a.message.includes('ALERTA ROJA')
+  );
+
+  // Botón de contacto según el directorio del terapeuta:
+  // si tiene asistente → se contacta al asistente; si no → directo al terapeuta.
+  const contactTarget: "asistente" | "terapeuta" =
+    therapistService.hasAssistant(patient.therapistId) ? "asistente" : "terapeuta";
+
+
+  // Botón de crisis: el paciente escala una alerta y notifica al equipo clínico
+  const handleEmergencyCrisis = () => {
+    if (hasActiveCrisisAlert) return; // ya hay un aviso de crisis sin resolver
+    riskSimulationService.escalateRisk(
+      patient.id,
+      patient.name,
+      'ALERTA ROJA: El paciente activó el Botón de Crisis de emergencia desde su portal.',
+      { id: patient.id, name: patient.name, role: 'patient' }
+    );
+    alert('⚠️ Se notificó a tu terapeuta y al equipo de guardia. Un profesional se comunicará contigo de forma prioritaria.');
+  };
+
   const patientAppointments = appointments
     .filter((a) => a.patientId === patient.id)
     .sort((a, b) => (a.date > b.date ? -1 : 1));
@@ -243,23 +277,74 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           </div>
         </div>
 
+        {/* Acciones: crisis + un solo canal de contacto según el terapeuta */}
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
           <button
-            onClick={() => setContactModal("asistente")}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            onClick={handleEmergencyCrisis}
+            disabled={hasActiveCrisisAlert}
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all ${
+              hasActiveCrisisAlert
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                : "bg-red-600 hover:bg-red-700 text-white"
+            }`}
           >
-            <MessageCircle className="w-4 h-4" />
-            Contactar asistente
+            <AlertCircle className="w-4 h-4" />
+            {hasActiveCrisisAlert ? "Aviso enviado al equipo" : "⚠️ Botón de Crisis"}
           </button>
-          <button
-            onClick={() => setContactModal("terapeuta")}
-            className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-sm transition-all"
-          >
-            <Phone className="w-4 h-4 text-slate-500" />
-            Contactar terapeuta
-          </button>
+          {contactTarget === "asistente" ? (
+            <button
+              onClick={() => setContactModal("asistente")}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Contactar asistente
+            </button>
+          ) : (
+            <button
+              onClick={() => setContactModal("terapeuta")}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-sm transition-all"
+            >
+              <Phone className="w-4 h-4 text-slate-500" />
+              Contactar terapeuta
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Alerta de riesgo activa (conexión alerta ↔ portal del paciente) */}
+      {activePatientAlerts.length > 0 && (
+        <section className="bg-red-50 border border-red-200 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <h3 className="font-bold text-red-800 text-sm">Aviso de seguridad clínica</h3>
+          </div>
+          <p className="text-xs text-red-700 leading-relaxed">
+            Tu equipo clínico fue notificado de una situación que requiere atención y ya está al tanto.
+            Si lo necesitas, puedes contactar a tu terapeuta o asistente de inmediato.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setContactModal("terapeuta")}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Phone className="w-4 h-4" />
+              Contactar terapeuta
+            </button>
+            <button
+              onClick={() => setContactModal("asistente")}
+              className="flex items-center gap-2 px-4 py-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Contactar asistente
+            </button>
+          </div>
+          <div className="bg-white/70 border border-red-200 rounded-xl p-3 text-[11px] text-red-900 space-y-1">
+            <span className="font-bold block">Recursos de apoyo inmediato (24/7):</span>
+            <div>📞 Línea de la Vida (Nacional): 800 911 2000</div>
+            <div>📞 Guardia BreveMente: +52 55 9000 8000</div>
+          </div>
+        </section>
+      )}
 
       {/* Proximas citas */}
       {upcomingAppointments.length > 0 && (
