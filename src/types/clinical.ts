@@ -82,10 +82,13 @@ export interface Patient {
   representante: RepresentanteLegal | null;
   telefonoPaciente: string | null; // opcional cuando hay representante
 
-  // Banderas operativas
+    // Banderas operativas
   consentimientoRepresentanteFirmado?: boolean;
   pendienteReconsentimiento?: boolean;
   notificacionesRepresentanteRevocadas?: boolean;
+
+  /** Frecuencia de sesiones del tratamiento: semanal | quincenal | mensual (se refleja en la agenda) */
+  sessionFrequency?: 'semanal' | 'quincenal' | 'mensual';
 }
 
 
@@ -96,7 +99,7 @@ export interface Appointment {
   time: string;
   date: string;
   type: 'primera' | 'seguimiento' | 'cierre';
-  status: 'confirmada' | 'pendiente' | 'completada' | 'cancelada' | 'ausente';
+  status: 'confirmada' | 'pendiente' | 'completada' | 'cancelada' | 'ausente' | 'no_presentado' | 'solicita_reagendar';
   /** Estado de pago de la sesión. Campo simulado en demo; editable por asistente en versión real. */
   paymentStatus?: 'pagada' | 'pendiente' | 'exenta';
 }
@@ -118,6 +121,16 @@ export interface Payment {
   notes?: string;
   registeredBy: string;
   createdAt: string;
+}
+
+export type HolidayType = 'oficial' | 'personal';
+
+export interface Holiday {
+  id: string;
+  date: string;      // ISO YYYY-MM-DD
+  name: string;      // "Día de la Independencia" | "Vacaciones personales"
+  type: HolidayType;
+  createdBy?: string; // solo para días personales
 }
 
 export interface ClinicalRecord {

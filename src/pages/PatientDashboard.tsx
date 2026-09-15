@@ -30,6 +30,8 @@ const ATTENDANCE_CONFIG: Record<
   pendiente: { label: "Por confirmar", color: "bg-amber-100 text-amber-800 border-amber-200", Icon: Clock },
   cancelada: { label: "Cancelada", color: "bg-slate-100 text-slate-600 border-slate-200", Icon: Ban },
   ausente: { label: "No asistio", color: "bg-red-100 text-red-800 border-red-200", Icon: XCircle },
+  no_presentado: { label: "No se presentó", color: "bg-red-100 text-red-800 border-red-300", Icon: XCircle },
+  solicita_reagendar: { label: "Solicita reagendar", color: "bg-amber-100 text-amber-800 border-amber-300", Icon: Clock },
 };
 
 const PAYMENT_CONFIG: Record<
@@ -282,11 +284,10 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           <button
             onClick={handleEmergencyCrisis}
             disabled={hasActiveCrisisAlert}
-            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all ${
-              hasActiveCrisisAlert
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all ${hasActiveCrisisAlert
                 ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                 : "bg-red-600 hover:bg-red-700 text-white"
-            }`}
+              }`}
           >
             <AlertCircle className="w-4 h-4" />
             {hasActiveCrisisAlert ? "Aviso enviado al equipo" : "⚠️ Botón de Crisis"}
