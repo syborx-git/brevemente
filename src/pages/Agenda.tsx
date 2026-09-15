@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Filter,
   MapPin, Video, AlertTriangle, MessageSquare, Clipboard, User,
   PlusCircle, RefreshCw, X, ShieldAlert, Sparkles, Check, CheckSquare, Lock
 } from 'lucide-react';
-import { Role, Appointment, Patient } from '../types/clinical';
+import { Role, Appointment, Patient, Holiday } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { appointmentService } from '../services/appointmentService';
+import { holidayService } from '../services/holidayService';
 import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP, calculateAge } from '../utils/legalConsent';
+import { addDays, addMonths, addYears, startOfWeek, startOfMonth, daysInMonth, dayName, monthName, monthOf, parseISO } from '../utils/dateUtils';
 
 interface AgendaProps {
   userRole: Role;
@@ -22,15 +24,15 @@ interface AgendaProps {
 
 const HOURS = Array.from({ length: 13 }, (_, i) => `${(i + 8).toString().padStart(2, '0')}:00`);
 
-const DAYS = [
-  { name: 'Lunes', date: '2026-08-24' },
-  { name: 'Martes', date: '2026-08-25' },
-  { name: 'Miércoles', date: '2026-08-26' },
-  { name: 'Jueves', date: '2026-08-27' },
-  { name: 'Viernes', date: '2026-08-28' },
-  { name: 'Sábado', date: '2026-08-29' },
-  { name: 'Domingo', date: '2026-08-30' }
-];
+const APPOINTMENT_STATUS_CONFIG: Record<Appointment['status'], { label: string; color: string }> = {
+  confirmada: { label: 'Confirmada', color: 'bg-emerald-100 text-emerald-800' },
+  pendiente: { label: 'Pendiente', color: 'bg-amber-100 text-amber-800' },
+  completada: { label: 'Completada', color: 'bg-teal-100 text-teal-800' },
+  cancelada: { label: 'Cancelada', color: 'bg-slate-100 text-slate-600' },
+  ausente: { label: 'No asistió', color: 'bg-red-100 text-red-800' },
+  no_presentado: { label: 'No se presentó: Contactar', color: 'bg-red-100 text-red-800 border border-red-300' },
+  solicita_reagendar: { label: 'Solicita reagendar: pendiente', color: 'bg-amber-100 text-amber-800 border border-amber-300' },
+};
 
 export const Agenda: React.FC<AgendaProps> = ({
   userRole,
@@ -44,8 +46,8 @@ export const Agenda: React.FC<AgendaProps> = ({
   const navigate = useNavigate();
 
   // Estados
-  const [calendarView, setCalendarView] = useState<'mes' | 'semana' | 'dia'>('semana');
-  const [currentDateIndex, setCurrentDateIndex] = useState(0); // 0 representa la semana del 24 de agosto
+  const [viewLevel, setViewLevel] = useState<'dia' | 'semana' | 'mes' | 'anio'>('dia');
+  const [anchorDate, setAnchorDate] = useState('2026-08-24'); // fecha foco del calendario
   const [selectedApp, setSelectedApp] = useState<Appointment | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -80,8 +82,103 @@ export const Agenda: React.FC<AgendaProps> = ({
   const [reprogrammingTime, setReprogrammingTime] = useState('10:00');
   const [reprogrammingDate, setReprogrammingDate] = useState('2026-08-24');
 
+  // ── Navegación jerárquica del calendario ────────────────────────────────────
+  const weekStart = startOfWeek(anchorDate);
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(weekStart, i);
+    return { name: dayName(d), date: d };
+  });
+  const year = parseInt(anchorDate.slice(0, 4), 10);
+  const month = monthOf(anchorDate);
+  const monthLabel = monthName(year, month);
+  const monthStart = startOfMonth(anchorDate);
+  const monthDayCount = daysInMonth(year, month);
+  const leadingBlanks = (parseISO(monthStart).getDay() + 6) % 7; // alinear día 1 con su día de la semana (lunes primero)
+
+  const periodLabel =
+    viewLevel === 'anio' ? `Año ${year}` :
+      viewLevel === 'mes' ? `${monthLabel} ${year}` :
+        viewLevel === 'dia' ? `${dayName(anchorDate)}, ${anchorDate}` :
+          `Semana del ${weekDays[0].date.slice(8, 10)} al ${weekDays[6].date.slice(8, 10)} de ${monthLabel}, ${year}`;
+
+  const goPrev = () => {
+    if (viewLevel === 'dia') setAnchorDate(addDays(anchorDate, -1));
+    else if (viewLevel === 'semana') setAnchorDate(addDays(anchorDate, -7));
+    else if (viewLevel === 'mes') setAnchorDate(addMonths(anchorDate, -1));
+    else if (viewLevel === 'anio') setAnchorDate(addYears(anchorDate, -1));
+  };
+
+  const goNext = () => {
+    if (viewLevel === 'dia') setAnchorDate(addDays(anchorDate, 1));
+    else if (viewLevel === 'semana') setAnchorDate(addDays(anchorDate, 7));
+    else if (viewLevel === 'mes') setAnchorDate(addMonths(anchorDate, 1));
+    else if (viewLevel === 'anio') setAnchorDate(addYears(anchorDate, 1));
+  };
+
+  const zoomOut = () => {
+    if (viewLevel === 'dia') setViewLevel('semana');
+    else if (viewLevel === 'semana') setViewLevel('mes');
+    else if (viewLevel === 'mes') setViewLevel('anio');
+  };
+
+  const zoomIn = (date: string, level: 'dia' | 'semana' | 'mes' | 'anio') => {
+    setAnchorDate(date);
+    setViewLevel(level);
+  };
+
+  const goToday = () => {
+    setAnchorDate('2026-08-24');
+    setViewLevel('dia');
+  };
+
   // Paciente de hoy (Carlos Mendoza es el patient-2)
   const patient2 = patients.find(p => p.id === 'patient-2');
+
+  // ── Calendario festivo y días personales ────────────────────────────────────
+  const [holidays, setHolidays] = useState<Holiday[]>(holidayService.getHolidays());
+  const [blockHolidays, setBlockHolidays] = useState<boolean>(holidayService.getBlockHolidays());
+
+  useEffect(() => {
+    const refreshHolidays = () => setHolidays(holidayService.getHolidays());
+    const refreshSettings = () => setBlockHolidays(holidayService.getBlockHolidays());
+    window.addEventListener('brevemente_holidays_changed', refreshHolidays);
+    window.addEventListener('brevemente_holiday_settings_changed', refreshSettings);
+    return () => {
+      window.removeEventListener('brevemente_holidays_changed', refreshHolidays);
+      window.removeEventListener('brevemente_holiday_settings_changed', refreshSettings);
+    };
+  }, []);
+
+  const getHolidayForDate = (date: string): Holiday | undefined =>
+    holidays.find(h => h.date === date);
+
+  const isBlockedDate = (date: string): boolean => {
+    const h = getHolidayForDate(date);
+    if (!h) return false;
+    if (h.type === 'personal') return true; // siempre bloquea
+    return blockHolidays;                    // oficial: solo si el toggle está ON
+  };
+
+  const anchorHoliday = getHolidayForDate(anchorDate);
+  // Modal de día personal
+  const [showPersonalDayModal, setShowPersonalDayModal] = useState(false);
+  const [personalDayDate, setPersonalDayDate] = useState('2026-08-24');
+  const [personalDayName, setPersonalDayName] = useState('');
+
+  const handleAddPersonalDay = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!personalDayDate) {
+      alert('Selecciona una fecha.');
+      return;
+    }
+    holidayService.addPersonalHoliday(
+      personalDayDate,
+      personalDayName,
+      { id: 'user-current', name: userName, role: userRole }
+    );
+    setShowPersonalDayModal(false);
+    setPersonalDayName('');
+  };
 
   // Filtrar citas según Permisos y Roles (Requerimiento Crítico 1.8 y 1.4)
   const allowedAppointments = initialAppointments.filter(app => {
@@ -126,6 +223,12 @@ export const Agenda: React.FC<AgendaProps> = ({
 
   const handleSaveAppointment = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isBlockedDate(date)) {
+      const h = getHolidayForDate(date);
+      alert(`No se puede agendar el ${date}: ${h?.name} (día no laborable).`);
+      return;
+    }
 
     let patientId = selectedPatientId;
     let patientName = name;
@@ -202,11 +305,22 @@ export const Agenda: React.FC<AgendaProps> = ({
     setIsNewPatient(false);
   };
 
-  const handleReprogram = () => {
+    const handleReprogram = async () => {
     if (!selectedApp) return;
 
+    const updatedApp: Appointment = {
+      ...selectedApp,
+      time: reprogrammingTime,
+      date: reprogrammingDate,
+      status: 'pendiente' // al reagendar, la cita queda pendiente de confirmación
+    };
+
+    await appointmentService.update(updatedApp);
+
+    // Reflejo local inmediato (mismo patrón que handleConfirmAppointment)
     selectedApp.time = reprogrammingTime;
     selectedApp.date = reprogrammingDate;
+    selectedApp.status = 'pendiente';
 
     // Registrar en auditoría
     auditLogService.addLog(
@@ -243,6 +357,23 @@ export const Agenda: React.FC<AgendaProps> = ({
     alert(`✓ Cita de ${app.patientName} confirmada con éxito.`);
   };
 
+  const handlePushPatient = (app: Appointment) => {
+    const pat = patients.find(p => p.id === app.patientId);
+    const phoneDigits = (pat?.phone || '').replace(/\D/g, '');
+    if (!phoneDigits) {
+      alert('El paciente no tiene teléfono registrado.');
+      return;
+    }
+    const message = `Hola ${app.patientName}, te contactamos de BreveMente. Notamos que no pudiste asistir a tu cita del ${app.date}. ¿Deseas reagendarla?`;
+    window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`, '_blank');
+    auditLogService.addLog(
+      'Contacto a paciente',
+      `Envió push por WhatsApp a ${app.patientName} por inasistencia (${app.date}).`,
+      'sesion',
+      { id: 'user-current', name: userName, role: userRole }
+    );
+  };
+
   // Buscar pacientes existentes
   const filteredPatientsSearch = patients.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -260,28 +391,6 @@ export const Agenda: React.FC<AgendaProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Selector de vistas */}
-          <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold" data-tour="calendar-view">
-            <button
-              onClick={() => setCalendarView('mes')}
-              className={`px-3 py-1.5 rounded-md transition-all ${calendarView === 'mes' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Mes
-            </button>
-            <button
-              onClick={() => setCalendarView('semana')}
-              className={`px-3 py-1.5 rounded-md transition-all ${calendarView === 'semana' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => setCalendarView('dia')}
-              className={`px-3 py-1.5 rounded-md transition-all ${calendarView === 'dia' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Día
-            </button>
-          </div>
-
           {['admin_platform', 'admin_clinical', 'therapist', 'assistant'].includes(userRole) && (
             <button
               onClick={() => setShowAddModal(true)}
@@ -380,6 +489,70 @@ export const Agenda: React.FC<AgendaProps> = ({
               <option value="intake_pendiente">Admisión/Intake Pendiente</option>
             </select>
           </div>
+
+          <div className="flex items-center gap-3 ml-auto flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={blockHolidays}
+                onChange={(e) => holidayService.setBlockHolidays(e.target.checked)}
+                className="w-4 h-4 accent-clinical-accent"
+              />
+              <span className="font-semibold text-slate-600">Bloquear festivos para agendar</span>
+            </label>
+            <button
+              onClick={() => setShowPersonalDayModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-lg font-bold transition-colors"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              Día personal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Día Personal */}
+      {showPersonalDayModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-slate-800 mb-4">Agregar Día Personal</h3>
+            <form onSubmit={handleAddPersonalDay}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Fecha</label>
+                <input
+                  type="date"
+                  value={personalDayDate}
+                  onChange={(e) => setPersonalDayDate(e.target.value)}
+                  className="border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-clinical-accent"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                <input
+                  type="text"
+                  value={personalDayName}
+                  onChange={(e) => setPersonalDayName(e.target.value)}
+                  className="border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-clinical-accent"
+                  placeholder="Nombre del día personal"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPersonalDayModal(false)}
+                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 rounded-md text-slate-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accent-hover text-white rounded-md transition-colors"
+                >
+                  Agregar
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -391,23 +564,31 @@ export const Agenda: React.FC<AgendaProps> = ({
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setCurrentDateIndex(prev => prev - 1)}
+                onClick={zoomOut}
+                disabled={viewLevel === 'anio'}
+                title={viewLevel === 'anio' ? 'Nivel máximo' : 'Alejar (subir de nivel)'}
+                className={`p-1 rounded text-slate-600 transition-colors ${viewLevel === 'anio' ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-200'}`}
+              >
+                <ChevronLeft className="w-4 h-4 rotate-90" />
+              </button>
+              <button
+                onClick={goPrev}
                 className="p-1 hover:bg-slate-200 rounded text-slate-600 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="text-xs font-bold text-clinical-dark uppercase">
-                {calendarView === 'mes' ? 'Agosto 2026' : 'Semana del 24 al 30 de Agosto, 2026'}
+                {periodLabel}
               </span>
               <button
-                onClick={() => setCurrentDateIndex(prev => prev + 1)}
+                onClick={goNext}
                 className="p-1 hover:bg-slate-200 rounded text-slate-600 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
             <button
-              onClick={() => setCurrentDateIndex(0)}
+              onClick={goToday}
               className="px-2.5 py-1 border border-slate-200 hover:bg-slate-100 rounded text-[10px] font-bold text-slate-600 transition-colors"
             >
               Hoy
@@ -415,18 +596,28 @@ export const Agenda: React.FC<AgendaProps> = ({
           </div>
 
           {/* VISTA SEMANAL */}
-          {calendarView === 'semana' && (
+          {viewLevel === 'semana' && (
             <div className="overflow-x-auto min-w-full">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold text-[10px] uppercase">
                     <th className="p-3 w-16 text-center border-r border-slate-100">Horario</th>
-                    {DAYS.map((day) => (
-                      <th key={day.date} className="p-3 text-center border-r border-slate-100 last:border-r-0">
-                        {day.name}
-                        <span className="block text-[9px] text-slate-400 mt-0.5">{day.date.split('-')[2]} Ago</span>
-                      </th>
-                    ))}
+                    {weekDays.map((day) => {
+                      const dayHoliday = getHolidayForDate(day.date);
+                      return (
+                        <th key={day.date} className="p-3 text-center border-r border-slate-100 last:border-r-0">
+                          {day.name}
+                          <span className="block text-[9px] text-slate-400 mt-0.5">
+                            {day.date.slice(8, 10)} {monthName(parseInt(day.date.slice(0, 4), 10), parseInt(day.date.slice(5, 7), 10)).slice(0, 3)}
+                          </span>
+                          {dayHoliday && (
+                            <span className={`block text-[8px] font-bold mt-0.5 truncate ${dayHoliday.type === 'personal' ? 'text-violet-500' : 'text-red-600'}`}>
+                              ● {dayHoliday.name}
+                            </span>
+                          )}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-150 text-[10px] relative">
@@ -438,7 +629,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                           {hour}
                         </td>
 
-                        {DAYS.map((day) => {
+                        {weekDays.map((day) => {
                           // Buscar citas en este día y esta hora
                           const slotApps = filteredAppointments.filter(app =>
                             app.date === day.date && app.time.split(':')[0] === hour.split(':')[0]
@@ -451,7 +642,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                               style={{ width: '13%' }}
                             >
                               {/* Línea horaria simulada de hora actual a las 12:00 Lunes */}
-                              {isTime12 && day.date === '2026-08-24' && (
+                              {isTime12 && day.date === weekDays[0].date && (
                                 <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-red-400 z-10 pointer-events-none flex items-center">
                                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full absolute -left-1" />
                                 </div>
@@ -464,13 +655,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 // Conflict validation (colisión)
                                 const isConflict = slotApps.length > 1;
 
-                                // Colores y bordes accesibles de acuerdo al tipo y riesgo
+                                // Colores por frecuencia de sesiones del paciente
                                 let borderClass = 'border-l-4 border-l-[#75AFBC] border border-slate-200';
-                                if (pat?.riskLevel === 'alto') {
-                                  borderClass = 'border-l-4 border-l-red-500 border border-red-200 bg-red-50/50';
-                                } else if (pat?.status === 'pendiente') {
+                                if (pat?.sessionFrequency === 'semanal') {
+                                  borderClass = 'border-l-4 border-l-green-500 border border-green-200 bg-green-50/50';
+                                } else if (pat?.sessionFrequency === 'quincenal') {
                                   borderClass = 'border-l-4 border-l-amber-500 border border-amber-200 bg-amber-50/50';
-                                } else if (app.type === 'primera') {
+                                } else if (pat?.sessionFrequency === 'mensual') {
                                   borderClass = 'border-l-4 border-l-blue-600 border border-blue-200 bg-blue-50/40';
                                 }
 
@@ -509,29 +700,58 @@ export const Agenda: React.FC<AgendaProps> = ({
           )}
 
           {/* VISTA MENSUAL */}
-          {calendarView === 'mes' && (
+          {viewLevel === 'mes' && (
             <div className="p-4 grid grid-cols-7 gap-1 text-center bg-slate-50 font-bold">
               {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
                 <div key={d} className="py-2 text-[10px] text-slate-400">{d}</div>
               ))}
-              {Array.from({ length: 31 }, (_, i) => {
+
+              {/* Espacios vacíos para alinear el día 1 con su día de la semana */}
+              {Array.from({ length: leadingBlanks }, (_, i) => (
+                <div key={`blank-${i}`} className="min-h-20 rounded p-1.5 bg-slate-50/50" />
+              ))}
+
+              {Array.from({ length: monthDayCount }, (_, i) => {
                 const dayNum = i + 1;
-                const dayDate = `2026-08-${dayNum.toString().padStart(2, '0')}`;
+                const dayDate = `${anchorDate.slice(0, 7)}-${dayNum.toString().padStart(2, '0')}`;
                 const dayApps = filteredAppointments.filter(a => a.date === dayDate);
+                const holiday = getHolidayForDate(dayDate);
 
                 return (
-                  <div key={i} className="bg-white border border-slate-150 min-h-20 rounded p-1.5 text-left flex flex-col justify-between">
-                    <span className="font-bold text-slate-400">{dayNum}</span>
+                  <div
+                    key={dayDate}
+                    onClick={() => zoomIn(dayDate, 'dia')}
+                    className={`min-h-20 rounded p-1.5 text-left flex flex-col justify-between cursor-pointer transition-colors border ${holiday
+                      ? holiday.type === 'personal'
+                        ? 'bg-violet-50 border-violet-200 hover:border-violet-300'
+                        : 'bg-slate-100 border-red-300 hover:border-red-400 border-l-4 border-l-red-500'
+                      : 'bg-white border-slate-150 hover:border-[#75AFBC]'
+                      }`}
+                  >
+                    <span className={`font-bold ${holiday ? (holiday.type === 'personal' ? 'text-violet-500' : 'text-red-600') : 'text-slate-400'}`}>{dayNum}</span>
+                    {holiday && (
+                      <span className={`text-[7px] font-bold truncate ${holiday.type === 'personal' ? 'text-violet-600' : 'text-red-600'}`}>
+                        {holiday.name}
+                      </span>
+                    )}
                     <div className="space-y-0.5 overflow-hidden">
-                      {dayApps.slice(0, 2).map(app => (
-                        <div
-                          key={app.id}
-                          onClick={() => handleSelectAppointment(app)}
-                          className="bg-blue-50 border-l-2 border-clinical-accent px-1 py-0.5 rounded text-[8px] truncate font-semibold text-clinical-dark cursor-pointer"
-                        >
-                          {app.time} - {app.patientName}
-                        </div>
-                      ))}
+                      {dayApps.slice(0, 2).map(app => {
+                        const mPat = patients.find(p => p.id === app.patientId);
+                        const freqClass =
+                          mPat?.sessionFrequency === 'semanal' ? 'bg-green-50 border-l-green-500' :
+                            mPat?.sessionFrequency === 'quincenal' ? 'bg-amber-50 border-l-amber-500' :
+                              mPat?.sessionFrequency === 'mensual' ? 'bg-blue-50 border-l-blue-600' :
+                                'bg-slate-50 border-l-[#75AFBC]';
+                        return (
+                          <div
+                            key={app.id}
+                            onClick={(e) => { e.stopPropagation(); handleSelectAppointment(app); }}
+                            className={`border-l-2 px-1 py-0.5 rounded text-[8px] truncate font-semibold text-clinical-dark cursor-pointer ${freqClass}`}
+                          >
+                            {app.time} - {app.patientName}
+                          </div>
+                        );
+                      })}
                       {dayApps.length > 2 && (
                         <span className="text-[7px] text-slate-400 font-bold block">+{dayApps.length - 2} más</span>
                       )}
@@ -543,31 +763,94 @@ export const Agenda: React.FC<AgendaProps> = ({
           )}
 
           {/* VISTA DIARIA */}
-          {calendarView === 'dia' && (
+          {viewLevel === 'dia' && (
             <div className="divide-y divide-slate-100 p-4 space-y-2">
+              <div className="text-xs font-bold text-clinical-dark uppercase border-b border-slate-100 pb-2">
+                {dayName(anchorDate)}, {anchorDate}
+              </div>
+              {anchorHoliday && (
+                <div className={`text-[10px] font-bold px-3 py-2 rounded-lg border ${anchorHoliday.type === 'personal'
+                  ? 'bg-violet-50 text-violet-700 border-violet-200'
+                  : 'bg-slate-100 text-red-700 border-red-300'
+                  }`}>
+                  {anchorHoliday.type === 'personal' ? '🟣' : '🔴'} {anchorHoliday.name} — día no laborable
+                </div>
+              )}
               {HOURS.map((hour) => {
-                const hourApps = filteredAppointments.filter(a => a.date === '2026-08-24' && a.time.split(':')[0] === hour.split(':')[0]);
+                const hourApps = filteredAppointments.filter(a => a.date === anchorDate && a.time.split(':')[0] === hour.split(':')[0]);
                 return (
                   <div key={hour} className="py-3 flex items-start gap-4 hover:bg-slate-50/50">
                     <span className="w-16 font-bold text-slate-400 text-xs shrink-0">{hour}</span>
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {hourApps.map(app => {
                         const pat = patients.find(p => p.id === app.patientId);
+                        const freqBorder =
+                          pat?.sessionFrequency === 'semanal' ? 'border-l-4 border-l-green-500' :
+                            pat?.sessionFrequency === 'quincenal' ? 'border-l-4 border-l-amber-500' :
+                              pat?.sessionFrequency === 'mensual' ? 'border-l-4 border-l-blue-600' :
+                                'border-l-4 border-l-[#75AFBC]';
+                        const statusConf = APPOINTMENT_STATUS_CONFIG[app.status] || { label: app.status, color: 'bg-slate-100 text-slate-500' };
                         return (
                           <div
                             key={app.id}
                             onClick={() => handleSelectAppointment(app)}
-                            className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer shadow-sm hover:border-[#75AFBC] transition-all flex justify-between items-center"
+                            className={`bg-white border border-slate-200 rounded-lg p-3 cursor-pointer shadow-sm hover:border-[#75AFBC] transition-all ${freqBorder}`}
                           >
-                            <div>
-                              <span className="font-bold text-clinical-dark block">{app.patientName}</span>
-                              <span className="text-[10px] text-slate-400">{app.type.toUpperCase()} • {pat?.registryMode === 'ia' ? 'IA ACTIVA' : 'MANUAL'}</span>
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <span className="font-bold text-clinical-dark block">{app.patientName}</span>
+                                <span className="text-[10px] text-slate-400">{app.type.toUpperCase()} • {pat?.registryMode === 'ia' ? 'IA ACTIVA' : 'MANUAL'}</span>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase shrink-0 ${statusConf.color}`}>
+                                {statusConf.label}
+                              </span>
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-500 uppercase">{app.status}</span>
+
+                            {['therapist', 'assistant', 'admin_clinical', 'admin_platform', 'supervisor'].includes(userRole) && (
+                              <div className="flex gap-2 mt-2">
+                                {app.status === 'no_presentado' && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handlePushPatient(app); }}
+                                    className="flex items-center gap-1 px-2 py-1 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded text-[10px] font-bold transition-colors"
+                                  >
+                                    <MessageSquare className="w-3 h-3" /> Contactar
+                                  </button>
+                                )}
+                                {app.status === 'solicita_reagendar' && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleSelectAppointment(app); }}
+                                    className="flex items-center gap-1 px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-[10px] font-bold transition-colors"
+                                  >
+                                    <RefreshCw className="w-3 h-3" /> Reagendar
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VISTA ANUAL */}
+          {viewLevel === 'anio' && (
+            <div className="p-4 grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {Array.from({ length: 12 }, (_, i) => {
+                const m = i + 1;
+                const monthKey = `${year}-${String(m).padStart(2, '0')}`;
+                const monthCount = filteredAppointments.filter(a => a.date.startsWith(monthKey)).length;
+                return (
+                  <div
+                    key={m}
+                    onClick={() => zoomIn(`${monthKey}-01`, 'mes')}
+                    className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:border-[#75AFBC] transition-colors shadow-sm"
+                  >
+                    <span className="text-xs font-bold text-clinical-dark block capitalize">{monthName(year, m)}</span>
+                    <span className="text-[10px] text-slate-400">{monthCount} cita{monthCount !== 1 ? 's' : ''}</span>
                   </div>
                 );
               })}
@@ -579,25 +862,21 @@ export const Agenda: React.FC<AgendaProps> = ({
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 h-fit text-xs text-slate-600 leading-relaxed">
           <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2">
             <CalendarIcon className="w-4 h-4 text-[#75AFBC]" />
-            <span className="font-bold text-clinical-dark uppercase">Estados de Cita</span>
+            <span className="font-bold text-clinical-dark uppercase">Frecuencia de Sesiones</span>
           </div>
 
           <div className="space-y-3 font-semibold">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-100 border border-red-300 rounded border-l-4 border-l-red-500 shrink-0" />
-              <span>Riesgo clínico elevado</span>
+              <div className="w-3 h-3 bg-green-50 border border-green-300 rounded border-l-4 border-l-green-500 shrink-0" />
+              <span>Semanal</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-amber-100 border border-amber-300 rounded border-l-4 border-l-amber-500 shrink-0" />
-              <span>Intake/Consentimiento pendiente</span>
+              <div className="w-3 h-3 bg-amber-50 border border-amber-300 rounded border-l-4 border-l-amber-500 shrink-0" />
+              <span>Quincenal</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-blue-50 border border-blue-200 rounded border-l-4 border-l-blue-600 shrink-0" />
-              <span>Primera consulta de valoración</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-white border border-slate-200 rounded border-l-4 border-l-[#75AFBC] shrink-0" />
-              <span>Seguimiento estándar (TBE)</span>
+              <span>Mensual</span>
             </div>
           </div>
         </div>
@@ -657,9 +936,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                   <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
                       <span className="font-bold text-clinical-dark">Estado de Confirmación</span>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                        selectedApp.status === 'confirmada' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${selectedApp.status === 'confirmada' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
                         {selectedApp.status === 'confirmada' ? '✓ Confirmada' : 'Pendiente'}
                       </span>
                     </div>
@@ -680,11 +958,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                         disabled={isAppBlocked}
                         title={isAppBlocked ? LEGAL_CONSENT_TOOLTIP : 'Confirmar esta cita en la agenda'}
                         onClick={() => handleConfirmAppointment(selectedApp)}
-                        className={`w-full py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm text-xs ${
-                          isAppBlocked
-                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        }`}
+                        className={`w-full py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm text-xs ${isAppBlocked
+                          ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
                       >
                         {isAppBlocked ? <Lock className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
                         Confirmar Cita en Agenda
@@ -867,6 +1144,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                   />
+                  {(() => {
+                    const h = getHolidayForDate(date);
+                    if (!h) return null;
+                    return (
+                      <span className={`block text-[9px] font-bold mt-1 ${isBlockedDate(date) ? 'text-red-600' : 'text-slate-400'}`}>
+                        {isBlockedDate(date) ? `⚠️ ${h.name} — no se puede agendar` : `ℹ️ ${h.name} (no laborable, bloqueo desactivado)`}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div>
                   <label className="block text-slate-500 font-semibold mb-0.5">Horario:</label>
@@ -904,9 +1190,68 @@ export const Agenda: React.FC<AgendaProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-clinical-dark text-white rounded-lg font-bold shadow hover:bg-clinical-darkLight"
+                  disabled={isBlockedDate(date)}
+                  className={`px-4 py-2 rounded-lg font-bold shadow ${isBlockedDate(date) ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-clinical-dark text-white hover:bg-clinical-darkLight'}`}
                 >
                   Registrar Consulta
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Día Personal */}
+      {showPersonalDayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-violet-600 text-white rounded-t-xl">
+              <h3 className="text-xs font-bold uppercase flex items-center gap-1.5">
+                <CalendarIcon className="w-4 h-4" />
+                Día Personal (no laborable)
+              </h3>
+              <button onClick={() => setShowPersonalDayModal(false)} className="text-violet-200 hover:text-white font-bold">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddPersonalDay} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-500 font-semibold mb-0.5">Fecha:</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded focus:outline-none"
+                  value={personalDayDate}
+                  onChange={(e) => setPersonalDayDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-semibold mb-0.5">Motivo:</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Vacaciones, asunto personal, congreso..."
+                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded focus:outline-none"
+                  value={personalDayName}
+                  onChange={(e) => setPersonalDayName(e.target.value)}
+                />
+              </div>
+              <p className="text-[10px] text-slate-400">
+                ⚠️ Este día quedará <b>bloqueado para agendar citas</b> y se marcará en morado en el calendario.
+              </p>
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-slate-200 rounded-lg font-bold text-slate-500 hover:bg-slate-100"
+                  onClick={() => setShowPersonalDayModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-bold shadow"
+                >
+                  Guardar día personal
                 </button>
               </div>
             </form>

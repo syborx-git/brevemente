@@ -81,8 +81,9 @@ function App() {
       }
     }
 
-    // Si no existen o si provienen de la versión anterior sin capacidadConsentimiento o sin múltiples terapeutas, actualizar con mockPatients
-    if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento) || !parsedPatients.some(p => p.therapistId === 'therapist-2')) {
+    // Si no existen o si provienen de la versión anterior sin capacidadConsentimiento, sin múltiples terapeutas
+    // o sin sessionFrequency, actualizar con mockPatients
+    if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento) || !parsedPatients.some(p => p.therapistId === 'therapist-2') || !parsedPatients.some(p => p.sessionFrequency)) {
       localStorage.setItem('brevemente_patients', JSON.stringify(mockPatients));
     }
 
@@ -91,7 +92,7 @@ function App() {
     if (localAppointments) {
       try { parsedAppointments = JSON.parse(localAppointments); } catch { parsedAppointments = []; }
     }
-    if (!localAppointments || parsedAppointments.length === 0 || !parsedAppointments.some(a => a.paymentStatus)) {
+    if (!localAppointments || parsedAppointments.length === 0 || !parsedAppointments.some(a => a.paymentStatus) || !parsedAppointments.some(a => a.status === 'no_presentado') || !parsedAppointments.some(a => a.status === 'solicita_reagendar')) {
       localStorage.setItem('brevemente_appointments', JSON.stringify(mockAppointments));
     }
     loadLocalData();

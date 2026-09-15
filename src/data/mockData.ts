@@ -17,6 +17,7 @@ export const mockPatients: Patient[] = [
     motif: 'Ataques de pánico intensos y repentinos con sudoración, taquicardia y miedo a morir.',
     therapistId: 'therapist-1',
     therapistName: 'Dr. Alejandro Silva',
+    sessionFrequency: 'semanal',
     quienCompletaRegistro: 'PACIENTE',
     capacidadConsentimiento: {
       estado: 'AUTONOMO',
@@ -45,6 +46,7 @@ export const mockPatients: Patient[] = [
     motif: 'Ansiedad severa y sudoración al tener que hablar ante audiencias o juntas laborales.',
     therapistId: 'therapist-1',
     therapistName: 'Dr. Alejandro Silva',
+    sessionFrequency: 'quincenal',
     quienCompletaRegistro: 'FAMILIAR_O_APOYO',
     capacidadConsentimiento: {
       estado: 'PENDIENTE_DETERMINACION',
@@ -81,6 +83,7 @@ export const mockPatients: Patient[] = [
     motif: 'Pensamientos obsesivos sobre contaminación y rituales de lavado de manos repetitivos.',
     therapistId: 'therapist-2',
     therapistName: 'Dra. Patricia Ortiz',
+    sessionFrequency: 'mensual',
     quienCompletaRegistro: 'FAMILIAR_O_APOYO',
     capacidadConsentimiento: {
       estado: 'REPRESENTADO_POR_CONDICION',
@@ -117,6 +120,7 @@ export const mockPatients: Patient[] = [
     motif: 'Problemas de pareja y comunicación destructiva.',
     therapistId: 'therapist-2',
     therapistName: 'Dra. Patricia Ortiz',
+    sessionFrequency: 'mensual',
     quienCompletaRegistro: 'PACIENTE',
     capacidadConsentimiento: {
       estado: 'AUTONOMO',
@@ -145,6 +149,7 @@ export const mockPatients: Patient[] = [
     motif: 'Fobia escolar y bloqueos de rendimiento ante exámenes.',
     therapistId: 'therapist-1',
     therapistName: 'Dr. Alejandro Silva',
+    sessionFrequency: 'quincenal',
     quienCompletaRegistro: 'FAMILIAR_O_APOYO',
     capacidadConsentimiento: {
       estado: 'REPRESENTADO_POR_EDAD',
@@ -181,6 +186,7 @@ export const mockPatients: Patient[] = [
     motif: 'Transición vocacional y sintomatología ansiosa situacional.',
     therapistId: 'therapist-1',
     therapistName: 'Dr. Alejandro Silva',
+    sessionFrequency: 'semanal',
     quienCompletaRegistro: 'FAMILIAR_O_APOYO',
     capacidadConsentimiento: {
       estado: 'REPRESENTADO_POR_EDAD',
@@ -360,7 +366,7 @@ export const mockAppointments: Appointment[] = [
     status: 'completada',
     paymentStatus: 'pagada'
   },
-  {
+    {
     id: 'app-6c',
     patientId: 'patient-6',
     patientName: 'Leonardo Salinas Vargas',
@@ -368,6 +374,26 @@ export const mockAppointments: Appointment[] = [
     date: '2026-08-15',
     type: 'seguimiento',
     status: 'confirmada',
+    paymentStatus: 'pendiente'
+  },
+  {
+    id: 'app-7',
+    patientId: 'patient-6',
+    patientName: 'Leonardo Salinas Vargas',
+    time: '10:00',
+    date: '2026-08-24',
+    type: 'seguimiento',
+    status: 'no_presentado',
+    paymentStatus: 'pendiente'
+  },
+  {
+    id: 'app-8',
+    patientId: 'patient-4',
+    patientName: 'Roberto Valdés',
+    time: '13:00',
+    date: '2026-08-24',
+    type: 'seguimiento',
+    status: 'solicita_reagendar',
     paymentStatus: 'pendiente'
   },
 ];
