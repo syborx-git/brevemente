@@ -101,6 +101,25 @@ export interface Appointment {
   paymentStatus?: 'pagada' | 'pendiente' | 'exenta';
 }
 
+
+export type PaymentStatus = 'pagado' | 'pendiente' | 'parcial' | 'reembolsado';
+export type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'otro';
+
+export interface Payment {
+  id: string;
+  patientId: string;
+  patientName: string;
+  appointmentId?: string;
+  concept: string;
+  amount: number;
+  date: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  notes?: string;
+  registeredBy: string;
+  createdAt: string;
+}
+
 export interface ClinicalRecord {
   patientId: string;
   patientName: string;
@@ -178,7 +197,7 @@ export interface AuditLog {
   role: Role;
   action: string;
   details: string;
-  category: 'expediente' | 'sesion' | 'ia' | 'reporte' | 'seguridad' | 'riesgo';
+  category: 'expediente' | 'sesion' | 'ia' | 'reporte' | 'seguridad' | 'riesgo' | 'pagos';
 }
 
 export interface SupervisionRequest {

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'; import { useNavigate } from 'react-router-dom';
 import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert, Trash2, Users, Clock, UserCheck } from 'lucide-react';
-import { Patient, Role } from '../types/clinical';
+import { Patient, Payment, Role } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
+import { paymentService } from '../services/paymentService';
 import { CreatePatientModal } from '../components/CreatePatientModal';
 
 interface PatientsProps {
@@ -17,6 +17,12 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [payments, setPayments] = useState<Payment[]>(paymentService.getPayments());
+  useEffect(() => {
+    const refresh = () => setPayments(paymentService.getPayments());
+    window.addEventListener('brevemente_payment_changed', refresh);
+    return () => window.removeEventListener('brevemente_payment_changed', refresh);
+  }, []);
 
   const filteredPatients = patients.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -24,6 +30,15 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
     p.phone.includes(searchTerm) ||
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // ── Visibilidad de la columna "Estatus de pago" ─────────────────────────────
+  // REGLA DE NEGOCIO (ver therapistService.shouldShowPaymentColumn):
+  //   se muestra sólo para terapeutas SIN asistente.
+  // TODAVÍA NO CONECTADA al backend real → en demo se muestra SIEMPRE.
+  // Cuando exista el backend, reemplazar por:
+  //   const showPaymentColumn = therapistService.shouldShowPaymentColumn(idTerapeutaAutenticado);
+  const showPaymentColumn: boolean = true;
+
 
   const handleOpenRecord = (patientId: string, patientName: string) => {
     // Registrar en auditoría
@@ -85,13 +100,16 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                 <th className="p-4">Estado</th>
                 <th className="p-4">Representación</th>
                 <th className="p-4">Riesgo</th>
-                <th className="p-4 text-right">Acciones</th>
+                {showPaymentColumn && (
+                  <th className="p-4">Estatus de pago</th>
+                )}
+                <th className="p-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600">
               {filteredPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                  <td colSpan={showPaymentColumn ? 9 : 8} className="p-8 text-center text-slate-400">
                     No se encontraron pacientes que coincidan con la búsqueda.
                   </td>
                 </tr>
@@ -109,6 +127,15 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                           'bg-amber-100 text-amber-800';
 
                   const estadoCapacidad = p.capacidadConsentimiento?.estado;
+
+                  // Estatus de pago a partir del registro de pagos (fuente de verdad)
+                  const patientPayments = payments.filter(pay => pay.patientId === p.id);
+                  const paymentSummary = (() => {
+                    if (patientPayments.length === 0) return null; // sin pagos registrados → "—"
+                    return patientPayments.some(pay => pay.status === 'pendiente' || pay.status === 'parcial')
+                      ? { label: 'Pendiente de pago', color: 'bg-amber-100 text-amber-800 border-amber-200' }
+                      : { label: 'Al corriente', color: 'bg-green-100 text-green-800 border-green-200' };
+                  })();
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
@@ -162,8 +189,20 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                           {p.riskLevel}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      {/* Columna Estatus de pago (solo si la regla lo permite) */}
+                      {showPaymentColumn && (
+                        <td className="p-4">
+                          {paymentSummary ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase w-fit ${paymentSummary.color}`}>
+                              {paymentSummary.label}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 font-bold">—</span>
+                          )}
+                        </td>
+                      )}
+                      <td className="p-4">
+                        <div className="flex items-center justify-center gap-2">
                           {p.status === 'pendiente' ? (
                             <button
                               onClick={() => navigate(`/intake?id=${p.id}`)}

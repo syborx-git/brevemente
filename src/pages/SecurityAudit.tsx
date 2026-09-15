@@ -32,12 +32,12 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
 
   useEffect(() => {
     loadData();
-    
+
     // Escuchar eventos en vivo de nuevos logs o alertas
     const handleLogAdded = () => loadData();
     window.addEventListener('brevemente_audit_log_added', handleLogAdded);
     window.addEventListener('brevemente_risk_alert_added', handleLogAdded);
-    
+
     return () => {
       window.removeEventListener('brevemente_audit_log_added', handleLogAdded);
       window.removeEventListener('brevemente_risk_alert_added', handleLogAdded);
@@ -63,13 +63,13 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
   };
 
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
+    const matchesSearch =
       log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.details.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesCategory = categoryFilter === 'all' || log.category === categoryFilter;
-    
+
     return matchesSearch && matchesCategory;
   });
 
@@ -86,7 +86,7 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
             Monitoreo en tiempo real de accesos, consentimiento legal, uso de IA y alertas de riesgo crítico.
           </p>
         </div>
-        
+
         {userRole === 'admin_platform' && (
           <button
             onClick={handleClearLogs}
@@ -111,7 +111,7 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
           <div className="divide-y divide-red-100 bg-white border border-red-150 rounded-lg overflow-hidden text-xs">
             {activeAlerts.map(a => (
               <div key={a.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="space-y-1.5">
+                <div className="space-y-1.5">
                   <span className="font-bold text-clinical-dark text-xs block">
                     Paciente: {a.patientName}
                   </span>
@@ -144,7 +144,7 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
         </div>
       )}
 
-      
+
       {/* Sección Historial de Alertas Atendidas */}
       {resolvedAlerts.length > 0 && (
         <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 shadow-sm space-y-3.5">
@@ -229,9 +229,10 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
                 ia: 'bg-teal-50 text-clinical-teal border-teal-150',
                 reporte: 'bg-indigo-50 text-indigo-700 border-indigo-150',
                 seguridad: 'bg-purple-50 text-purple-700 border-purple-150',
-                riesgo: 'bg-red-50 text-red-700 border-red-150'
+                riesgo: 'bg-red-50 text-red-700 border-red-150',
+                pagos: 'bg-emerald-50 text-emerald-700 border-emerald-150'
               };
-              
+
               return (
                 <div key={log.id} className="p-4 hover:bg-slate-50/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
@@ -247,7 +248,7 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
                     </div>
                     <p className="text-slate-600 font-medium leading-normal">{log.details}</p>
                   </div>
-                  
+
                   <span className="text-[10px] text-slate-400 font-mono font-bold shrink-0">
                     {new Date(log.timestamp).toLocaleString('es-MX')}
                   </span>
