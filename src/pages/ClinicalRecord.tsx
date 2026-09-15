@@ -4,14 +4,14 @@ import {
   FolderHeart, Activity, FileText, Volume2, Mic, Square,
   Sparkles, Plus, Save, AlertTriangle, TrendingUp, GitBranch,
   ShieldAlert, Clipboard, User, Heart, AlertOctagon, Check,
-  Lock, ShieldCheck, UserCheck
+  Lock, ShieldCheck, UserCheck, CreditCard, Trash2, MessageCircle
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 
-import { Role, Patient, ClinicalRecord as ClinicalRecordType, Session, AuditLog } from '../types/clinical';
+import { Role, Patient, ClinicalRecord as ClinicalRecordType, Session, AuditLog, Payment } from '../types/clinical';
 import { ProtocolDecisionPanel } from '../components/ProtocolDecisionPanel';
 import { RiskAlertBanner } from '../components/RiskAlertBanner';
 import { auditLogService } from '../services/auditLogService';
@@ -20,6 +20,8 @@ import { supervisionRequestService } from '../services/supervisionRequestService
 import { recordService } from '../services/recordService';
 import { sessionService } from '../services/sessionService';
 import { patientService } from '../services/patientService';
+import { paymentService } from '../services/paymentService';
+import { therapistService } from '../services/therapistService';
 import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP } from '../utils/legalConsent';
 
 interface ClinicalRecordProps {
@@ -45,9 +47,77 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   // Estados locales para simular persistencia
   const [clinicalRecord, setClinicalRecord] = useState<ClinicalRecordType | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria'>('tbe');
+  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos'>('datos');
   const [tbeSubTab, setTbeSubTab] = useState<'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'>('sesiones');
   const [activeSessionDetail, setActiveSessionDetail] = useState<Session | null>(null);
+
+  // ── Registro de pagos (Pestaña Pagos) ───────────────────────────────────────
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [newPayment, setNewPayment] = useState<{
+    concept: string; amount: string; date: string;
+    method: Payment['method']; status: Payment['status']; notes: string;
+  }>({ concept: '', amount: '', date: '', method: 'transferencia', status: 'pagado', notes: '' });
+  const canManagePayments = therapistService.canManagePayments(userRole);
+
+  // ── Regla de negocio: recordatorio de pago por WhatsApp ─────────────────────
+  // REGLA DE NEGOCIO (ver therapistService.canManagePayments):
+  //   el recordatorio lo envía quien gestiona la facturación:
+  //   terapeuta SIN asistente → sí; terapeuta CON asistente → lo hace su asistente.
+  // TODAVÍA NO CONECTADA → en demo se muestra SIEMPRE.
+  // Cuando exista el backend, reemplazar por:
+  //   const showPaymentReminder = therapistService.canManagePayments(userRole);
+  const showPaymentReminder: boolean = true;
+
+  // Cargar pagos del paciente activo y reaccionar a cambios
+  useEffect(() => {
+    if (!activePatient) return;
+    const refresh = () => setPayments(paymentService.getByPatientId(activePatient.id));
+    refresh();
+    window.addEventListener('brevemente_payment_changed', refresh);
+    return () => window.removeEventListener('brevemente_payment_changed', refresh);
+  }, [patientId, activePatient]);
+
+  const totalCobrado = payments.filter(p => p.status === 'pagado').reduce((s, p) => s + p.amount, 0);
+  const totalPendiente = payments.filter(p => p.status === 'pendiente' || p.status === 'parcial').reduce((s, p) => s + p.amount, 0);
+
+  const handleAddPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activePatient) return;
+    const amount = parseFloat(newPayment.amount);
+    if (!newPayment.concept.trim() || !newPayment.date || isNaN(amount) || amount < 0) {
+      alert('Completa concepto, monto y fecha del pago.');
+      return;
+    }
+    paymentService.addPayment({
+      patientId: activePatient.id,
+      patientName: activePatient.name,
+      concept: newPayment.concept.trim(),
+      amount,
+      date: newPayment.date,
+      method: newPayment.method,
+      status: newPayment.status,
+      notes: newPayment.notes || undefined,
+    }, { id: 'user-current', name: userName, role: userRole });
+    setShowPaymentModal(false);
+    setNewPayment({ concept: '', amount: '', date: '', method: 'transferencia', status: 'pagado', notes: '' });
+  };
+
+  const handleSendPaymentReminder = (pay: Payment) => {
+    const phoneDigits = (activePatient?.phone || '').replace(/\D/g, '');
+    if (!phoneDigits) {
+      alert('El paciente no tiene teléfono registrado.');
+      return;
+    }
+    const message = `Hola ${pay.patientName}, te recordamos que tienes un pago pendiente de $${pay.amount} MXN por "${pay.concept}". ¿Podrías realizar el pago? Gracias.`;
+    window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`, '_blank');
+    auditLogService.addLog(
+      'Recordatorio de pago',
+      `Envió recordatorio de pago por WhatsApp a ${pay.patientName} por "${pay.concept}" ($${pay.amount} MXN).`,
+      'pagos',
+      { id: 'user-current', name: userName, role: userRole }
+    );
+  };
 
   const handleSignRepresentativeConsent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -645,10 +715,10 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               </h3>
             </div>
             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD'
-                ? 'bg-slate-100 text-slate-700 border-slate-300'
-                : activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_CONDICION'
-                  ? 'bg-teal-50 text-teal-800 border-teal-200'
-                  : 'bg-slate-100 text-slate-800 border-slate-300'
+              ? 'bg-slate-100 text-slate-700 border-slate-300'
+              : activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_CONDICION'
+                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                : 'bg-slate-100 text-slate-800 border-slate-300'
               }`}>
               {activePatient.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD'
                 ? 'Menor de edad'
@@ -738,6 +808,17 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         >
           Tratamiento Psicoterapéutico TBE
         </button>
+
+        <button
+          onClick={() => setActiveTab('pagos')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'pagos'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+        >
+          Pagos
+        </button>
+
         <button
           onClick={() => setActiveTab('auditoria')}
           className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'auditoria'
@@ -990,8 +1071,8 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                                 title={isRecordingBlocked ? LEGAL_CONSENT_TOOLTIP : 'Haga click para iniciar'}
                                 onClick={handleStartRecording}
                                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow ${isRecordingBlocked
-                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
-                                    : 'bg-clinical-risk text-white hover:opacity-90'
+                                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                                  : 'bg-clinical-risk text-white hover:opacity-90'
                                   }`}
                               >
                                 {isRecordingBlocked ? <Lock className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -1832,6 +1913,234 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* PESTAÑA: PAGOS */}
+      {activeTab === 'pagos' && activePatient && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 text-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-clinical-accent" />
+              <h3 className="text-sm font-bold text-clinical-dark">Registro de Pagos</h3>
+            </div>
+            {canManagePayments ? (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow-sm transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Registrar pago
+              </button>
+            ) : (
+              <span className="text-[9px] bg-slate-100 text-slate-500 border border-slate-200 px-2 py-1 rounded-full font-bold uppercase">
+                Solo lectura · gestionado por el asistente
+              </span>
+            )}
+          </div>
+
+          {/* Resumen tipo Excel */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <p className="text-[10px] uppercase font-bold text-emerald-700">Total cobrado</p>
+              <p className="text-lg font-bold text-emerald-800">${totalCobrado.toLocaleString('es-MX')} MXN</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-[10px] uppercase font-bold text-amber-700">Total pendiente</p>
+              <p className="text-lg font-bold text-amber-800">${totalPendiente.toLocaleString('es-MX')} MXN</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="text-[10px] uppercase font-bold text-slate-500">Registros</p>
+              <p className="text-lg font-bold text-slate-700">{payments.length}</p>
+            </div>
+          </div>
+
+          {/* Tabla de pagos */}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase">
+                  <th className="p-3">Fecha</th>
+                  <th className="p-3">Concepto</th>
+                  <th className="p-3 text-right">Monto</th>
+                  <th className="p-3">Método</th>
+                  <th className="p-3">Estado</th>
+                  <th className="p-3">Registrado por</th>
+                  {canManagePayments && <th className="p-3 text-right">Acciones</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-600">
+                {payments.length === 0 ? (
+                  <tr>
+                    <td colSpan={canManagePayments ? 7 : 6} className="p-6 text-center text-slate-400">
+                      Sin pagos registrados para este paciente.
+                    </td>
+                  </tr>
+                ) : (
+                  payments.map((pay) => (
+                    <tr key={pay.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-3 text-slate-500">{pay.date}</td>
+                      <td className="p-3 font-semibold text-clinical-dark">{pay.concept}</td>
+                      <td className="p-3 text-right font-bold">${pay.amount.toLocaleString('es-MX')}</td>
+                      <td className="p-3 capitalize">{pay.method}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase ${pay.status === 'pagado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                              pay.status === 'pendiente' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                pay.status === 'parcial' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                  'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                            {pay.status}
+                          </span>
+                          {(pay.status === 'pendiente' || pay.status === 'parcial') && showPaymentReminder && (
+                            <button
+                              onClick={() => handleSendPaymentReminder(pay)}
+                              className="flex items-center gap-1 px-2 py-1 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-full text-[9px] font-bold shadow-sm transition-all"
+                              title="Enviar recordatorio de pago por WhatsApp"
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                              Recordatorio
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3 text-slate-500">{pay.registeredBy}</td>
+                      {canManagePayments && (
+                        <td className="p-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <select
+                              value={pay.status}
+                              onChange={(e) => paymentService.updatePaymentStatus(pay.id, e.target.value as Payment['status'], { id: 'user-current', name: userName, role: userRole })}
+                              className="border border-slate-200 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-clinical-accent"
+                            >
+                              <option value="pagado">Pagado</option>
+                              <option value="pendiente">Pendiente</option>
+                              <option value="parcial">Parcial</option>
+                              <option value="reembolsado">Reembolsado</option>
+                            </select>
+                            <button
+                              onClick={() => {
+                                if (confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')) {
+                                  paymentService.deletePayment(pay.id, { id: 'user-current', name: userName, role: userRole });
+                                }
+                              }}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded transition-colors"
+                              title="Eliminar pago"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Registrar Pago */}
+      {showPaymentModal && activePatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+            <div className="p-4 bg-clinical-dark text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-clinical-accent" />
+                <h3 className="font-bold text-xs uppercase tracking-wider">Registrar Pago · {activePatient.name}</h3>
+              </div>
+              <button type="button" onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleAddPayment} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Concepto</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Sesión 3 · Seguimiento"
+                  value={newPayment.concept}
+                  onChange={(e) => setNewPayment({ ...newPayment, concept: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Monto (MXN)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="800"
+                    value={newPayment.amount}
+                    onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Fecha</label>
+                  <input
+                    type="date"
+                    required
+                    value={newPayment.date}
+                    onChange={(e) => setNewPayment({ ...newPayment, date: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Método</label>
+                  <select
+                    value={newPayment.method}
+                    onChange={(e) => setNewPayment({ ...newPayment, method: e.target.value as Payment['method'] })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none"
+                  >
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Estado</label>
+                  <select
+                    value={newPayment.status}
+                    onChange={(e) => setNewPayment({ ...newPayment, status: e.target.value as Payment['status'] })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none"
+                  >
+                    <option value="pagado">Pagado</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="parcial">Parcial</option>
+                    <option value="reembolsado">Reembolsado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Notas (opcional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Referencia, folio, observaciones..."
+                  value={newPayment.notes}
+                  onChange={(e) => setNewPayment({ ...newPayment, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button type="button" onClick={() => setShowPaymentModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 font-bold">
+                  Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow-sm">
+                  Guardar pago
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
