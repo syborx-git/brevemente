@@ -204,7 +204,7 @@ export const ProtocolDecisionPanel: React.FC<ProtocolDecisionPanelProps> = ({
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">
-                ⚠️ DESVIACIÓN DEL PROTOCOLO ESTÁNDAR
+                ⚠️ ADAPTACIÓN DEL PROTOCOLO ESTÁNDAR
               </span>
               <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
                 Se detectaron parámetros fuera de la guía clínica estándar para <b>{selectedProtocol} ({currentPhase})</b>.
@@ -218,7 +218,7 @@ export const ProtocolDecisionPanel: React.FC<ProtocolDecisionPanelProps> = ({
           {(showJustification || !justification) && (
             <div className="border-t border-amber-200 pt-2.5 mt-1 space-y-2">
               <label className="block text-[11px] font-semibold text-amber-900">
-                Justificación clínica requerida (se grabará en la bitácora de auditoría):
+                Prescripción adaptada clínica requerida (se grabará en la bitácora de auditoría):
               </label>
               <div className="flex gap-2">
                 <input

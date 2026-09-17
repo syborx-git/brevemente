@@ -50,6 +50,8 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos'>('datos');
   const [tbeSubTab, setTbeSubTab] = useState<'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'>('sesiones');
   const [activeSessionDetail, setActiveSessionDetail] = useState<Session | null>(null);
+  // Prescripción seleccionada para ver su compliance (EFF, ADD, OSS, RSS)
+  const [selectedPrescription, setSelectedPrescription] = useState<string | null>(null);
 
   // ── Registro de pagos (Pestaña Pagos) ───────────────────────────────────────
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -166,11 +168,13 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   const [newSessPhase, setNewSessPhase] = useState('Desbloqueo');
   const [newSessProtocol, setNewSessProtocol] = useState('Ataque de Pánico');
   const [newSessDxOp, setNewSessDxOp] = useState('SPR Fóbico');
+  const [newSessTrastorno, setNewSessTrastorno] = useState('');
   const [newSessPx, setNewSessPx] = useState<string[]>([]);
   const [newSessF1, setNewSessF1] = useState('');
   const [newSessF2, setNewSessF2] = useState('');
   const [newSessOss, setNewSessOss] = useState('');
   const [newSessAdd, setNewSessAdd] = useState('100%');
+  const [newSessCumplimiento, setNewSessCumplimiento] = useState('');
   const [newSessRss, setNewSessRss] = useState('Mejoría significativa');
   const [newSessEff, setNewSessEff] = useState('');
   const [newSessNotes, setNewSessNotes] = useState('');
@@ -203,20 +207,20 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   const [newVcSintomas, setNewVcSintomas] = useState('Mejoría significativa');
   const [newVcCrisis, setNewVcCrisis] = useState('Mejoría significativa');
 
-  // Valoración Global (VG) local
+  // Valoración Global (VG) local — binaria (esfera señalada o no)
   const [vgHistory, setVgHistory] = useState<Array<{
     sessionNum: number;
-    yo: number; // 1-10
-    demas: number;
-    mundo: number;
+    yo: boolean;
+    demas: boolean;
+    mundo: boolean;
   }>>([
-    { sessionNum: 1, yo: 3, demas: 4, mundo: 2 },
-    { sessionNum: 2, yo: 5, demas: 5, mundo: 4 }
+    { sessionNum: 1, yo: true, demas: false, mundo: false },
+    { sessionNum: 2, yo: true, demas: true, mundo: false }
   ]);
 
-  const [newVgYo, setNewVgYo] = useState(7);
-  const [newVgDemas, setNewVgDemas] = useState(7);
-  const [newVgMundo, setNewVgMundo] = useState(6);
+  const [newVgYo, setNewVgYo] = useState(false);
+  const [newVgDemas, setNewVgDemas] = useState(false);
+  const [newVgMundo, setNewVgMundo] = useState(false);
 
   // DX Psiquiátrico / Farmacológico local
   const [psyDxNosologico, setPsyDxNosologico] = useState('Trastorno de Pánico [F41.0]');
@@ -400,6 +404,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       setNewSessF2('Prescribir el síntoma en un horario fijo a las 18:00.');
       setNewSessOss('Paciente describe mejorías notables en su rutina de tarde tras practicar la peor fantasía.');
       setNewSessAdd('90%');
+      setNewSessCumplimiento('adherencia');
       setNewSessRss('Mejoría significativa');
       setNewSessEff('Excelente respuesta');
       setNewSessObsNext('Programar exposición autónoma en transporte público.');
@@ -485,11 +490,13 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       phase: newSessPhase,
       protocol: newSessProtocol,
       dxOp: newSessDxOp,
+      trastorno: newSessTrastorno || undefined,
       px: newSessPx,
       f1: newSessF1,
       f2: newSessF2,
       oss: newSessOss,
       add: newSessAdd,
+      cumplimiento: newSessCumplimiento,
       rss: newSessRss,
       eff: newSessEff,
       notes: newSessNotes,
@@ -620,11 +627,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   const vgChartData = vgHistory.map(vg => ({
     name: `Sesión ${vg.sessionNum}`,
-    Yo: vg.yo,
-    Demás: vg.demas,
-    Mundo: vg.mundo,
-    // Promedio global del cambio para contrastar
-    PromedioVC: ((vg.yo + vg.demas + vg.mundo) / 3).toFixed(1)
+    Yo: vg.yo ? 10 : 0,
+    Demás: vg.demas ? 10 : 0,
+    Mundo: vg.mundo ? 10 : 0,
   }));
 
   // Obtener logs de auditoría locales para este paciente
@@ -827,6 +832,28 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
             }`}
         >
           Auditoría del Expediente
+        </button>
+
+        <button
+          /*onClick={() => setActiveTab('')}
+          */
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'auditoria'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+        >
+          Bitacoras Supervisión
+        </button>
+
+        <button
+          /*onClick={() => setActiveTab('')}
+          */
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'auditoria'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+        >
+          Constancias
         </button>
       </div>
 
@@ -1176,42 +1203,57 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           </select>
                         </div>
 
-                        {/* Selector de Protocolo y DX.OP para manual */}
-                        {sessionMode === 'manual' && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Selector de Protocolo, DX.OP y Trastorno */}
+                        {(sessionMode === 'manual' || aiValidated) && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-500 font-semibold mb-1">Protocolo:</label>
+                                <select
+                                  className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
+                                  value={newSessProtocol}
+                                  onChange={(e) => setNewSessProtocol(e.target.value)}
+                                >
+                                  <option value="Ataque de Pánico">Ataque de Pánico</option>
+                                  <option value="Miedo a perder el control tipo 1: hablar en público">Miedo a hablar en público</option>
+                                  <option value="Trastorno Obsesivo Compulsivo (TOC)">Trastorno Obsesivo Compulsivo (TOC)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-slate-500 font-semibold mb-1">Diagnóstico Operativo (Dx.Op):</label>
+                                <select
+                                  className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
+                                  value={newSessDxOp}
+                                  onChange={(e) => setNewSessDxOp(e.target.value)}
+                                >
+                                  <option value="SPR Fóbico">SPR Fóbico</option>
+                                  <option value="SPR Fóbico Obsesivo">SPR Fóbico Obsesivo</option>
+                                  <option value="SPR Obsesivo Fóbico">SPR Obsesivo Fóbico</option>
+                                  <option value="SPR Obsesivo">SPR Obsesivo</option>
+                                  <option value="SPR Paranoico">SPR Paranoico</option>
+                                </select>
+                              </div>
+                            </div>
 
                             <div>
-                              <label className="block text-slate-500 font-semibold mb-1">Protocolo:</label>
-                              <select
-                                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newSessProtocol}
-                                onChange={(e) => setNewSessProtocol(e.target.value)}
-                              >
-                                <option value="Ataque de Pánico">Ataque de Pánico</option>
-                                <option value="Miedo a perder el control tipo 1: hablar en público">Miedo a hablar en público</option>
-                                <option value="Trastorno Obsesivo Compulsivo (TOC)">Trastorno Obsesivo Compulsivo (TOC)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-slate-500 font-semibold mb-1">Diagnóstico Operativo (Dx.Op):</label>
-                              <select
-                                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newSessDxOp}
-                                onChange={(e) => setNewSessDxOp(e.target.value)}
-                              >
-                                <option value="SPR Fóbico">SPR Fóbico</option>
-                                <option value="SPR Fóbico Obsesivo">SPR Fóbico Obsesivo</option>
-                                <option value="SPR Obsesivo Fóbico">SPR Obsesivo Fóbico</option>
-                                <option value="SPR Obsesivo">SPR Obsesivo</option>
-                                <option value="SPR Paranoico">SPR Paranoico</option>
-                              </select>
+                              <label className="block text-slate-500 font-semibold mb-1">
+                                Trastorno:
+                                <span className="ml-2 text-[10px] text-slate-400 font-normal">(especificar si el protocolo no está disponible)</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Ej. Trastorno de Ansiedad Generalizada, Fobia específica..."
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
+                                value={newSessTrastorno}
+                                onChange={(e) => setNewSessTrastorno(e.target.value)}
+                              />
                             </div>
                           </div>
                         )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-slate-500 font-semibold mb-1">Frase Foco 1 (F1):</label>
+                            <label className="block text-slate-500 font-semibold mb-1">RST 1 (F1):</label>
                             <input
                               type="text"
                               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
@@ -1220,7 +1262,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                             />
                           </div>
                           <div>
-                            <label className="block text-slate-500 font-semibold mb-1">Frase Foco 2 (F2):</label>
+                            <label className="block text-slate-500 font-semibold mb-1">RST 2 (F2):</label>
                             <input
                               type="text"
                               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
@@ -1267,38 +1309,18 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-slate-500 font-semibold mb-1">Observaciones del Terapeuta (OSS):</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
-                              value={newSessOss}
-                              onChange={(e) => setNewSessOss(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-slate-500 font-semibold mb-1">Adherencia a Tareas (ADD):</label>
-                            <select
-                              className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                              value={newSessAdd}
-                              onChange={(e) => setNewSessAdd(e.target.value)}
-                            >
-                              <option value="100%">100% Adherencia</option>
-                              <option value="80%">80% Adherencia</option>
-                              <option value="50%">50% Adherencia</option>
-                              <option value="0%">0% No realizado</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-slate-500 font-semibold mb-1">Efecto de Maniobras (EFF):</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none"
-                              value={newSessEff}
-                              onChange={(e) => setNewSessEff(e.target.value)}
-                            />
-                          </div>
+                        <div>
+                          <label className="block text-slate-500 font-semibold mb-1">Cumplimiento:</label>
+                          <select
+                            className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none"
+                            value={newSessCumplimiento}
+                            onChange={(e) => setNewSessCumplimiento(e.target.value)}
+                          >
+                            <option value="">Seleccionar cumplimiento...</option>
+                            <option value="adherencia">Adherencia (ADD)</option>
+                            <option value="observancia">Observancia (OSS)</option>
+                            <option value="resistencia">Resistencia (RSS)</option>
+                          </select>
                         </div>
 
                         {/* PANEL DE CAPTURA VALORACIÓN DEL CAMBIO (VC) PARA ESTA SESIÓN */}
@@ -1348,6 +1370,45 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                                 <option value="Empeoramiento">Empeoramiento</option>
                               </select>
                             </div>
+                            <div>
+                              <label className="block text-slate-500 font-semibold mb-0.5">Reacciones:</label>
+                              <select
+                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
+                                value={newVcReacciones}
+                                onChange={(e) => setNewVcReacciones(e.target.value)}
+                              >
+                                <option value="Sin cambios">Sin cambios</option>
+                                <option value="Mejoría leve">Mejoría leve</option>
+                                <option value="Mejoría significativa">Mejoría significativa</option>
+                                <option value="Empeoramiento">Empeoramiento</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-slate-500 font-semibold mb-0.5">Síntomas:</label>
+                              <select
+                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
+                                value={newVcSintomas}
+                                onChange={(e) => setNewVcSintomas(e.target.value)}
+                              >
+                                <option value="Sin cambios">Sin cambios</option>
+                                <option value="Mejoría leve">Mejoría leve</option>
+                                <option value="Mejoría significativa">Mejoría significativa</option>
+                                <option value="Empeoramiento">Empeoramiento</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-slate-500 font-semibold mb-0.5">Crisis:</label>
+                              <select
+                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
+                                value={newVcCrisis}
+                                onChange={(e) => setNewVcCrisis(e.target.value)}
+                              >
+                                <option value="Sin cambios">Sin cambios</option>
+                                <option value="Mejoría leve">Mejoría leve</option>
+                                <option value="Mejoría significativa">Mejoría significativa</option>
+                                <option value="Empeoramiento">Empeoramiento</option>
+                              </select>
+                            </div>
                           </div>
                         </div>
 
@@ -1355,42 +1416,36 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
                           <span className="font-bold text-clinical-dark flex items-center gap-1.5">
                             <Heart className="w-4 h-4 text-clinical-accent" />
-                            Valoración Global (Nivel de Satisfacción 1-10)
+                            Valoración Global (Señalar esferas)
                           </span>
                           <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-slate-500 font-semibold mb-0.5">YO (Cuerpo/Trabajo):</label>
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
                               <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVgYo}
-                                onChange={(e) => setNewVgYo(parseInt(e.target.value) || 5)}
+                                type="checkbox"
+                                checked={newVgYo}
+                                onChange={(e) => setNewVgYo(e.target.checked)}
+                                className="w-4 h-4 accent-clinical-accent"
                               />
-                            </div>
-                            <div>
-                              <label className="block text-slate-500 font-semibold mb-0.5">DEMÁS (Familia/Pareja):</label>
+                              <span className="font-semibold text-slate-600 text-xs">YO (Cuerpo/Trabajo)</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
                               <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVgDemas}
-                                onChange={(e) => setNewVgDemas(parseInt(e.target.value) || 5)}
+                                type="checkbox"
+                                checked={newVgDemas}
+                                onChange={(e) => setNewVgDemas(e.target.checked)}
+                                className="w-4 h-4 accent-clinical-accent"
                               />
-                            </div>
-                            <div>
-                              <label className="block text-slate-500 font-semibold mb-0.5">MUNDO (Sociedad):</label>
+                              <span className="font-semibold text-slate-600 text-xs">DEMÁS (Familia/Pareja)</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
                               <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVgMundo}
-                                onChange={(e) => setNewVgMundo(parseInt(e.target.value) || 5)}
+                                type="checkbox"
+                                checked={newVgMundo}
+                                onChange={(e) => setNewVgMundo(e.target.checked)}
+                                className="w-4 h-4 accent-clinical-accent"
                               />
-                            </div>
+                              <span className="font-semibold text-slate-600 text-xs">MUNDO (Sociedad)</span>
+                            </label>
                           </div>
                         </div>
 
@@ -1465,6 +1520,45 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           <span className="text-[10px] text-slate-400 font-bold uppercase block">Diagnóstico Operativo (Dx.OP):</span>
                           <span className="text-sm font-bold text-clinical-dark block">{activeSessionDetail.dxOp}</span>
                         </div>
+                        {activeSessionDetail.trastorno && (
+                          <div className="sm:col-span-2">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase block">Trastorno:</span>
+                            <span className="text-sm font-bold text-clinical-dark block">{activeSessionDetail.trastorno}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Prescripciones Asignadas */}
+                      <div className="space-y-1.5">
+                        <span className="text-clinical-dark font-bold block">
+                          Prescripciones / Tareas Asignadas (PX):
+                          <span className="ml-2 text-[9px] text-slate-400 font-normal">clic para ver compliance</span>
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {activeSessionDetail.px.map((p, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              title="Ver compliance de la indicación"
+                              onClick={() => setSelectedPrescription(p)}
+                              className="px-2.5 py-1 bg-clinical-teal/10 border border-clinical-teal/20 text-clinical-teal rounded font-bold uppercase text-[10px] cursor-pointer hover:bg-clinical-teal/20 transition-colors"
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Foco cognitivo y reestructuraciones */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                          <span className="font-bold text-clinical-dark block">RST 1 (F1):</span>
+                          <p className="italic mt-1 text-slate-700">&ldquo;{activeSessionDetail.f1}&rdquo;</p>
+                        </div>
+                        <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                          <span className="font-bold text-clinical-dark block">RST 2 (F2):</span>
+                          <p className="italic mt-1 text-slate-700">&ldquo;{activeSessionDetail.f2}&rdquo;</p>
+                        </div>
                       </div>
 
                       {/* Notas de la Sesión */}
@@ -1475,33 +1569,21 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                         </div>
                       </div>
 
-                      {/* Prescripciones Asignadas */}
-                      <div className="space-y-1.5">
-                        <span className="text-clinical-dark font-bold block">Prescripciones / Tareas Asignadas (PX):</span>
-                        <div className="flex flex-wrap gap-2">
-                          {activeSessionDetail.px.map((p, idx) => (
-                            <span key={idx} className="px-2.5 py-1 bg-clinical-teal/10 border border-clinical-teal/20 text-clinical-teal rounded font-bold uppercase text-[10px]">
-                              {p}
-                            </span>
-                          ))}
+                      {/* Observaciones próxima sesión */}
+                      <div className="border-t border-slate-100 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-bold text-slate-500 block">Situación general actual:</span>
+                          <p className="mt-0.5">{activeSessionDetail.situation}</p>
                         </div>
-                      </div>
-
-                      {/* Foco cognitivo y reestructuraciones */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
-                          <span className="font-bold text-clinical-dark block">Frase Foco 1 (F1):</span>
-                          <p className="italic mt-1 text-slate-700">&ldquo;{activeSessionDetail.f1}&rdquo;</p>
-                        </div>
-                        <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
-                          <span className="font-bold text-clinical-dark block">Frase Foco 2 (F2):</span>
-                          <p className="italic mt-1 text-slate-700">&ldquo;{activeSessionDetail.f2}&rdquo;</p>
+                        <div>
+                          <span className="font-bold text-slate-500 block">Observaciones próxima sesión:</span>
+                          <p className="mt-0.5">{activeSessionDetail.observationsNextSession}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-center">
                         <div className="bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
-                          <span className="text-slate-400 font-bold block text-[9px] uppercase">Adherencia</span>
+                          <span className="text-slate-400 font-bold block text-[9px] uppercase">Cumplimiento</span>
                           <span className="text-xs font-bold text-clinical-dark block mt-1">{activeSessionDetail.add}</span>
                         </div>
                         <div className="bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
@@ -1515,18 +1597,6 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                         <div className="bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
                           <span className="text-slate-400 font-bold block text-[9px] uppercase">Audio</span>
                           <span className="text-xs font-bold text-clinical-dark block mt-1">{activeSessionDetail.audioDuration || 'Sin grabar'}</span>
-                        </div>
-                      </div>
-
-                      {/* Observaciones próxima sesión */}
-                      <div className="border-t border-slate-100 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <span className="font-bold text-slate-500 block">Situación general actual:</span>
-                          <p className="mt-0.5">{activeSessionDetail.situation}</p>
-                        </div>
-                        <div>
-                          <span className="font-bold text-slate-500 block">Indicación próxima sesión:</span>
-                          <p className="mt-0.5">{activeSessionDetail.observationsNextSession}</p>
                         </div>
                       </div>
                     </div>
@@ -1614,7 +1684,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               {/* Gráfico comparativo */}
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-xs font-bold text-clinical-dark uppercase">Comparativo Valoración Global (Satisfacción 1-10)</h3>
+                    <h3 className="text-xs font-bold text-clinical-dark uppercase">Comparativo Valoración Global (Esferas Señaladas)</h3>
                   <span className="text-[10px] text-slate-400 font-semibold">Esferas de la vida: Yo (Cuerpo/Mente) vs Demás (Pareja/Familia) vs Mundo (Sociedad)</span>
                 </div>
 
@@ -1986,9 +2056,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                       <td className="p-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase ${pay.status === 'pagado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                              pay.status === 'pendiente' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                                pay.status === 'parcial' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                                  'bg-slate-100 text-slate-600 border-slate-200'
+                            pay.status === 'pendiente' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                              pay.status === 'parcial' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                'bg-slate-100 text-slate-600 border-slate-200'
                             }`}>
                             {pay.status}
                           </span>
@@ -2214,6 +2284,49 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Compliance de la Indicación */}
+      {selectedPrescription && activeSessionDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="p-4 bg-clinical-dark text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clipboard className="w-5 h-5 text-clinical-accent" />
+                <h3 className="font-bold text-xs uppercase tracking-wider">Compliance de la Indicación</h3>
+              </div>
+              <button type="button" onClick={() => setSelectedPrescription(null)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Prescripción / Tarea:</span>
+                <span className="font-bold text-clinical-dark block mt-1">{selectedPrescription}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                  <span className="text-slate-400 font-bold block text-[9px] uppercase">Efecto (EFF)</span>
+                  <span className="text-sm font-bold text-clinical-dark block mt-1">{activeSessionDetail.eff || '—'}</span>
+                </div>
+                <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                  <span className="text-slate-400 font-bold block text-[9px] uppercase">Adherencia (ADD)</span>
+                  <span className="text-sm font-bold text-clinical-dark block mt-1">{activeSessionDetail.add || '—'}</span>
+                </div>
+              </div>
+
+              <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                <span className="text-slate-400 font-bold block text-[9px] uppercase">Observaciones del Terapeuta (OSS)</span>
+                <p className="text-slate-700 mt-1 leading-relaxed">{activeSessionDetail.oss || '—'}</p>
+              </div>
+
+              <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                <span className="text-slate-400 font-bold block text-[9px] uppercase">Resonancia (RSS)</span>
+                <p className="text-slate-700 mt-1 leading-relaxed">{activeSessionDetail.rss || '—'}</p>
+              </div>
+            </div>
           </div>
         </div>
       )}

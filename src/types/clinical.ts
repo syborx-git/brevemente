@@ -82,7 +82,7 @@ export interface Patient {
   representante: RepresentanteLegal | null;
   telefonoPaciente: string | null; // opcional cuando hay representante
 
-    // Banderas operativas
+  // Banderas operativas
   consentimientoRepresentanteFirmado?: boolean;
   pendienteReconsentimiento?: boolean;
   notificacionesRepresentanteRevocadas?: boolean;
@@ -188,11 +188,13 @@ export interface Session {
   phase: string;
   protocol: string;
   dxOp: string;
+  trastorno?: string; // Trastorno especificado manualmente cuando el protocolo no está disponible
   px: string[]; // Prescripciones/maniobras asignadas
   f1: string; // Frase 1 o foco
   f2: string; // Frase 2 o foco
   oss: string; // Observaciones del terapeuta
   add: string; // Adherencia
+  cumplimiento?: string; // Cumplimiento: adherencia | observancia | resistencia
   rss: string; // Resonancia o respuesta al cambio
   eff: string; // Efecto de las maniobras
   notes: string;
