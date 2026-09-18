@@ -651,6 +651,49 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         </div>
       )}
 
+            {/* Selector de Expedientes (carpetas horizontales) */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <FolderHeart className="w-4 h-4 text-clinical-accent" />
+          <span className="text-xs font-bold text-clinical-dark uppercase tracking-wider">Expedientes</span>
+          <span className="text-[10px] text-slate-400">({patients.length})</span>
+        </div>
+        <div className="overflow-x-auto pb-1">
+          <div className="flex gap-3">
+            {patients.map(p => (
+              <button
+                key={p.id}
+                onClick={() => navigate(`/expedientes?id=${p.id}`)}
+                className={`shrink-0 w-44 text-left p-3 rounded-xl border-2 shadow-sm transition-all cursor-pointer ${
+                  p.id === patientId
+                    ? 'border-clinical-accent bg-clinical-accent/5'
+                    : 'border-slate-200 bg-white hover:border-[#75AFBC]'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-clinical-accent/10 border border-clinical-accent/20 flex items-center justify-center shrink-0">
+                    <FolderHeart className="w-4 h-4 text-clinical-accent" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className={`font-bold text-xs block truncate ${p.id === patientId ? 'text-clinical-accent' : 'text-clinical-dark'}`}>
+                      {p.name}
+                    </span>
+                    <span className="text-[9px] text-slate-400 block capitalize">{p.status}</span>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${p.riskLevel === 'alto' ? 'bg-red-500' : p.riskLevel === 'medio' ? 'bg-amber-500' : 'bg-green-500'}`}
+                    title={`Riesgo ${p.riskLevel}`}
+                  />
+                  <span className="text-[9px] text-slate-500 truncate">{p.therapistName}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Ficha Cabecera Paciente */}
       {clinicalRecord && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
