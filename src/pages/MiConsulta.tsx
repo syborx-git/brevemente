@@ -246,7 +246,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                     <span className="text-[10px] text-slate-500 block">Alerta de riesgo clínico · {a.note}</span>
                     <p className="text-slate-600 font-medium text-[11px] mt-0.5">{a.message}</p>
                     <div className="flex gap-2 pt-1">
-                      {['supervisor', 'admin_clinical', 'admin_platform'].includes(userRole) ? (
+                      {['supervisor', 'admin_clinical', 'admin_platform', 'therapist'].includes(userRole) ? (
                         <button
                           onClick={() => riskSimulationService.resolveAlert(a.id, { id: 'user-current', name: userName, role: userRole })}
                           className="text-[9px] font-bold text-red-700 hover:underline"
@@ -257,7 +257,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                         <span className="text-[9px] font-bold text-red-400">Escalado · pendiente de resolución</span>
                       )}
                     </div>
-                                    </div>
+                  </div>
                 ))
               )}
               {pendingRequests.map(r => (
