@@ -178,6 +178,7 @@ export interface ClinicalRecord {
     notes: string;
   }>;
   drugsUsage?: string; // sí / no / especificar
+  crisisHistory?: CrisisIncident[];
 }
 
 export interface Session {
@@ -228,6 +229,30 @@ export interface SupervisionRequest {
   attendedAt?: string;
 }
 
+export type ContactOutcome = 'paciente_directo' | 'persona_apoyo' | 'sin_respuesta' | 'falsa_alarma';
+export type AssessedRiskLevel = 'bajo' | 'medio' | 'alto' | 'inminente';
+
+export interface CrisisResolutionDetails {
+  contactOutcome: ContactOutcome;
+  riskLevelAssessed: AssessedRiskLevel;
+  actionsTaken: string[];
+  clinicalNote: string;
+  patientInstructions?: string;
+  nextStep?: 'sesion_urgente' | 'derivacion_urgencias' | 'seguimiento_habitual';
+  updatedPatientRiskLevel?: 'bajo' | 'medio' | 'alto';
+}
+
+export interface CrisisIncident {
+  id: string;
+  alertId: string;
+  timestamp: string;
+  resolvedAt: string;
+  resolvedBy: string;
+  role: Role;
+  reason: string;
+  resolutionDetails: CrisisResolutionDetails;
+}
+
 export interface RiskAlert {
   id: string;
   patientId: string;
@@ -238,6 +263,7 @@ export interface RiskAlert {
   resolved: boolean;
   resolvedBy?: string;
   resolvedAt?: string;
+  resolutionDetails?: CrisisResolutionDetails;
 }
 
 export interface LibraryDocument {
@@ -275,6 +301,35 @@ export interface Certificate {
   recommendations: string;
   placeDate: string;
   pdfUrl?: string;
+}
+
+export type PhysicalCertificateType = 
+  | 'psicoterapeutica'
+  | 'psiquiatrica'
+  | 'asistencia'
+  | 'informe_pericial'
+  | 'justificante';
+
+export interface PhysicalCertificateLog {
+  id: string;
+  patientId: string;
+  patientName: string;
+  physicalFolio: string;           // Folio físico asentado en papel
+  issueDate: string;               // Fecha de expedición en consultorio
+  type: PhysicalCertificateType;
+  issuerName: string;              // Médico o psicólogo firmante
+  issuerLicense: string;           // Cédula profesional
+  recipient: string;               // Destinatario (A quien corresponda, etc.)
+  purpose: string;                 // Motivo de solicitud
+  periodCovered: string;           // Periodo cubierto
+  sessionsCount: number;           // Sesiones acreditadas
+  clinicalSummary: string;         // Síntesis de lo asentado en físico
+  digitalScanUrl?: string;         // Enlace o nombre de archivo del escaneo/foto adjunto
+  scanFileName?: string;
+  deliveredTo: string;             // A quién se le entregó en mano
+  status: 'entregada_en_fisico' | 'anulada';
+  registeredBy: string;
+  registeredAt: string;
 }
 
 export interface SupervisionLog {

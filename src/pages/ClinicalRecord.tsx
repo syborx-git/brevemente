@@ -4,25 +4,34 @@ import {
   FolderHeart, Activity, FileText, Volume2, Mic, Square,
   Sparkles, Plus, Save, AlertTriangle, TrendingUp, GitBranch,
   ShieldAlert, Clipboard, User, Heart, AlertOctagon, Check,
-  Lock, ShieldCheck, UserCheck, CreditCard, Trash2, MessageCircle
+  Lock, ShieldCheck, UserCheck, CreditCard, Trash2, MessageCircle,
+  BookOpen, CheckCircle2, Paperclip, Download, Eye
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 
-import { Role, Patient, ClinicalRecord as ClinicalRecordType, Session, AuditLog, Payment } from '../types/clinical';
+import {
+  Role, Patient, ClinicalRecord as ClinicalRecordType, Session, AuditLog, Payment,
+  SupervisionLog, PhysicalCertificateLog
+} from '../types/clinical';
 import { ProtocolDecisionPanel } from '../components/ProtocolDecisionPanel';
 import { RiskAlertBanner } from '../components/RiskAlertBanner';
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
 import { supervisionRequestService } from '../services/supervisionRequestService';
+import { supervisionLogService } from '../services/supervisionLogService';
+import { physicalCertificateService } from '../services/physicalCertificateService';
 import { recordService } from '../services/recordService';
 import { sessionService } from '../services/sessionService';
 import { patientService } from '../services/patientService';
 import { paymentService } from '../services/paymentService';
 import { therapistService } from '../services/therapistService';
 import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP } from '../utils/legalConsent';
+import { SupervisionLogModal } from '../components/SupervisionLogModal';
+import { RegisterPhysicalCertificateModal } from '../components/RegisterPhysicalCertificateModal';
+import { PhysicalCertificateDetailModal } from '../components/PhysicalCertificateDetailModal';
 
 interface ClinicalRecordProps {
   userRole: Role;
@@ -47,11 +56,36 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   // Estados locales para simular persistencia
   const [clinicalRecord, setClinicalRecord] = useState<ClinicalRecordType | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos'>('datos');
+  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos' | 'supervision' | 'constancias'>('datos');
   const [tbeSubTab, setTbeSubTab] = useState<'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'>('sesiones');
   const [activeSessionDetail, setActiveSessionDetail] = useState<Session | null>(null);
   // Prescripción seleccionada para ver su compliance (EFF, ADD, OSS, RSS)
   const [selectedPrescription, setSelectedPrescription] = useState<string | null>(null);
+
+  // ── Bitácoras de Supervisión ───────────────────────────────────────────────
+  const [supervisionLogs, setSupervisionLogs] = useState<SupervisionLog[]>([]);
+  const [showSupervisionModal, setShowSupervisionModal] = useState(false);
+
+  useEffect(() => {
+    if (!activePatient) return;
+    const refresh = () => setSupervisionLogs(supervisionLogService.getByPatientId(activePatient.id));
+    refresh();
+    window.addEventListener('brevemente_supervision_log_changed', refresh);
+    return () => window.removeEventListener('brevemente_supervision_log_changed', refresh);
+  }, [patientId, activePatient]);
+
+  // ── Registro de Constancias Físicas ────────────────────────────────────────
+  const [physicalCertificates, setPhysicalCertificates] = useState<PhysicalCertificateLog[]>([]);
+  const [showRegisterCertModal, setShowRegisterCertModal] = useState(false);
+  const [selectedPhysicalCert, setSelectedPhysicalCert] = useState<PhysicalCertificateLog | null>(null);
+
+  useEffect(() => {
+    if (!activePatient) return;
+    const refresh = () => setPhysicalCertificates(physicalCertificateService.getByPatientId(activePatient.id));
+    refresh();
+    window.addEventListener('brevemente_physical_certificate_changed', refresh);
+    return () => window.removeEventListener('brevemente_physical_certificate_changed', refresh);
+  }, [patientId, activePatient]);
 
   // ── Registro de pagos (Pestaña Pagos) ───────────────────────────────────────
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -651,7 +685,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         </div>
       )}
 
-            {/* Selector de Expedientes (carpetas horizontales) */}
+      {/* Selector de Expedientes (carpetas horizontales) */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <FolderHeart className="w-4 h-4 text-clinical-accent" />
@@ -664,11 +698,10 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               <button
                 key={p.id}
                 onClick={() => navigate(`/expedientes?id=${p.id}`)}
-                className={`shrink-0 w-44 text-left p-3 rounded-xl border-2 shadow-sm transition-all cursor-pointer ${
-                  p.id === patientId
-                    ? 'border-clinical-accent bg-clinical-accent/5'
-                    : 'border-slate-200 bg-white hover:border-[#75AFBC]'
-                }`}
+                className={`shrink-0 w-44 text-left p-3 rounded-xl border-2 shadow-sm transition-all cursor-pointer ${p.id === patientId
+                  ? 'border-clinical-accent bg-clinical-accent/5'
+                  : 'border-slate-200 bg-white hover:border-[#75AFBC]'
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-clinical-accent/10 border border-clinical-accent/20 flex items-center justify-center shrink-0">
@@ -748,6 +781,51 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 📋 Solicitar Supervisión
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Historial de Contingencia y Crisis Resueltas */}
+      {clinicalRecord?.crisisHistory && clinicalRecord.crisisHistory.length > 0 && (
+        <div className="bg-red-50/40 border border-red-200 rounded-xl p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-red-200/70 pb-2">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-red-600" />
+              <h3 className="font-bold text-red-900 text-xs uppercase tracking-wider">
+                Eventos de Contingencia y Crisis Resueltas ({clinicalRecord.crisisHistory.length})
+              </h3>
+            </div>
+            <span className="text-[9px] font-bold text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded uppercase">
+              Expediente Clínico Oficial
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {clinicalRecord.crisisHistory.map((inc) => (
+              <div key={inc.id} className="bg-white border border-red-150 rounded-xl p-4 space-y-2 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <span className="font-bold text-slate-800">
+                    Intervención: {inc.reason}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {new Date(inc.resolvedAt).toLocaleString('es-MX')} · Atendido por {inc.resolvedBy}
+                  </span>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-2.5 text-slate-700 text-[11px] leading-relaxed">
+                  <b className="text-slate-800 block mb-0.5">Nota de intervención clínica:</b>
+                  {inc.resolutionDetails?.clinicalNote}
+                </div>
+                {inc.resolutionDetails?.actionsTaken && inc.resolutionDetails.actionsTaken.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {inc.resolutionDetails.actionsTaken.map((act, i) => (
+                      <span key={i} className="text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded">
+                        ✓ {act}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -878,25 +956,33 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         </button>
 
         <button
-          /*onClick={() => setActiveTab('')}
-          */
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'auditoria'
+          onClick={() => setActiveTab('supervision')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all flex items-center gap-1.5 ${activeTab === 'supervision'
             ? 'border-clinical-accent text-clinical-accent'
             : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
         >
-          Bitacoras Supervisión
+          <span>Bitacoras Supervisión</span>
+          {supervisionLogs.length > 0 && (
+            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${activeTab === 'supervision' ? 'bg-clinical-accent/15 text-clinical-accent' : 'bg-slate-100 text-slate-500'}`}>
+              {supervisionLogs.length}
+            </span>
+          )}
         </button>
 
         <button
-          /*onClick={() => setActiveTab('')}
-          */
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'auditoria'
+          onClick={() => setActiveTab('constancias')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all flex items-center gap-1.5 ${activeTab === 'constancias'
             ? 'border-clinical-accent text-clinical-accent'
             : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
         >
-          Constancias
+          <span>Constancias</span>
+          {physicalCertificates.length > 0 && (
+            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${activeTab === 'constancias' ? 'bg-clinical-accent/15 text-clinical-accent' : 'bg-slate-100 text-slate-500'}`}>
+              {physicalCertificates.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -1727,7 +1813,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               {/* Gráfico comparativo */}
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 className="text-xs font-bold text-clinical-dark uppercase">Comparativo Valoración Global (Esferas Señaladas)</h3>
+                  <h3 className="text-xs font-bold text-clinical-dark uppercase">Comparativo Valoración Global (Esferas Señaladas)</h3>
                   <span className="text-[10px] text-slate-400 font-semibold">Esferas de la vida: Yo (Cuerpo/Mente) vs Demás (Pareja/Familia) vs Mundo (Sociedad)</span>
                 </div>
 
@@ -2154,6 +2240,372 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         </div>
       )}
 
+      {/* PESTAÑA: BITÁCORAS DE SUPERVISIÓN */}
+      {activeTab === 'supervision' && activePatient && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-6 text-xs text-slate-700 animate-fadeIn">
+          {/* Cabecera de Supervisión */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-clinical-teal/10 border border-clinical-teal/20 flex items-center justify-center text-clinical-teal shrink-0">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-clinical-dark flex items-center gap-2">
+                  Bitácoras de Supervisión Clínica · {activePatient.name}
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    {supervisionLogs.length} {supervisionLogs.length === 1 ? 'bitácora' : 'bitácoras'}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Trazabilidad de dictámenes técnicos, maniobras estratégicas y recomendaciones del supervisor clínico.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  supervisionRequestService.createRequest(
+                    activePatient.id,
+                    activePatient.name,
+                    'Solicitud de supervisión clínica generada desde el módulo de bitácoras del expediente.',
+                    { id: 'user-current', name: userName, role: userRole }
+                  );
+                  alert('✓ Solicitud de supervisión enviada al supervisor clínico de guardia y registrada en auditoría.');
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                <Clipboard className="w-3.5 h-3.5 text-amber-600" />
+                <span>Solicitar Supervisión</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowSupervisionModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-clinical-dark hover:bg-clinical-darkLight text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5 text-clinical-teal" />
+                <span> Nueva Bitácora</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tarjetas resumen de supervisión */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block">Supervisor Principal</span>
+              <span className="font-bold text-clinical-dark text-xs block">
+                {supervisionLogs[0]?.supervisorName || 'Dra. Isabel Cárdenas'}
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">
+                {supervisionLogs[0]?.supervisorLicense || 'CED-9988221-MX'}
+              </span>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block">Última Revisión Técnica</span>
+              <span className="font-bold text-clinical-dark text-xs block">
+                {supervisionLogs[0]?.date ? new Date(supervisionLogs[0].date).toLocaleDateString('es-MX', { dateStyle: 'long' }) : 'Sin revisiones'}
+              </span>
+              <span className="text-[10px] text-clinical-teal font-bold block">
+                {supervisionLogs[0] ? `Sesión ${supervisionLogs[0].sessionNumber} supervisada` : 'Pendiente'}
+              </span>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block">Estado del Caso</span>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span className="font-bold text-emerald-800 text-xs">Supervisión al día</span>
+              </div>
+              <span className="text-[10px] text-slate-400 block">Modelo Arezzo TBE</span>
+            </div>
+          </div>
+
+          {/* Listado de Bitácoras */}
+          <div className="space-y-4">
+            <span className="font-bold text-clinical-dark uppercase tracking-wider text-[10px] block">
+              Historial Cronológico de Bitácoras
+            </span>
+
+            {supervisionLogs.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
+                <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-slate-500 font-medium">No se han registrado bitácoras de supervisión para este paciente.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowSupervisionModal(true)}
+                  className="px-4 py-2 bg-clinical-teal text-white rounded-xl text-xs font-bold shadow-sm"
+                >
+                  Registrar Primera Bitácora
+                </button>
+              </div>
+            ) : (
+              supervisionLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 hover:border-slate-300 transition-all"
+                >
+                  {/* Fila superior: Sesión, Fecha, Supervisor */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-1 bg-clinical-dark text-white font-mono font-bold rounded-lg text-xs">
+                        Sesión {log.sessionNumber}
+                      </span>
+                      <span className="font-bold text-clinical-dark text-sm">
+                        Supervisión por {log.supervisorName}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                        {log.supervisorLicense}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        Fecha: <b>{log.date}</b>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`¿Eliminar la bitácora de la Sesión ${log.sessionNumber}?`)) {
+                            supervisionLogService.deleteLog(log.id, { id: 'user-current', name: userName, role: userRole });
+                          }
+                        }}
+                        className="p-1 text-slate-300 hover:text-red-600 transition-colors"
+                        title="Eliminar bitácora"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Diagnóstico Estratégico Arezzo */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-150">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Sistema Perceptivo-Reactivo</span>
+                      <span className="font-bold text-clinical-dark text-xs block mt-0.5">{log.spr}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Trastorno Estratégico (TS)</span>
+                      <span className="font-bold text-clinical-teal text-xs block mt-0.5">{log.ts}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Terapeuta Evaluado</span>
+                      <span className="font-semibold text-slate-700 text-xs block mt-0.5">{log.therapistName}</span>
+                    </div>
+                  </div>
+
+                  {/* Definición del problema & Situación actual */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
+                        Definición del Problema & Solución Intentada
+                      </span>
+                      <p className="text-slate-700 leading-relaxed font-medium">{log.problemDefinition}</p>
+                    </div>
+                    <div className="border border-slate-100 p-3 rounded-lg bg-slate-50/50">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
+                        Situación Clínica Actual
+                      </span>
+                      <p className="text-slate-700 leading-relaxed font-medium">{log.currentSituation}</p>
+                    </div>
+                  </div>
+
+                  {/* Maniobras TBE: Reestructuración, Prescripciones, Efecto */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="border border-slate-100 p-3 rounded-lg">
+                      <span className="text-[9px] font-bold uppercase text-slate-400 block">Reestructuración (RST)</span>
+                      <p className="text-slate-800 font-semibold mt-1 text-[11px]">{log.rst || '—'}</p>
+                    </div>
+                    <div className="border border-slate-100 p-3 rounded-lg">
+                      <span className="text-[9px] font-bold uppercase text-slate-400 block">Prescripciones (PX)</span>
+                      <p className="text-clinical-dark font-bold mt-1 text-[11px]">{log.px || '—'}</p>
+                    </div>
+                    <div className="border border-slate-100 p-3 rounded-lg">
+                      <span className="text-[9px] font-bold uppercase text-slate-400 block">Efecto Observado (EFF)</span>
+                      <p className="text-emerald-800 font-bold mt-1 text-[11px]">{log.eff || '—'}</p>
+                    </div>
+                  </div>
+
+                  {/* Dudas y Bloqueos */}
+                  {(log.doubt || log.blocking) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {log.doubt && (
+                        <div className="bg-amber-50/40 border border-amber-200 rounded-lg p-3 text-[11px]">
+                          <span className="font-bold text-amber-900 block mb-0.5">Duda Clínica del Terapeuta:</span>
+                          <p className="text-amber-800 leading-normal">{log.doubt}</p>
+                        </div>
+                      )}
+                      {log.blocking && (
+                        <div className="bg-rose-50/40 border border-rose-200 rounded-lg p-3 text-[11px]">
+                          <span className="font-bold text-rose-900 block mb-0.5">Bloqueo Identificado en el Caso:</span>
+                          <p className="text-rose-800 leading-normal">{log.blocking}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Dictamen y Recomendaciones del Supervisor */}
+                  <div className="bg-teal-50/40 border border-teal-200 rounded-xl p-4 space-y-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-clinical-teal shrink-0" />
+                      <span className="font-bold text-clinical-dark uppercase tracking-wide text-[10px]">
+                        Dictamen y Recomendaciones del Supervisor
+                      </span>
+                    </div>
+                    {log.observations && (
+                      <p className="text-slate-700 leading-relaxed">
+                        <b className="text-clinical-dark font-semibold">Observaciones: </b>{log.observations}
+                      </p>
+                    )}
+                    {log.recommendations && (
+                      <div className="bg-white border border-teal-200 rounded-lg p-3 text-slate-800 font-medium">
+                        <b className="text-clinical-teal block mb-0.5">Recomendaciones prescriptivas:</b>
+                        {log.recommendations}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PESTAÑA: CONSTANCIAS (CONTROL Y REGISTRO EN FÍSICO) */}
+      {activeTab === 'constancias' && activePatient && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-6 text-xs text-slate-700 animate-fadeIn">
+          {/* Cabecera */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-clinical-dark shrink-0">
+                <FileText className="w-5 h-5 text-clinical-accent" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-clinical-dark flex items-center gap-2">
+                  Registro de Constancias Físicas Emitidas · {activePatient.name}
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    {physicalCertificates.length} {physicalCertificates.length === 1 ? 'constancia' : 'constancias'}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Control documental y archivo de constancias, justificantes e informes expedidos en papel con firma autógrafa.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowRegisterCertModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span> Registrar Constancia Física</span>
+            </button>
+          </div>
+
+          {/* Banner informativo legal y normativo */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-xs leading-relaxed text-slate-600">
+            <ShieldCheck className="w-5 h-5 text-clinical-accent shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-clinical-dark block text-xs mb-0.5">
+                Normativa de Expedición Documental y Cédula Profesional (NOM-004-SSA3-2012)
+              </span>
+              <p className="text-[11px] text-slate-500">
+                Por seguridad jurídica y confidencialidad en salud mental, las constancias oficiales son expedidas directamente en físico con firma autógrafa del profesional tratante en papelería membretada. Este módulo mantiene la bitácora de folios entregados, fechas, destinatarios y copia de resguardo en el expediente.
+              </p>
+            </div>
+          </div>
+
+          {/* Tabla / Listado de Constancias Físicas */}
+          <div className="space-y-3">
+            <span className="font-bold text-clinical-dark uppercase tracking-wider text-[10px] block">
+              Historial de Constancias Físicas Entregadas
+            </span>
+
+            {physicalCertificates.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
+                <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-slate-500 font-medium">No se han registrado constancias físicas emitidas para este paciente.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterCertModal(true)}
+                  className="px-4 py-2 bg-clinical-accent text-white rounded-xl text-xs font-bold shadow-sm"
+                >
+                  Registrar Primera Constancia
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
+                {physicalCertificates.map((cert) => (
+                  <div key={cert.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 bg-slate-100 text-clinical-dark font-mono font-bold rounded text-[10px] border border-slate-200">
+                          {cert.physicalFolio}
+                        </span>
+                        <span className="font-bold text-clinical-dark text-xs">
+                          {cert.type === 'psicoterapeutica' ? 'Constancia Psicoterapéutica' :
+                            cert.type === 'psiquiatrica' ? 'Constancia Psiquiátrica' :
+                              cert.type === 'asistencia' ? 'Constancia de Asistencia' :
+                                cert.type === 'informe_pericial' ? 'Informe Clínico / Pericial' : 'Justificante Médico'}
+                        </span>
+                        <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">
+                          ✓ Entregada en físico
+                        </span>
+                        {cert.scanFileName && (
+                          <span className="text-[9px] bg-teal-50 text-clinical-teal border border-teal-200 px-2 py-0.5 rounded font-bold flex items-center gap-1">
+                            <Paperclip className="w-2.5 h-2.5" />
+                            Escaneo adjunto
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                        <span>Destinatario: <b className="text-slate-700">{cert.recipient}</b></span>
+                        <span>•</span>
+                        <span>Expedida el: <b className="text-slate-700">{cert.issueDate}</b></span>
+                        <span>•</span>
+                        <span>Firmante: <b className="text-slate-700">{cert.issuerName}</b> ({cert.issuerLicense})</span>
+                        <span>•</span>
+                        <span>Sesiones: <b className="text-slate-700">{cert.sessionsCount}</b></span>
+                      </div>
+
+                      <p className="text-slate-600 text-[11px] line-clamp-2 leading-relaxed bg-slate-50/70 p-2 rounded-lg border border-slate-100">
+                        "{cert.clinicalSummary}"
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPhysicalCert(cert)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Ver Ficha de Registro</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`¿Eliminar del registro la constancia ${cert.physicalFolio}?`)) {
+                            physicalCertificateService.deleteCertificateRecord(cert.id, { id: 'user-current', name: userName, role: userRole });
+                          }
+                        }}
+                        className="p-2 text-slate-300 hover:text-red-600 transition-colors"
+                        title="Eliminar registro"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal Registrar Pago */}
       {showPaymentModal && activePatient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -2372,6 +2824,42 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Nueva Bitácora de Supervisión */}
+      {showSupervisionModal && activePatient && (
+        <SupervisionLogModal
+          patient={activePatient}
+          userName={userName}
+          userRole={userRole}
+          sessionCount={sessions.length}
+          onClose={() => setShowSupervisionModal(false)}
+          onSaved={() => {
+            setSupervisionLogs(supervisionLogService.getByPatientId(activePatient.id));
+          }}
+        />
+      )}
+
+      {/* Modal Registrar Constancia Física */}
+      {showRegisterCertModal && activePatient && (
+        <RegisterPhysicalCertificateModal
+          patient={activePatient}
+          userName={userName}
+          userRole={userRole}
+          sessionCount={sessions.length}
+          onClose={() => setShowRegisterCertModal(false)}
+          onSaved={() => {
+            setPhysicalCertificates(physicalCertificateService.getByPatientId(activePatient.id));
+          }}
+        />
+      )}
+
+      {/* Modal Detalle de Constancia Física */}
+      {selectedPhysicalCert && (
+        <PhysicalCertificateDetailModal
+          certificate={selectedPhysicalCert}
+          onClose={() => setSelectedPhysicalCert(null)}
+        />
       )}
     </div>
   );

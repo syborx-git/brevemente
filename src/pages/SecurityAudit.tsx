@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Search, Trash2, Calendar, FileClock, ShieldCheck, AlertOctagon } from 'lucide-react';
-import { Role, AuditLog, RiskAlert } from '../types/clinical';
+import { Role, AuditLog, RiskAlert, Patient } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
+import { patientService } from '../services/patientService';
+import { CrisisResolutionModal } from '../components/CrisisResolutionModal';
+import { CrisisIncidentDetailModal } from '../components/CrisisIncidentDetailModal';
 
 interface SecurityAuditProps {
   userRole: Role;
@@ -22,12 +25,17 @@ const timeAgo = (iso: string): string => {
 export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [alerts, setAlerts] = useState<RiskAlert[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+  const [crisisAlertToResolve, setCrisisAlertToResolve] = useState<RiskAlert | null>(null);
+  const [resolvedAlertToView, setResolvedAlertToView] = useState<RiskAlert | null>(null);
 
   const loadData = () => {
     setLogs(auditLogService.getLogs());
     setAlerts(riskSimulationService.getAlerts());
+    patientService.getAll().then(setPatients);
   };
 
   useEffect(() => {
@@ -132,10 +140,10 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
 
                 {['supervisor', 'admin_clinical', 'therapist'].includes(userRole) && (
                   <button
-                    onClick={() => handleResolveAlert(a.id)}
+                    onClick={() => setCrisisAlertToResolve(a)}
                     className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow shrink-0 transition-colors"
                   >
-                    Marcar como Atendido
+                    Resolver Caso
                   </button>
                 )}
               </div>
@@ -169,9 +177,17 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
                       : '—'} por <b className="text-emerald-700">{a.resolvedBy}</b>
                   </span>
                 </div>
-                <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded font-bold uppercase text-[10px] shrink-0">
-                  ✓ Atendida
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setResolvedAlertToView(a)}
+                    className="px-2.5 py-1 text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
+                  >
+                    Ver Acta
+                  </button>
+                  <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded font-bold uppercase text-[10px] shrink-0">
+                    ✓ Atendida
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -258,6 +274,30 @@ export const SecurityAudit: React.FC<SecurityAuditProps> = ({ userRole, userName
           )}
         </div>
       </div>
+
+      {/* MODAL DE PROTOCOLO DE RESOLUCIÓN DE CRISIS */}
+      {crisisAlertToResolve && (
+        <CrisisResolutionModal
+          alert={crisisAlertToResolve}
+          patient={patients.find(p => p.id === crisisAlertToResolve.patientId) || patients.find(p => p.name === crisisAlertToResolve.patientName)}
+          userName={userName}
+          userRole={userRole}
+          onClose={() => setCrisisAlertToResolve(null)}
+          onResolved={() => {
+            loadData();
+            setCrisisAlertToResolve(null);
+          }}
+        />
+      )}
+
+      {/* MODAL DE CONSULTA DE ACTA HISTÓRICA */}
+      {resolvedAlertToView && (
+        <CrisisIncidentDetailModal
+          alert={resolvedAlertToView}
+          onClose={() => setResolvedAlertToView(null)}
+        />
+      )}
+
     </div>
   );
 };
