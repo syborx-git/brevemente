@@ -1,4 +1,4 @@
-import { ClinicalRecord } from '../types/clinical';
+import { ClinicalRecord, CrisisIncident } from '../types/clinical';
 
 const STORAGE_KEY = 'brevemente_clinical_records';
 
@@ -24,6 +24,30 @@ export const recordService = {
   async saveByPatientId(patientId: string, record: ClinicalRecord): Promise<ClinicalRecord> {
     await delay(200);
     const all = readAll();
+    all[patientId] = record;
+    writeAll(all);
+    return record;
+  },
+
+  // Registrar un incidente de crisis resuelto en el expediente clínico
+  async addCrisisIncident(patientId: string, incident: CrisisIncident): Promise<ClinicalRecord> {
+    await delay(150);
+    const all = readAll();
+    const existing = all[patientId];
+    const record: ClinicalRecord = existing ? { ...existing } : {
+      patientId,
+      patientName: 'Paciente',
+      folio: `EXP-${patientId.replace(/\D/g, '') || '001'}`,
+      startDate: new Date().toISOString().split('T')[0],
+      age: 28,
+      therapistName: incident.resolvedBy,
+      status: 'activo',
+      riskLevel: incident.resolutionDetails?.riskLevelAssessed === 'inminente' || incident.resolutionDetails?.riskLevelAssessed === 'alto' ? 'alto' : (incident.resolutionDetails?.riskLevelAssessed === 'medio' ? 'medio' : 'bajo'),
+      modality: 'presencial'
+    };
+
+    const history = record.crisisHistory ? [...record.crisisHistory] : [];
+    record.crisisHistory = [incident, ...history];
     all[patientId] = record;
     writeAll(all);
     return record;

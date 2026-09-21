@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   CalendarCheck, CreditCard, Pill, MessageCircle, Phone,
   ChevronDown, ChevronUp, ExternalLink, User, Clock,
@@ -227,6 +227,18 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   }, []);
   const activePatientAlerts = riskAlerts.filter(a => a.patientId === patient.id && !a.resolved);
 
+  // Alerta de crisis resuelta más reciente
+  const [dismissedResolvedAlertId, setDismissedResolvedAlertId] = useState<string | null>(null);
+  const resolvedPatientCrisis = riskAlerts
+    .filter(a => a.patientId === patient.id && a.resolved && a.message.includes('ALERTA ROJA'))
+    .sort((a, b) => new Date(b.resolvedAt || b.timestamp).getTime() - new Date(a.resolvedAt || a.timestamp).getTime())[0];
+
+  const showResolvedBanner = Boolean(
+    resolvedPatientCrisis &&
+    resolvedPatientCrisis.id !== dismissedResolvedAlertId &&
+    activePatientAlerts.length === 0
+  );
+
   // ¿Ya se envió un aviso de crisis activo (sin resolver)? Evita alertas repetidas.
   const hasActiveCrisisAlert = activePatientAlerts.some(
     (a) => a.message.includes('ALERTA ROJA')
@@ -343,6 +355,44 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             <span className="font-bold block">Recursos de apoyo inmediato (24/7):</span>
             <div>📞 Línea de la Vida (Nacional): 800 911 2000</div>
             <div>📞 Guardia BreveMente: +52 55 9000 8000</div>
+          </div>
+        </section>
+      )}
+
+      {/* Aviso de crisis atendida y estabilizada */}
+      {showResolvedBanner && (
+        <section className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 space-y-3 animate-fadeIn">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <h3 className="font-bold text-emerald-900 text-sm">Tu aviso de crisis fue atendido</h3>
+            </div>
+            <button
+              onClick={() => setDismissedResolvedAlertId(resolvedPatientCrisis.id)}
+              className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold px-2 py-0.5 rounded hover:bg-emerald-100 transition-colors"
+            >
+              Entendido / Cerrar aviso ✕
+            </button>
+          </div>
+          <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+            Tu reporte fue atendido y registrado por <b>{resolvedPatientCrisis.resolvedBy || 'tu especialista'}</b>
+            {resolvedPatientCrisis.resolvedAt && (
+              <span> el {new Date(resolvedPatientCrisis.resolvedAt).toLocaleDateString('es-MX')} a las {new Date(resolvedPatientCrisis.resolvedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} hrs</span>
+            )}. La situación ha sido catalogada como estabilizada.
+          </p>
+          {resolvedPatientCrisis.resolutionDetails?.patientInstructions && (
+            <div className="bg-white/90 border border-emerald-200 rounded-xl p-3.5 text-xs text-slate-700 space-y-1">
+              <span className="font-bold text-emerald-900 text-[10px] uppercase tracking-wider block">
+                Indicaciones de seguimiento de tu terapeuta:
+              </span>
+              <p className="italic font-medium leading-relaxed">
+                "{resolvedPatientCrisis.resolutionDetails.patientInstructions}"
+              </p>
+            </div>
+          )}
+          <div className="flex items-center justify-between flex-wrap gap-2 text-[11px] text-emerald-700 pt-1">
+            <span>Si vuelves a requerir auxilio, las líneas 24/7 y el botón de crisis continúan a tu disposición.</span>
+            <span className="font-bold">Línea de la Vida: 800 911 2000</span>
           </div>
         </section>
       )}

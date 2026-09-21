@@ -8,6 +8,8 @@ import { Role, Appointment, Patient, RiskAlert, SupervisionRequest } from '../ty
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
 import { supervisionRequestService } from '../services/supervisionRequestService';
+import { CrisisResolutionModal } from '../components/CrisisResolutionModal';
+import { CrisisIncidentDetailModal } from '../components/CrisisIncidentDetailModal';
 
 interface MiConsultaProps {
   userRole: Role;
@@ -68,6 +70,11 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
     return () => window.removeEventListener('brevemente_risk_alert_added', refresh);
   }, []);
   const activeAlerts = riskAlerts.filter(a => !a.resolved);
+  const resolvedAlerts = riskAlerts.filter(a => a.resolved);
+
+  // Estados para modales de resolución y consulta de crisis
+  const [crisisAlertToResolve, setCrisisAlertToResolve] = useState<RiskAlert | null>(null);
+  const [resolvedAlertToView, setResolvedAlertToView] = useState<RiskAlert | null>(null);
 
   // Solicitudes de supervisión en tiempo real
   const [supervisionRequests, setSupervisionRequests] = useState<SupervisionRequest[]>(supervisionRequestService.getRequests());
@@ -236,9 +243,20 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
 
             <div className="space-y-3 font-semibold">
               {activeAlerts.length === 0 && pendingRequests.length === 0 ? (
-                <p className="text-[11px] text-slate-400 italic text-center py-3">
-                  Sin casos que requieran atención urgente.
-                </p>
+                <div className="py-3 text-center space-y-2">
+                  <p className="text-[11px] text-slate-400 italic">
+                    Sin casos que requieran atención urgente.
+                  </p>
+                  {resolvedAlerts.length > 0 && (
+                    <button
+                      onClick={() => setResolvedAlertToView(resolvedAlerts[0])}
+                      className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md hover:bg-emerald-100 transition-colors"
+                    >
+                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                      Ver último caso resuelto ({resolvedAlerts[0].patientName})
+                    </button>
+                  )}
+                </div>
               ) : (
                 activeAlerts.map(a => (
                   <div key={a.id} className="bg-red-50/30 border-red-200 rounded-lg p-3 space-y-1">
@@ -248,8 +266,8 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                     <div className="flex gap-2 pt-1">
                       {['supervisor', 'admin_clinical', 'admin_platform', 'therapist'].includes(userRole) ? (
                         <button
-                          onClick={() => riskSimulationService.resolveAlert(a.id, { id: 'user-current', name: userName, role: userRole })}
-                          className="text-[9px] font-bold text-red-700 hover:underline"
+                          onClick={() => setCrisisAlertToResolve(a)}
+                          className="text-[9px] font-bold text-red-750 hover:underline flex items-center gap-1 bg-red-100/70 hover:bg-red-200/80 px-2 py-0.5 rounded transition-colors"
                         >
                           Resolver Caso →
                         </button>
@@ -340,6 +358,29 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
         </div>
 
       </div>
+
+      {/* MODAL DE PROTOCOLO DE RESOLUCIÓN DE CRISIS */}
+      {crisisAlertToResolve && (
+        <CrisisResolutionModal
+          alert={crisisAlertToResolve}
+          patient={patients.find(p => p.id === crisisAlertToResolve.patientId) || patients.find(p => p.name === crisisAlertToResolve.patientName)}
+          userName={userName}
+          userRole={userRole}
+          onClose={() => setCrisisAlertToResolve(null)}
+          onResolved={() => {
+            setRiskAlerts(riskSimulationService.getAlerts());
+            setCrisisAlertToResolve(null);
+          }}
+        />
+      )}
+
+      {/* MODAL DE CONSULTA DE ACTA HISTÓRICA */}
+      {resolvedAlertToView && (
+        <CrisisIncidentDetailModal
+          alert={resolvedAlertToView}
+          onClose={() => setResolvedAlertToView(null)}
+        />
+      )}
 
     </div>
 

@@ -1,5 +1,5 @@
 import { auditLogService } from './auditLogService';
-import { Role, RiskAlert } from '../types/clinical';
+import { Role, RiskAlert, CrisisResolutionDetails } from '../types/clinical';
 
 const STORAGE_KEY = 'brevemente_risk_alerts';
 
@@ -79,26 +79,47 @@ export const riskSimulationService = {
     return newAlert;
   },
 
+  getAlertById(alertId: string): RiskAlert | undefined {
+    return this.getAlerts().find(a => a.id === alertId);
+  },
+
   resolveAlert(
     alertId: string,
-    user: { id: string; name: string; role: Role }
-  ): void {
+    user: { id: string; name: string; role: Role },
+    resolutionDetails?: CrisisResolutionDetails
+  ): RiskAlert | null {
     const alerts = this.getAlerts();
     const alertIndex = alerts.findIndex(a => a.id === alertId);
     if (alertIndex !== -1) {
       alerts[alertIndex].resolved = true;
       alerts[alertIndex].resolvedBy = user.name;
       alerts[alertIndex].resolvedAt = new Date().toISOString();
+      if (resolutionDetails) {
+        alerts[alertIndex].resolutionDetails = resolutionDetails;
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
 
+      const contactLabelMap: Record<string, string> = {
+        paciente_directo: 'Contacto directo con paciente',
+        persona_apoyo: 'Contacto con persona de apoyo / familiar',
+        sin_respuesta: 'Sin respuesta (activación de protocolo de auxilio)',
+        falsa_alarma: 'Falsa alarma o pulsación involuntaria'
+      };
+
+      const outcomeText = resolutionDetails
+        ? `Resultado: ${contactLabelMap[resolutionDetails.contactOutcome] || resolutionDetails.contactOutcome}. Riesgo: ${resolutionDetails.riskLevelAssessed.toUpperCase()}. Acciones: ${resolutionDetails.actionsTaken.join(', ')}. Nota: "${resolutionDetails.clinicalNote}".`
+        : 'Alerta de riesgo marcada como resuelta.';
+
       auditLogService.addLog(
-        'Riesgo Resuelto',
-        `Alerta de riesgo para ${alerts[alertIndex].patientName} marcada como resuelta por ${user.name}.`,
+        'Resolución de Crisis Clínica',
+        `Paciente: ${alerts[alertIndex].patientName}. Resuelto por: ${user.name} (${user.role}). ${outcomeText}`,
         'riesgo',
         user
       );
 
-      window.dispatchEvent(new CustomEvent('brevemente_risk_alert_added'));
+      window.dispatchEvent(new CustomEvent('brevemente_risk_alert_added', { detail: alerts[alertIndex] }));
+      return alerts[alertIndex];
     }
+    return null;
   }
 };
