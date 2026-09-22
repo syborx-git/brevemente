@@ -1,6 +1,6 @@
 # BreveMente
 
-Prototipo navegable de la plataforma BreveMente para operación clínica, Terapia Breve Estratégica, formación, supervisión y asistencia mediante Senda.
+Prototipo navegable de la plataforma BreveMente para operación clínica, Terapia Breve Estratégica, formación, supervisión y asistencia mediante LEVA.
 
 ## Requisitos
 

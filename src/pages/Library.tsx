@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Search, FileText, ChevronRight, HelpCircle } from 'lucide-react';
+import { BookOpen, Search, FileText, ChevronRight, HelpCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Role, LibraryDocument } from '../types/clinical';
 import { mockLibrary } from '../data/mockData';
 import { auditLogService } from '../services/auditLogService';
@@ -13,21 +13,22 @@ export const Library: React.FC<LibraryProps> = ({ userRole, userName }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'manual' | 'protocolo'>('all');
   const [selectedDoc, setSelectedDoc] = useState<LibraryDocument | null>(null);
+  const [warningsDoc, setWarningsDoc] = useState<LibraryDocument | null>(null);
 
   const filteredDocs = mockLibrary.filter(doc => {
-    const matchesSearch = 
+    const matchesSearch =
       doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (doc.code && doc.code.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     const matchesCategory = activeTab === 'all' || doc.category === activeTab;
-    
+
     return matchesSearch && matchesCategory;
   });
 
   const handleOpenDoc = (doc: LibraryDocument) => {
     setSelectedDoc(doc);
-    
+
     // Registrar en auditoría
     auditLogService.addLog(
       'Uso de Biblioteca',
@@ -35,6 +36,16 @@ export const Library: React.FC<LibraryProps> = ({ userRole, userName }) => {
       'ia',
       { id: 'user-current', name: userName, role: userRole }
     );
+  };
+
+  const handleAcceptWarnings = () => {
+    auditLogService.addLog(
+      'Aceptación de advertencias',
+      `Aceptó las advertencias de uso clínico del documento: "${warningsDoc?.title || 'Documento'}"`,
+      'seguridad',
+      { id: 'user-current', name: userName, role: userRole }
+    );
+    setWarningsDoc(null);
   };
 
   return (
@@ -89,7 +100,7 @@ export const Library: React.FC<LibraryProps> = ({ userRole, userName }) => {
       {/* Listado de Documentos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredDocs.map((doc) => (
-          <div 
+          <div
             key={doc.id}
             className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-slate-350 transition-all flex flex-col justify-between"
           >
@@ -104,7 +115,7 @@ export const Library: React.FC<LibraryProps> = ({ userRole, userName }) => {
                   </span>
                 )}
               </div>
-              
+
               <div>
                 <h3 className="text-xs font-bold text-clinical-dark block line-clamp-1">{doc.title}</h3>
                 <span className="text-[10px] text-clinical-teal font-semibold uppercase tracking-wider block mt-0.5">
@@ -148,7 +159,7 @@ export const Library: React.FC<LibraryProps> = ({ userRole, userName }) => {
                 <BookOpen className="w-5 h-5 text-clinical-accent" />
                 <h3 className="text-sm font-bold">{selectedDoc.title}</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedDoc(null)}
                 className="text-slate-400 hover:text-white font-bold"
               >
@@ -178,10 +189,75 @@ export const Library: React.FC<LibraryProps> = ({ userRole, userName }) => {
             {/* Footer */}
             <div className="p-4 border-t border-slate-100 flex justify-end shrink-0 bg-slate-50 rounded-b-xl">
               <button
-                onClick={() => setSelectedDoc(null)}
+                onClick={() => { setWarningsDoc(selectedDoc); setSelectedDoc(null); }}
                 className="px-4 py-2 bg-clinical-accent text-white rounded-lg text-xs font-semibold hover:bg-clinical-accentHover transition-colors shadow-sm"
               >
                 Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Advertencias de Uso Clínico (ENTENDIDO - ACEPTO) */}
+      {warningsDoc && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl border-2 border-amber-400 w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+            {/* Header */}
+            <div className="p-5 border-b border-amber-300 flex items-center justify-between bg-amber-500 text-white rounded-t-xl shrink-0">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-white" />
+                <h3 className="text-sm font-bold">Advertencias de Uso Clínico — {warningsDoc.title}</h3>
+              </div>
+              <button
+                onClick={() => setWarningsDoc(null)}
+                className="text-amber-100 hover:text-white font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-4 text-xs leading-relaxed text-slate-700">
+              {warningsDoc.warnings && warningsDoc.warnings.length > 0 ? (
+                <ul className="space-y-2">
+                  {warningsDoc.warnings.map((w, i) => (
+                    <li key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <span className="font-semibold text-amber-900">{w}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-6 text-center space-y-2">
+                  <HelpCircle className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="font-bold text-slate-600">
+                    Esta es una demostración. La información de advertencias de los protocolos clínicos aún no ha sido cargada en el sistema.
+                  </p>
+                  <p className="text-slate-400 font-medium">
+                    Cuando los protocolos oficiales estén disponibles, aquí se desplegarán todas las advertencias, contraindicaciones y condiciones de uso de cada documento.
+                  </p>
+                </div>
+              )}
+
+              <div className="border-t border-slate-100 pt-4 flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
+                <ShieldAlert className="w-4 h-4 text-amber-500" />
+                La aceptación de estas advertencias queda registrada en la bitácora de auditoría.
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50 rounded-b-xl">
+              <button
+                onClick={() => setWarningsDoc(null)}
+                className="px-4 py-2 border border-slate-200 text-slate-500 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAcceptWarnings}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-sm transition-colors"
+              >
+                ENTENDIDO - ACEPTO
               </button>
             </div>
           </div>

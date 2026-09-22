@@ -273,6 +273,7 @@ export interface LibraryDocument {
   code?: string;
   content: string;
   summary: string;
+  warnings?: string[];   // ← NUEVO (opcional)
 }
 
 export interface Certificate {

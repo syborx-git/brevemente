@@ -142,7 +142,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
     // Registrar auditoría de simulación
     auditLogService.addLog(
       'Simulación clínica completada',
-      `Completó práctica interactiva de simulación de paciente para: ${activeCase.name}. Calificación de Senda emitida.`,
+      `Completó práctica interactiva de simulación de paciente para: ${activeCase.name}. Calificación de LEVA emitida.`,
       'ia',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -232,7 +232,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
             onClick={() => setActiveTab('simulador')}
             className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'simulador' ? 'bg-clinical-dark text-white shadow-sm' : 'hover:text-slate-800'}`}
           >
-            Simulador Clínico con Senda
+            Simulador Clínico con LEVA
           </button>
         )}
         {['admin_platform', 'admin_clinical', 'supervisor'].includes(userRole) && (
@@ -363,7 +363,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
                   </p>
                 </div>
                 <div className="bg-slate-50 border-l-4 border-l-[#75AFBC] p-3 rounded-r-xl">
-                  <span className="font-bold text-clinical-dark block">📌 Prácticas Clínicas en el Simulador Senda</span>
+                  <span className="font-bold text-clinical-dark block">📌 Prácticas Clínicas en el Simulador LEVA</span>
                   <p className="text-[11px] text-slate-600 mt-1">
                     El Simulador de Pacientes con IA ha sido actualizado con el caso "Roberto Valdés" que presenta factores de riesgo. Es indispensable que practiquen el protocolo de escalamiento clínico antes de su evaluación presencial.
                   </p>
@@ -462,14 +462,14 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
         </div>
       )}
 
-      {/* TAB 3: SIMULADOR CLÍNICO CON SENDA */}
+      {/* TAB 3: SIMULADOR CLÍNICO CON LEVA */}
       {activeTab === 'simulador' && (
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6 text-xs text-slate-655" data-tour="simulador-ia">
           <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-sm font-extrabold text-clinical-dark uppercase tracking-wide flex items-center gap-1.5">
                 <PlayCircle className="w-5 h-5 text-clinical-teal" />
-                Simulador Clínico con IA (Senda)
+                Simulador Clínico con IA (LEVA)
               </h3>
               <p className="text-slate-400 font-semibold mt-0.5">Practica tu diálogo estratégico y prescripción técnica contra un paciente simulado por IA.</p>
             </div>
@@ -524,7 +524,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg text-[11px] leading-normal text-slate-700 font-medium">
-                  💡 **Regla del Simulador:** Senda actúa como el paciente durante el diálogo y no te dará pistas ni reestructurará por ti. Tu labor es descubrir el SPR y las Soluciones Intentadas mediante el Diálogo.
+                  💡 **Regla del Simulador:** LEVA actúa como el paciente durante el diálogo y no te dará pistas ni reestructurará por ti. Tu labor es descubrir el SPR y las Soluciones Intentadas mediante el Diálogo.
                 </div>
 
                 <button
@@ -680,7 +680,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
                   disabled={!selectedProtocol || !selectedManiobra}
                   className="w-full py-2 bg-clinical-dark hover:bg-clinical-darkLight text-white rounded-lg font-bold shadow transition-colors disabled:opacity-40"
                 >
-                  Finalizar Simulación y Obtener Evaluación Senda
+                  Finalizar Simulación y Obtener Evaluación LEVA
                 </button>
               </div>
             </div>
@@ -699,7 +699,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] text-slate-400 font-semibold block">Calificación Senda:</span>
+                  <span className="text-[9px] text-slate-400 font-semibold block">Calificación LEVA:</span>
                   <span className="text-2xl font-extrabold text-clinical-teal">9.0 / 10</span>
                 </div>
               </div>
@@ -734,7 +734,7 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
                     <path d="M50 20C66.5685 20 80 33.4315 80 50C80 62 72 72 62 77" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
                     <circle cx="50" cy="50" r="6" fill="#304768" />
                   </svg>
-                  <span>Evaluación Asistida Senda</span>
+                  <span>Evaluación Asistida LEVA</span>
                 </div>
                 <p className="text-slate-700 font-semibold">
                   Has guiado la simulación con precisión. Lograste identificar la solución intentada dominante del paciente (petición de ayuda/demanda) en el segundo turno de diálogo y prescribiste la maniobra de la Peor Fantasía de forma canónica.

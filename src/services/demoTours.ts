@@ -50,9 +50,9 @@ export const EXECUTIVE_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 6,
-    route: '/senda',
-    targetSelector: '[data-tour="senda-assistant-chat"]',
-    title: 'Senda - Inteligencia asistiva',
+    route: '/leva',
+    targetSelector: '[data-tour="leva-assistant-chat"]',
+    title: 'LEVA - Inteligencia asistiva',
     explanation: 'Asistente IA integrado para consultas de manuales de intervención, redacción de notas y asistencia clínica en tiempo real.',
     benefit: 'Soporte cognitivo seguro y con revisión 100% humana.'
   },
@@ -69,7 +69,7 @@ export const EXECUTIVE_TOUR: DemoStep[] = [
     route: '/campus',
     targetSelector: '[data-tour="dashboard-academico"]',
     title: 'Campus Académico y LMS',
-    explanation: 'Espacio de formación continua: cursos, simulaciones interactivas de casos con Senda, evaluaciones con rúbricas y certificados QR.',
+    explanation: 'Espacio de formación continua: cursos, simulaciones interactivas de casos con LEVA, evaluaciones con rúbricas y certificados QR.',
     benefit: 'Capacitación continua integrada en el flujo de trabajo.'
   },
   {
@@ -136,7 +136,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
     route: '/intake?id=patient-2',
     targetSelector: 'form',
     title: 'Portal del Paciente: Consentimiento',
-    explanation: 'El paciente completa sus datos clínicos iniciales y firma digitalmente autorizando el resguardo y la grabación con Senda.',
+    explanation: 'El paciente completa sus datos clínicos iniciales y firma digitalmente autorizando el resguardo y la grabación con LEVA.',
     benefit: 'Garantía jurídica y autorización del modo de expediente (IA vs Manual).'
   },
   {
@@ -152,7 +152,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
     route: '/expedientes?id=patient-1',
     targetSelector: '[data-tour="session-history-box"]',
     title: 'Creación de Nueva Sesión',
-    explanation: 'Inicia el registro clínico de la Sesión 3. Permite elegir llenado con grabación de audio asistida por Senda o llenado manual.',
+    explanation: 'Inicia el registro clínico de la Sesión 3. Permite elegir llenado con grabación de audio asistida por LEVA o llenado manual.',
     benefit: 'Flexibilidad de registro adaptado a la preferencia del paciente.'
   },
   {
@@ -160,23 +160,23 @@ export const CLINICAL_TOUR: DemoStep[] = [
     route: '/expedientes?id=patient-1',
     targetSelector: '[data-tour="recording-mic-box"]',
     title: 'Grabación de Audio e IA',
-    explanation: 'Simula la grabación del audio de la sesión y presiona "IA rellena expediente". Senda transcribirá e identificará protocolos.',
+    explanation: 'Simula la grabación del audio de la sesión y presiona "IA rellena expediente". LEVA transcribirá e identificará protocolos.',
     benefit: 'Reducción del 70% en tiempos de redacción de notas.'
   },
   {
     stepIndex: 10,
     route: '/expedientes?id=patient-1',
-    targetSelector: '[data-tour="brifi-widget"]',
-    title: 'Consulta Contextual de Senda',
-    explanation: 'Abre el panel lateral de Senda para buscar el protocolo de Ataque de Pánico sin abandonar tu formulario.',
+    targetSelector: '[data-tour="leva-widget"]',
+    title: 'Consulta Contextual de LEVA',
+    explanation: 'Abre el panel lateral de LEVA para buscar el protocolo de Ataque de Pánico sin abandonar tu formulario.',
     benefit: 'Soporte clínico en tiempo real en el punto de atención.'
   },
   {
     stepIndex: 11,
     route: '/expedientes?id=patient-1',
-    targetSelector: '[data-tour="brifi-ai-suggestion"]',
+    targetSelector: '[data-tour="leva-ai-suggestion"]',
     title: 'Validación e Inserción de Borrador',
-    explanation: 'Senda sugiere intervenciones y cita manuales. El clínico valida y presiona "Aceptar e insertar" para inyectar la nota como borrador.',
+    explanation: 'LEVA sugiere intervenciones y cita manuales. El clínico valida y presiona "Aceptar e insertar" para inyectar la nota como borrador.',
     benefit: 'Combina eficiencia digital y supervisión humana del especialista.'
   },
   {
@@ -242,8 +242,8 @@ export const ACADEMIC_TOUR: DemoStep[] = [
     stepIndex: 4,
     route: '/campus',
     targetSelector: '[data-tour="simulador-ia"]',
-    title: 'Simulador Clínico con IA (Senda)',
-    explanation: 'Los alumnos pueden entrenar diálogos estratégicos interactivos contra casos simulados virtuales (Ataques de Pánico, TOC, Fobia) con Senda.',
+    title: 'Simulador Clínico con IA (LEVA)',
+    explanation: 'Los alumnos pueden entrenar diálogos estratégicos interactivos contra casos simulados virtuales (Ataques de Pánico, TOC, Fobia) con LEVA.',
     benefit: 'Capacitación segura en un entorno clínico sin riesgos.'
   },
   {
@@ -251,7 +251,7 @@ export const ACADEMIC_TOUR: DemoStep[] = [
     route: '/campus',
     targetSelector: '[data-tour="simulador-ia"]',
     title: 'Rúbricas de Evaluación del Simulador',
-    explanation: 'Senda actúa como evaluador al concluir el ejercicio, emitiendo una calificación objetiva basada en la adhesión a las maniobras de Arezzo.',
+    explanation: 'LEVA actúa como evaluador al concluir el ejercicio, emitiendo una calificación objetiva basada en la adhesión a las maniobras de Arezzo.',
     benefit: 'Medición de aptitudes con rúbrica automatizada y oportuna.'
   },
   {
@@ -299,7 +299,7 @@ export const ACADEMIC_TOUR: DemoStep[] = [
     route: '/campus',
     targetSelector: '[data-tour="dashboard-academico"]',
     title: 'Capacitación del Personal de la Clínica',
-    explanation: 'Los directores pueden crear programas de cumplimiento interno en privacidad (HIPAA), consentimiento seguro y uso ético de la IA Senda.',
+    explanation: 'Los directores pueden crear programas de cumplimiento interno en privacidad (HIPAA), consentimiento seguro y uso ético de la IA LEVA.',
     benefit: 'Monitoreo de asistencia y cumplimiento institucional.'
   },
   {

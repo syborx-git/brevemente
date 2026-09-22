@@ -55,7 +55,7 @@ export const DemoLauncher: React.FC<DemoLauncherProps> = ({ isOpen, onClose, onS
                     Demo Ejecutiva (3–5 min)
                   </span>
                   <span className="text-[10px] text-slate-500 block mt-0.5 leading-normal font-semibold">
-                    Recorrido comercial de alto valor. Muestra métricas de dashboard, agenda, Senda y auditoría clínica.
+                    Recorrido comercial de alto valor. Muestra métricas de dashboard, agenda, LEVA y auditoría clínica.
                   </span>
                 </div>
               </button>

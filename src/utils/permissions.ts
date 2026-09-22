@@ -5,7 +5,7 @@ export const MODULE_PERMISSIONS: Record<string, Role[]> = {
   patients: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'],
   agenda: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'],
   expedientes: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor'],
-  senda: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'],
+  leva: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'],
   biblioteca: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'],
   reportes: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor'],
   supervision: ['admin_platform', 'admin_clinical', 'supervisor'],
