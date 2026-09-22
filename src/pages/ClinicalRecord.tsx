@@ -28,7 +28,7 @@ import { sessionService } from '../services/sessionService';
 import { patientService } from '../services/patientService';
 import { paymentService } from '../services/paymentService';
 import { therapistService } from '../services/therapistService';
-import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP } from '../utils/legalConsent';
+import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP, checkAgingMinorPatients } from '../utils/legalConsent';
 import { SupervisionLogModal } from '../components/SupervisionLogModal';
 import { RegisterPhysicalCertificateModal } from '../components/RegisterPhysicalCertificateModal';
 import { PhysicalCertificateDetailModal } from '../components/PhysicalCertificateDetailModal';
@@ -49,6 +49,17 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   // Verificación de bloqueo legal de grabación
   const legalBlockCheck = isActionBlockedByLegalConsent(activePatient);
   const isRecordingBlocked = legalBlockCheck.isBlocked;
+  const [reconsentimientoFormalizado, setReconsentimientoFormalizado] = useState(false);
+  const [isFormalizingReconsent, setIsFormalizingReconsent] = useState(false);
+  const requiresReconsentimiento =
+    !reconsentimientoFormalizado &&
+    !!activePatient &&
+    checkAgingMinorPatients([activePatient]).length > 0;
+
+  // Al cambiar de paciente, se reinicia el estado local del reconsentimiento
+  useEffect(() => {
+    setReconsentimientoFormalizado(false);
+  }, [patientId]);
   const [showConsentSignModal, setShowConsentSignModal] = useState(false);
   const [repSignatureName, setRepSignatureName] = useState('');
   const [signatureError, setSignatureError] = useState('');
@@ -184,6 +195,51 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     setRepSignatureName('');
     setSignatureError('');
     alert('✓ Consentimiento del representante legal formalizado con éxito. Grabación, citas y constancias habilitadas.');
+  };
+
+  const handleFormalizeAutonomousReconsent = async () => {
+    if (!activePatient || isFormalizingReconsent) return;
+    setIsFormalizingReconsent(true);
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      const updatedPatient: Patient = {
+        ...activePatient,
+        capacidadConsentimiento: {
+          ...activePatient.capacidadConsentimiento,
+          estado: 'AUTONOMO',
+          determinadoPor: userName,
+          fechaDeterminacion: today,
+          fechaRevision: null,
+          motivo: 'Reconsentimiento autónomo formalizado al cumplir 18 años.'
+        },
+        representante: null,
+        pendienteReconsentimiento: false,
+        notificacionesRepresentanteRevocadas: true
+      };
+
+      await patientService.update(updatedPatient);
+
+      // Reflejo inmediato en UI (mismo patrón que la firma del representante)
+      activePatient.capacidadConsentimiento.estado = 'AUTONOMO';
+      activePatient.representante = null;
+      activePatient.pendienteReconsentimiento = false;
+      activePatient.notificacionesRepresentanteRevocadas = true;
+
+      auditLogService.addLog(
+        'Reconsentimiento autónomo',
+        `Se formalizó el reconsentimiento autónomo de ${activePatient.name} al cumplir 18 años. Notificaciones al representante revocadas.`,
+        'expediente',
+        { id: 'user-current', name: userName, role: userRole }
+      );
+
+      setReconsentimientoFormalizado(true);
+
+      alert('✓ Reconsentimiento autónomo formalizado. El expediente pasa a régimen autónomo y la alerta de mayoría de edad queda resuelta.');
+    } finally {
+      setIsFormalizingReconsent(false);
+    }
   };
 
   // Estados para creación de nueva sesión
@@ -380,9 +436,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
 
 
-  // Escuchar inyecciones de Senda
+  // Escuchar inyecciones de LEVA
   useEffect(() => {
-    const handleSendaInject = (e: Event) => {
+    const handleLevaInject = (e: Event) => {
       const text = (e as CustomEvent).detail;
       setNewSessNotes(prev => {
         if (!text) {
@@ -390,12 +446,12 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           return '';
         }
         setIsNotesGeneratedByIa(true);
-        return prev ? `${prev}\n\n[Sugerencia Senda (Borrador)]: ${text}` : `[Sugerencia Senda (Borrador)]: ${text}`;
+        return prev ? `${prev}\n\n[Sugerencia LEVA (Borrador)]: ${text}` : `[Sugerencia LEVA (Borrador)]: ${text}`;
       });
     };
-    window.addEventListener('brevemente_brifi_inject', handleSendaInject);
+    window.addEventListener('brevemente_leva_inject', handleLevaInject);
     return () => {
-      window.removeEventListener('brevemente_brifi_inject', handleSendaInject);
+      window.removeEventListener('brevemente_leva_inject', handleLevaInject);
     };
   }, []);
 
@@ -853,6 +909,31 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                   : 'Pendiente de determinación'}
             </span>
           </div>
+
+          {requiresReconsentimiento && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <span className="text-[11px] font-extrabold text-amber-800 block">
+                    Paciente en mayoría de edad — requiere reconsentimiento autónomo
+                  </span>
+                  <span className="text-[10px] text-amber-700 font-semibold block mt-0.5">
+                    Al cumplir 18 años, el consentimiento del representante queda revocado y el paciente debe formalizar su propio consentimiento.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleFormalizeAutonomousReconsent}
+                disabled={isFormalizingReconsent}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition-all flex items-center justify-center gap-1 shrink-0"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                Formalizar reconsentimiento autónomo
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             {activePatient.representante && (
@@ -1406,7 +1487,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                             Notas Clínicas y Reporte del Paciente:
                             {isNotesGeneratedByIa && (
                               <span className="ml-2 px-2 py-0.5 bg-teal-50 border border-teal-200 text-clinical-teal font-bold uppercase text-[8px] rounded">
-                                ✨ Borrador sugerido por Senda
+                                ✨ Borrador sugerido por LEVA
                               </span>
                             )}
                           </label>
@@ -1872,11 +1953,11 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 leading-relaxed mt-1">
                       <div className="bg-slate-50 p-3 rounded border border-slate-100">
-                        <span className="font-bold text-clinical-dark block">Intervención Lingüística (F1):</span>
+                        <span className="font-bold text-clinical-dark block">RST:</span>
                         <p className="italic text-slate-700 mt-1">&ldquo;{sess.f1}&rdquo;</p>
                       </div>
                       <div className="bg-slate-50 p-3 rounded border border-slate-100">
-                        <span className="font-bold text-clinical-dark block">Efecto Terapéutico (F2 / Reestructuración):</span>
+                        <span className="font-bold text-clinical-dark block">Efecto Terapéutico (Reestructuración):</span>
                         <p className="italic text-slate-700 mt-1">&ldquo;{sess.f2}&rdquo;</p>
                       </div>
                     </div>

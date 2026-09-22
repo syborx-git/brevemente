@@ -265,28 +265,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             </div>
           </div>
 
-          {/* Senda Paciente y Contacto */}
+          {/* LEVA Paciente y Contacto */}
           <div className="space-y-6">
-            {/* Senda Paciente Helper */}
+            {/* LEVA Paciente Helper */}
             <div className="bg-[#75AFBC]/5 border border-[#75AFBC]/20 rounded-xl p-5 shadow-sm space-y-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-clinical-teal animate-pulse" />
-                <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide">Senda Paciente</span>
+                <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide">LEVA Paciente</span>
               </div>
               <p className="text-slate-600 font-semibold leading-relaxed text-xs">
-                Hola, Sofía. Soy <b>Senda Paciente</b>. Puedo resolver dudas sobre cómo realizar tus tareas asignadas o explicarte el modelo de terapia de Arezzo.
+                Hola, Sofía. Soy <b>LEVA Paciente</b>. Puedo resolver dudas sobre cómo realizar tus tareas asignadas o explicarte el modelo de terapia de Arezzo.
               </p>
 
               <div className="bg-white p-3 rounded-lg border border-slate-100 space-y-2">
                 <span className="text-[10px] text-slate-400 font-bold block uppercase">Preguntas sugeridas:</span>
                 <button
-                  onClick={() => alert('Senda Paciente:\n\nEl Diario de a bordo consiste en registrar cada ataque de pánico justo en el momento en que ocurra. Debes anotar la hora, los síntomas físicos experimentados y tus pensamientos en ese instante exacto. Hacerlo ayuda a bloquear la evitación racional.')}
+                  onClick={() => alert('LEVA Paciente:\n\nEl Diario de a bordo consiste en registrar cada ataque de pánico justo en el momento en que ocurra. Debes anotar la hora, los síntomas físicos experimentados y tus pensamientos en ese instante exacto. Hacerlo ayuda a bloquear la evitación racional.')}
                   className="w-full text-left px-2.5 py-1.5 border border-slate-100 hover:border-clinical-teal rounded text-[10px] font-bold text-slate-650 bg-slate-50/50 block transition-all"
                 >
                   ¿Cómo completo el Diario de a Bordo?
                 </button>
                 <button
-                  onClick={() => alert('Senda Paciente:\n\nLa Peor Fantasía es una prescripción estratégica diseñada para disolver el control paradojal. Al obligarte a pensar en tus peores temores durante 30 minutos a una hora fija, la mente se satura y la ansiedad se anula de forma natural.')}
+                  onClick={() => alert('LEVA Paciente:\n\nLa Peor Fantasía es una prescripción estratégica diseñada para disolver el control paradojal. Al obligarte a pensar en tus peores temores durante 30 minutos a una hora fija, la mente se satura y la ansiedad se anula de forma natural.')}
                   className="w-full text-left px-2.5 py-1.5 border border-slate-100 hover:border-clinical-teal rounded text-[10px] font-bold text-slate-655 bg-slate-50/50 block transition-all"
                 >
                   ¿Para qué sirve la Peor Fantasía?
@@ -430,10 +430,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               Demo Guiada
             </button>
             <button
-              onClick={() => navigate('/senda')}
+              onClick={() => navigate('/leva')}
               className="px-3.5 py-1.5 bg-clinical-dark hover:bg-clinical-darkLight text-white rounded-lg font-bold text-[10px] shadow-sm flex items-center gap-1 transition-colors"
             >
-              Senda
+              LEVA
             </button>
           </div>
         </div>
@@ -504,6 +504,97 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           </button>
         </div>
       </div>
+
+      {/* ZONA 5: VISIÓN CLÍNICA RESUMIDA (UNA SOLA GRÁFICA PRINCIPAL CON SELECTOR DE PERSPECTIVA) */}
+      {!isAssistant && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4" data-tour="dashboard-results">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
+            <div>
+              <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide block">Perspectiva Clínica Unificada</span>
+              <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Selecciona el ángulo analítico a visualizar en el viewport principal.</p>
+            </div>
+
+            {/* Selector de Perspectiva (Dropdown) */}
+            <select
+              className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
+              value={chartPerspective}
+              onChange={(e) => setChartPerspective(e.target.value)}
+            >
+              <option value="citas">Citas completadas (Histórico)</option>
+              <option value="fases">Distribución por Fase TBE</option>
+              <option value="protocolos">Casos Activos por Protocolo</option>
+            </select>
+          </div>
+
+          <div className="h-64 flex items-center justify-center">
+            {chartPerspective === 'fases' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Fase 1: Admisión/Definición', value: filteredPatients.filter(p => p.status === 'pendiente').length || (filteredPatients.length === 0 ? 0 : 0) },
+                      { name: 'Fase 2: Desbloqueo', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel !== 'bajo').length },
+                      { name: 'Fase 3: Consolidación', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel === 'bajo').length },
+                      { name: 'Fase 4: Cierre/Alta', value: filteredPatients.filter(p => p.status === 'completado' || p.status === 'archivado').length }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    <Cell fill="#304768" />
+                    <Cell fill="#75AFBC" />
+                    <Cell fill="#319795" />
+                    <Cell fill="#4A5568" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 10, fontWeight: 'bold' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+
+            {chartPerspective === 'protocolos' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[
+                  { name: 'Ataque Pánico', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length },
+                  { name: 'TOC Control', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'TOC Control').length },
+                  { name: 'Fobia Escolar', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Escolar').length },
+                  { name: 'Fobia Social', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Social').length }
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <Tooltip />
+                  <Bar dataKey="casos" fill="#75AFBC" name="Casos">
+                    <Cell fill="#304768" />
+                    <Cell fill="#75AFBC" />
+                    <Cell fill="#2C7A7B" />
+                    <Cell fill="#4A5568" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+
+            {chartPerspective === 'citas' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={[
+                  { week: 'Sem 1', citas: Math.max(1, Math.round(filteredAppointments.length * 0.5)) },
+                  { week: 'Sem 2', citas: Math.max(1, Math.round(filteredAppointments.length * 0.8)) },
+                  { week: 'Sem 3 (Actual)', citas: filteredAppointments.length }
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="citas" name="Citas Atendidas" stroke="#304768" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ALERTA DE MAYORÍA DE EDAD — CUMPLIMIENTO DE 18 AÑOS */}
       {agingPatients.length > 0 && (
@@ -678,7 +769,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                   </span>
                   <span>•</span>
                   <span className="text-clinical-teal">
-                    Grabación Senda: {nextPatient.registryMode === 'ia' ? 'Autorizada' : 'Modo Manual'}
+                    Grabación LEVA: {nextPatient.registryMode === 'ia' ? 'Autorizada' : 'Modo Manual'}
                   </span>
                 </div>
               </div>
@@ -784,97 +875,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
         </div>
 
       </div>
-
-      {/* ZONA 5: VISIÓN CLÍNICA RESUMIDA (UNA SOLA GRÁFICA PRINCIPAL CON SELECTOR DE PERSPECTIVA) */}
-      {!isAssistant && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4" data-tour="dashboard-results">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
-            <div>
-              <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide block">Perspectiva Clínica Unificada</span>
-              <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Selecciona el ángulo analítico a visualizar en el viewport principal.</p>
-            </div>
-
-            {/* Selector de Perspectiva (Dropdown) */}
-            <select
-              className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
-              value={chartPerspective}
-              onChange={(e) => setChartPerspective(e.target.value)}
-            >
-              <option value="citas">Citas completadas (Histórico)</option>
-              <option value="fases">Distribución por Fase TBE</option>
-              <option value="protocolos">Casos Activos por Protocolo</option>
-            </select>
-          </div>
-
-          <div className="h-64 flex items-center justify-center">
-            {chartPerspective === 'fases' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Fase 1: Admisión/Definición', value: filteredPatients.filter(p => p.status === 'pendiente').length || (filteredPatients.length === 0 ? 0 : 0) },
-                      { name: 'Fase 2: Desbloqueo', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel !== 'bajo').length },
-                      { name: 'Fase 3: Consolidación', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel === 'bajo').length },
-                      { name: 'Fase 4: Cierre/Alta', value: filteredPatients.filter(p => p.status === 'completado' || p.status === 'archivado').length }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    <Cell fill="#304768" />
-                    <Cell fill="#75AFBC" />
-                    <Cell fill="#319795" />
-                    <Cell fill="#4A5568" />
-                  </Pie>
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 10, fontWeight: 'bold' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-
-            {chartPerspective === 'protocolos' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { name: 'Ataque Pánico', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length },
-                  { name: 'TOC Control', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'TOC Control').length },
-                  { name: 'Fobia Escolar', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Escolar').length },
-                  { name: 'Fobia Social', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Social').length }
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <Tooltip />
-                  <Bar dataKey="casos" fill="#75AFBC" name="Casos">
-                    <Cell fill="#304768" />
-                    <Cell fill="#75AFBC" />
-                    <Cell fill="#2C7A7B" />
-                    <Cell fill="#4A5568" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-
-            {chartPerspective === 'citas' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={[
-                  { week: 'Sem 1', citas: Math.max(1, Math.round(filteredAppointments.length * 0.5)) },
-                  { week: 'Sem 2', citas: Math.max(1, Math.round(filteredAppointments.length * 0.8)) },
-                  { week: 'Sem 3 (Actual)', citas: filteredAppointments.length }
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="citas" name="Citas Atendidas" stroke="#304768" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* --- MODALES DE DRILLDOWN (PROFUNDIZACIÓN) --- */}
       {activeDrilldown && (

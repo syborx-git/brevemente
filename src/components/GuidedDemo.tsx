@@ -147,7 +147,7 @@ export const GuidedDemo: React.FC<GuidedDemoProps> = ({
           </button>
         </div>
 
-        {/* Explicación Narrada por Senda */}
+        {/* Explicación Narrada por LEVA */}
         <div className="space-y-3">
           <div className="flex items-start gap-2">
             {/* Isotipo cerebral mini */}
@@ -158,7 +158,7 @@ export const GuidedDemo: React.FC<GuidedDemoProps> = ({
               <circle cx="50" cy="50" r="6" fill="#304768" />
             </svg>
             <div>
-              <span className="text-[10px] font-bold text-[#75AFBC] uppercase tracking-wider block">Senda dice:</span>
+              <span className="text-[10px] font-bold text-[#75AFBC] uppercase tracking-wider block">LEVA dice:</span>
               <span className="text-[11px] font-bold text-clinical-dark block mt-0.5">{activeStepObj.title}</span>
               <p className="text-slate-600 text-xs mt-1 leading-normal font-medium">
                 {activeStepObj.explanation}

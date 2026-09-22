@@ -267,7 +267,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
               <span className="text-slate-400 uppercase text-[9px] block">Casos Estancados</span>
               <span className="text-2xl font-extrabold text-clinical-dark block mt-1">1</span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Caso que supera las 10 sesiones sin alta</span>
+              <span className="text-[9px] text-slate-400 block mt-0.5">Caso que supera las 10 sesiones sin cambio</span>
             </div>
           </div>
 

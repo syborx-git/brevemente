@@ -7,7 +7,7 @@ import {
 import { Role } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 
-interface SendaSidebarPanelProps {
+interface LevaSidebarPanelProps {
   isOpen: boolean;
   onClose: () => void;
   userRole: Role;
@@ -23,7 +23,7 @@ interface SuggestionState {
   status: 'pending' | 'accepted' | 'rejected' | 'editing';
 }
 
-export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
+export const LevaSidebarPanel: React.FC<LevaSidebarPanelProps> = ({
   isOpen,
   onClose,
   userRole,
@@ -36,8 +36,8 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
   const isAcademic = window.location.hash.includes('/campus');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'senda'; text: string; citation?: string }>>([
-    { sender: 'senda', text: 'Hola. Soy Senda - Inteligencia asistiva. Estoy analizando el caso activo de salud mental. ¿Deseas que busquemos protocolos autorizados, redactemos un borrador o auditemos notas clínicas?' }
+  const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'leva'; text: string; citation?: string }>>([
+    { sender: 'leva', text: 'Hola. Soy LEVA - Inteligencia asistiva. Estoy analizando el caso activo de salud mental. ¿Deseas que busquemos protocolos autorizados, redactemos un borrador o auditemos notas clínicas?' }
   ]);
 
   // Borrador diferenciado local para el doble paso
@@ -53,11 +53,11 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
   useEffect(() => {
     if (isAcademic) {
       setChatHistory([
-        { sender: 'senda', text: 'Hola. Soy Senda Formativa, en modalidad formativa y académica del Campus. Puedo explicarte conceptos del corpus TBE (como soluciones intentadas o el SPR), crear preguntas de práctica para tus exámenes o guiar tu estudio.' }
+        { sender: 'leva', text: 'Hola. Soy LEVA Formativa, en modalidad formativa y académica del Campus. Puedo explicarte conceptos del corpus TBE (como soluciones intentadas o el SPR), crear preguntas de práctica para tus exámenes o guiar tu estudio.' }
       ]);
     } else {
       setChatHistory([
-        { sender: 'senda', text: 'Hola. Soy Senda - Inteligencia asistiva. Estoy analizando el caso activo de salud mental. ¿Deseas que busquemos protocolos autorizados, redactemos un borrador o auditemos notas clínicas?' }
+        { sender: 'leva', text: 'Hola. Soy LEVA - Inteligencia asistiva. Estoy analizando el caso activo de salud mental. ¿Deseas que busquemos protocolos autorizados, redactemos un borrador o auditemos notas clínicas?' }
       ]);
     }
   }, [isAcademic]);
@@ -87,43 +87,43 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
 
     // Auditoría
     auditLogService.addLog(
-      'Consulta a Senda',
-      `Terapeuta consultó a Senda en panel lateral: "${currentInput.substring(0, 30)}..."`,
+      'Consulta a LEVA',
+      `Terapeuta consultó a LEVA en panel lateral: "${currentInput.substring(0, 30)}..."`,
       'ia',
       { id: 'user-current', name: userName, role: userRole }
     );
 
     // Respuesta IA simulada
     setTimeout(() => {
-      let sendaText = '';
+      let levaText = '';
       let citation = '';
 
       if (isAcademic) {
         const lowerInput = currentInput.toLowerCase();
         if (lowerInput.includes('solucion') || lowerInput.includes('solución')) {
-          sendaText = 'Las Soluciones Intentadas Redundantes son los esfuerzos reiterados que realiza el paciente o su entorno para resolver el problema, pero que paradójicamente lo mantienen y alimentan. En TBE, el objetivo es bloquear estas soluciones para desbloquear el sistema.';
+          levaText = 'Las Soluciones Intentadas Redundantes son los esfuerzos reiterados que realiza el paciente o su entorno para resolver el problema, pero que paradójicamente lo mantienen y alimentan. En TBE, el objetivo es bloquear estas soluciones para desbloquear el sistema.';
           citation = 'Manual TBE Arezzo, Sección 1.1';
         } else if (lowerInput.includes('spr') || lowerInput.includes('perceptivo')) {
-          sendaText = 'El Sistema Perceptivo-Reactivo (SPR) describe cómo percibe una persona la realidad y cómo reacciona en consecuencia. Se divide en tres esferas: relación consigo mismo, con los demás y con el mundo. Los trastornos clínicos se derivan de un SPR rígido y disfuncional.';
+          levaText = 'El Sistema Perceptivo-Reactivo (SPR) describe cómo percibe una persona la realidad y cómo reacciona en consecuencia. Se divide en tres esferas: relación consigo mismo, con los demás y con el mundo. Los trastornos clínicos se derivan de un SPR rígido y disfuncional.';
           citation = 'Epistemología TBE (Nardone & Watzlawick)';
         } else if (lowerInput.includes('pregunta') || lowerInput.includes('práctica') || lowerInput.includes('practica')) {
-          sendaText = 'Pregunta de práctica:\n¿Cuál es la maniobra prescrita por Giorgio Nardone para el TOC de verificación basado en control?\nA) La peor fantasía\nB) El ritual del control paradojal (hacerlo voluntariamente para anular la compulsión)\nC) La evitación total.';
+          levaText = 'Pregunta de práctica:\n¿Cuál es la maniobra prescrita por Giorgio Nardone para el TOC de verificación basado en control?\nA) La peor fantasía\nB) El ritual del control paradojal (hacerlo voluntariamente para anular la compulsión)\nC) La evitación total.';
           citation = 'Rúbrica de Evaluación de Competencias TBE';
         } else {
-          sendaText = 'En el contexto de formación, puedo aclararte conceptos de la Terapia Breve Estratégica o generar preguntas de práctica. Recuerda que no puedo revelarte datos de pacientes reales ni modificar calificaciones.';
+          levaText = 'En el contexto de formación, puedo aclararte conceptos de la Terapia Breve Estratégica o generar preguntas de práctica. Recuerda que no puedo revelarte datos de pacientes reales ni modificar calificaciones.';
           citation = 'Campus BreveMente Guía Formativa';
         }
       } else {
-        sendaText = 'Analizado el corpus de Terapia Breve Estratégica, te sugiero revisar las conductas de evitación del paciente. Toda intervención técnica requiere tu criterio y validación.';
+        levaText = 'Analizado el corpus de Terapia Breve Estratégica, te sugiero revisar las conductas de evitación del paciente. Toda intervención técnica requiere tu criterio y validación.';
         citation = 'Corpus General BreveMente';
 
         if (currentInput.toLowerCase().includes('pánico') || currentInput.toLowerCase().includes('panico')) {
-          sendaText = 'Para el Ataque de Pánico, el protocolo de Giorgio Nardone prescribe el "Diario de a bordo" en primera sesión y la "Peor Fantasía" a partir de la segunda. El objetivo es bloquear la petición de ayuda y canalizar la ansiedad.';
+          levaText = 'Para el Ataque de Pánico, el protocolo de Giorgio Nardone prescribe el "Diario de a bordo" en primera sesión y la "Peor Fantasía" a partir de la segunda. El objetivo es bloquear la petición de ayuda y canalizar la ansiedad.';
           citation = 'Manual TBE Arezzo (TBE-P-01)';
         }
       }
 
-      setChatHistory(prev => [...prev, { sender: 'senda', text: sendaText, citation }]);
+      setChatHistory(prev => [...prev, { sender: 'leva', text: levaText, citation }]);
       setIsTyping(false);
     }, 1200);
   };
@@ -140,7 +140,7 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
     // Registrar en auditoría
     auditLogService.addLog(
       'Aceptación de sugerencia IA',
-      `Aceptó e inyectó sugerencia de Senda en el borrador de notas. Fuente: ${suggestion.source}`,
+      `Aceptó e inyectó sugerencia de LEVA en el borrador de notas. Fuente: ${suggestion.source}`,
       'ia',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -153,7 +153,7 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
     // Registrar en auditoría
     auditLogService.addLog(
       'Rechazo de sugerencia IA',
-      `Rechazó borrador sugerido por Senda.`,
+      `Rechazó borrador sugerido por LEVA.`,
       'ia',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -172,7 +172,7 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
     }
     auditLogService.addLog(
       'Deshacer inserción IA',
-      `Deshizo la inyección de borrador de Senda.`,
+      `Deshizo la inyección de borrador de LEVA.`,
       'ia',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -191,8 +191,8 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
             <circle cx="50" cy="50" r="6" fill="#FFFFFF" />
           </svg>
           <div>
-            <h3 className="font-extrabold text-white leading-none">Senda</h3>
-            <span className="text-[9px] text-slate-300 font-semibold block mt-0.5">Senda - Inteligencia asistiva</span>
+            <h3 className="font-extrabold text-white leading-none">LEVA</h3>
+            <span className="text-[9px] text-slate-300 font-semibold block mt-0.5">LEVA - Inteligencia asistiva</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -242,7 +242,7 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
 
           {isTyping && (
             <span className="text-slate-400 font-semibold italic animate-pulse block">
-              Senda está procesando...
+              LEVA está procesando...
             </span>
           )}
         </div>
@@ -251,11 +251,11 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
         {!isAcademic && suggestion.status !== 'rejected' && (
           <div 
             className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 space-y-3"
-            data-tour="brifi-ai-suggestion"
+            data-tour="leva-ai-suggestion"
           >
             <div className="flex items-center gap-1.5 font-bold text-clinical-dark">
               <Sparkles className="w-4 h-4 text-[#75AFBC]" />
-              <span>Borrador sugerido por Senda</span>
+              <span>Borrador sugerido por LEVA</span>
             </div>
 
             {/* Visualización de la sugerencia (editable) */}
@@ -352,7 +352,7 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
           <div className="bg-teal-50/50 border border-teal-200 rounded-xl p-4 space-y-3 font-semibold">
             <div className="flex items-center gap-1.5 font-bold text-clinical-dark">
               <Sparkles className="w-4 h-4 text-[#75AFBC]" />
-              <span>Ayuda del Campus Senda</span>
+              <span>Ayuda del Campus LEVA</span>
             </div>
             <p className="text-slate-655 font-bold leading-normal">
               Prueba a preguntarme sobre:
@@ -388,7 +388,7 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
       <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-200 flex gap-2 bg-[#F4F4F4]">
         <input
           type="text"
-          placeholder="Pregúntale a Senda..."
+          placeholder="Pregúntale a LEVA..."
           className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
@@ -406,11 +406,11 @@ export const SendaSidebarPanel: React.FC<SendaSidebarPanelProps> = ({
         <button
           onClick={() => {
             onClose();
-            navigate('/senda');
+            navigate('/leva');
           }}
           className="text-[10px] font-bold text-[#75AFBC] hover:underline flex items-center justify-center gap-1 mx-auto"
         >
-          Abrir espacio completo de Senda
+          Abrir espacio completo de LEVA
           <ArrowRight className="w-3 h-3" />
         </button>
       </div>

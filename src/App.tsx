@@ -18,11 +18,11 @@ import { IntakeForm } from './pages/IntakeForm';
 import { Campus } from './pages/Campus';
 import { MiConsulta } from './pages/MiConsulta';
 
-// Componentes Demo y Senda
+// Componentes Demo y LEVA
 import { DemoLauncher } from './components/DemoLauncher';
 import { GuidedDemo } from './components/GuidedDemo';
-import { SendaButton } from './components/SendaButton';
-import { SendaSidebarPanel } from './components/SendaSidebarPanel';
+import { LevaButton } from './components/LevaButton';
+import { LevaSidebarPanel } from './components/LevaSidebarPanel';
 
 import { Role, Patient, Appointment } from './types/clinical';
 import { mockPatients, mockAppointments } from './data/mockData';
@@ -55,11 +55,11 @@ function App() {
   // Paciente actualmente simulado en la vista de demo de paciente
   const [currentPatientId, setCurrentPatientId] = useState<string>('patient-1');
 
-  // Estados de la Demo y Brifi
+  // Estados de la Demo y LEVA
   const [activeTour, setActiveTour] = useState<'executiva' | 'clinica' | 'academic' | 'none'>('none');
   const [currentDemoStep, setCurrentDemoStep] = useState(0);
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
-  const [isSendaOpen, setIsSendaOpen] = useState(false);
+  const [isLevaOpen, setIsLevaOpen] = useState(false);
 
   // Carga inicial y listeners de eventos de demo
   const loadLocalData = async () => {
@@ -370,14 +370,14 @@ function App() {
                       }
                     />
 
-                    {/* Senda - Redirección e Integración completa */}
-                    <Route path="/ia-assistant" element={<Navigate to="/senda" replace />} />
-                    <Route path="/brifi" element={<Navigate to="/senda" replace />} />
+                    {/* LEVA - Redirección e Integración completa */}
+                    <Route path="/ia-assistant" element={<Navigate to="/leva" replace />} />
+                    <Route path="/brifi" element={<Navigate to="/leva" replace />} />
 
                     <Route
-                      path="/senda"
+                      path="/leva"
                       element={
-                        hasPermission(currentRole, 'senda') ? (
+                        hasPermission(currentRole, 'leva') ? (
                           <AIAssistant
                             userRole={currentRole}
                             userName={USER_NAMES[currentRole]}
@@ -528,23 +528,23 @@ function App() {
                 </main>
               </div>
 
-              {/* Botón flotante y panel derecho de Senda */}
-              {hasPermission(currentRole, 'senda') && (
+              {/* Botón flotante y panel derecho de LEVA */}
+              {hasPermission(currentRole, 'leva') && (
                 <>
-                  <SendaButton
-                    onClick={() => setIsSendaOpen(true)}
+                  <LevaButton
+                    onClick={() => setIsLevaOpen(true)}
                     hasNotification={activeTour !== 'none'}
                   />
-                  <SendaSidebarPanel
-                    isOpen={isSendaOpen}
-                    onClose={() => setIsSendaOpen(false)}
+                  <LevaSidebarPanel
+                    isOpen={isLevaOpen}
+                    onClose={() => setIsLevaOpen(false)}
                     userRole={currentRole}
                     userName={USER_NAMES[currentRole]}
                     patientName="Sofía Martínez"
                     activeProtocol="Ataque de Pánico"
                     onAcceptSuggestion={(text) => {
                       // Dispara evento global de inyección para ClinicalRecord
-                      window.dispatchEvent(new CustomEvent('brevemente_brifi_inject', { detail: text }));
+                      window.dispatchEvent(new CustomEvent('brevemente_leva_inject', { detail: text }));
                     }}
                   />
                 </>

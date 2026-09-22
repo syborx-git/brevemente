@@ -127,7 +127,7 @@ export const mockCurricularModules: CurricularModule[] = [
     type: 'ia_simulacion',
     duration: '15 horas',
     status: 'bloqueado',
-    description: 'Sesiones de simulación interactiva con pacientes simulados de alta complejidad en Senda.',
+    description: 'Sesiones de simulación interactiva con pacientes simulados de alta complejidad en LEVA.',
     approvalCriteria: 'Tres simulaciones aprobadas con rúbrica mínima de 8.5.'
   },
   {
@@ -218,7 +218,7 @@ export const mockAcademicFeedback: AcademicFeedback[] = [
       { name: 'Documentación clínica', score: 8, expectedLevel: 8, evidence: 'Notas claras y cargadas a tiempo.', comment: 'Consistente.', actionPlan: 'Mantener.' }
     ],
     overallComments: 'El alumno demuestra un alto rigor teórico y una excelente capacidad técnica de protocolo. Su principal área de desarrollo radica en suavizar la comunicación del diálogo estratégico, permitiendo que sea el paciente quien haga el descubrimiento, evitando la imposición racional.',
-    recommendations: 'Practicar la modulación evocadora en diálogos y realizar al menos dos simulaciones con Senda en casos de TOC.',
+    recommendations: 'Practicar la modulación evocadora en diálogos y realizar al menos dos simulaciones con LEVA en casos de TOC.',
     nextEvaluationDate: '2026-09-10',
     type: 'formativa'
   }
@@ -317,7 +317,7 @@ export const mockClinicTrainings: InternalClinicTraining[] = [
   },
   {
     id: 'ct-2',
-    title: 'Uso Correcto de Senda para Redacción de Notas Clínicas (Borradores)',
+    title: 'Uso Correcto de LEVA para Redacción de Notas Clínicas (Borradores)',
     targetAudience: ['therapist', 'supervisor'],
     limitDate: '2026-09-15',
     modulesCount: 5,

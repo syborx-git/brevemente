@@ -165,7 +165,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                 </div>
                 <div>
                   <span>Modo Asistencial IA:</span>
-                  <span className="text-clinical-teal block font-extrabold mt-0.5">SENDA HABILITADA</span>
+                  <span className="text-clinical-teal block font-extrabold mt-0.5">LEVA HABILITADA</span>
                 </div>
               </div>
 
@@ -185,7 +185,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                     onClick={() => navigate('/expedientes?id=patient-1')}
                     className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow text-xs transition-colors flex items-center justify-center gap-1.5 animate-pulse"
                   >
-                    Detener Grabación y Procesar con Senda
+                    Detener Grabación y Procesar con LEVA
                     <Sparkles className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -199,7 +199,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                     onClick={() => navigate('/expedientes?id=patient-1')}
                     className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow text-xs transition-colors flex items-center justify-center gap-1.5"
                   >
-                    Redactar Nota de Sesión Urgente (Sugerida por Senda)
+                    Redactar Nota de Sesión Urgente (Sugerida por LEVA)
                     <FileText className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -301,14 +301,14 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
           </div>
         </div>
 
-        {/* NOTAS Y ALERTAS (BORRADORES DE SENDA PENDIENTES) */}
+        {/* NOTAS Y ALERTAS (BORRADORES DE LEVA PENDIENTES) */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-          <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-100 pb-2">Borradores de Senda Pendientes</span>
+          <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-100 pb-2">Borradores de LEVA Pendientes</span>
 
           <div className="space-y-2">
             <div className="p-3 border border-slate-100 rounded bg-slate-50/50 flex flex-col justify-between gap-2">
               <div>
-                <span className="font-bold text-clinical-dark block">Borrador sugerido por Senda</span>
+                <span className="font-bold text-clinical-dark block">Borrador sugerido por LEVA</span>
                 <span className="text-[9px] text-slate-400 block uppercase font-bold">Caso: Sofía Martínez • Sesión 2</span>
                 <p className="text-[11px] text-slate-600 mt-1 leading-normal font-medium">"Prescribir la maniobra de la peor fantasía de 30 minutos a las 18:00..."</p>
               </div>
@@ -348,7 +348,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
               <div className="space-y-1">
                 <span className="font-bold text-clinical-dark block text-[10px] uppercase">Mi Capacitación Pendiente</span>
                 <div className="flex justify-between items-center bg-slate-50 p-2 rounded">
-                  <span>Uso Ético de Senda IA</span>
+                  <span>Uso Ético de LEVA IA</span>
                   <span className="text-red-650 text-[9px] font-bold">Pendiente (Límite: 2026-09-15)</span>
                 </div>
               </div>

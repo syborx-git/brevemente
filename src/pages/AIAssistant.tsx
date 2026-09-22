@@ -24,7 +24,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ userRole, userName }) 
     {
       id: 'msg-1',
       sender: 'ai',
-      text: 'Hola, soy Senda - Inteligencia asistiva de BreveMente. Puedo apoyarte en la búsqueda de manuales, protocolos, sugerencias documentales de notas clínicas y reestructuraciones sobre casos del corpus autorizado. ¿En qué te puedo asistir hoy?',
+      text: 'Hola, soy LEVA - Inteligencia asistiva de BreveMente. Puedo apoyarte en la búsqueda de manuales, protocolos, sugerencias documentales de notas clínicas y reestructuraciones sobre casos del corpus autorizado. ¿En qué te puedo asistir hoy?',
       timestamp: new Date().toLocaleTimeString()
     }
   ]);
@@ -49,7 +49,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ userRole, userName }) 
     // Registrar en auditoría
     auditLogService.addLog(
       'Uso de Asistente IA',
-      `Consultó al Asistente IA Senda sobre: "${textToSend.substring(0, 40)}..."`,
+      `Consultó al Asistente IA LEVA sobre: "${textToSend.substring(0, 40)}..."`,
       'ia',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -74,8 +74,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ userRole, userName }) 
         citation = 'Manual TOC TBE (TBE-M-02)';
       }
 
-      // Reemplazar Brifi por Senda en el texto final si existe
-      aiText = aiText.replace(/Brifi/g, 'Senda');
+      // Normalizar nombres antiguos de la IA (Senda/Brifi) a LEVA
+      aiText = aiText.replace(/Senda|Brifi/g, 'LEVA');
 
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now()}-ai`,
@@ -104,7 +104,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ userRole, userName }) 
   };
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]" data-tour="senda-assistant-chat">
+    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]" data-tour="leva-assistant-chat">
       {/* Risk banner */}
       {activeRiskAlert && (
         <RiskAlertBanner
@@ -120,7 +120,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ userRole, userName }) 
         <div>
           <h2 className="text-xl font-bold text-clinical-dark flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-[#75AFBC] animate-pulse" />
-            Senda - Inteligencia asistiva
+            LEVA - Inteligencia asistiva
           </h2>
           <p className="text-xs text-clinical-textMuted">
             Asistencia clínica y documental de Terapia Breve Estratégica de BreveMente.

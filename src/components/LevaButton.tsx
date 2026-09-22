@@ -1,16 +1,16 @@
 import React from 'react';
 
-interface SendaButtonProps {
+interface LevaButtonProps {
   onClick: () => void;
   hasNotification?: boolean;
 }
 
-export const SendaButton: React.FC<SendaButtonProps> = ({ onClick, hasNotification = false }) => {
+export const LevaButton: React.FC<LevaButtonProps> = ({ onClick, hasNotification = false }) => {
   return (
-    <div className="fixed bottom-6 right-6 z-40" data-tour="brifi-widget">
+    <div className="fixed bottom-6 right-6 z-40" data-tour="leva-widget">
       {/* Tooltip */}
       <div className="absolute right-0 bottom-14 bg-clinical-dark text-white text-[10px] font-bold py-1 px-2.5 rounded-md shadow-lg opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap border border-slate-700">
-        Pregúntale a Senda
+        Pregúntale a LEVA
       </div>
 
       <button
@@ -25,7 +25,7 @@ export const SendaButton: React.FC<SendaButtonProps> = ({ onClick, hasNotificati
           <circle cx="50" cy="50" r="6" fill="currentColor" />
         </svg>
 
-        <span className="hidden sm:inline font-bold text-xs tracking-wider pr-1">Senda</span>
+        <span className="hidden sm:inline font-bold text-xs tracking-wider pr-1">LEVA</span>
 
         {/* Notificación pendiente */}
         {hasNotification && (

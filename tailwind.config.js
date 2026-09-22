@@ -13,7 +13,7 @@ export default {
         clinical: {
           dark: '#304768',      // Azul Neural (Sidebar y cabeceras)
           darkLight: '#435a7d', // Hover Azul Neural
-          accent: '#75AFBC',    // Azul Conciencia (Acciones clínicas, Brifi, calendarios)
+          accent: '#75AFBC',    // Azul Conciencia (Acciones clínicas, LEVA, calendarios)
           accentHover: '#6099a5',
           teal: '#0d9488',      // Semántico Éxito / Clínico
           tealHover: '#0f766e',
