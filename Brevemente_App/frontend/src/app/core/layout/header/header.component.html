@@ -1,0 +1,63 @@
+<header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 select-none relative z-30 shadow-xs">
+  <!-- Sensitive Clinical Data Badge -->
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
+      <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+      Dato Clínico Sensible. Acceso Auditado TBE.
+    </div>
+  </div>
+
+  <!-- Actions & Role Switcher -->
+  <div class="flex items-center gap-4">
+    <!-- LEVA Toggle Header Shortcut -->
+    <button 
+      (click)="roleService.toggleLeva()"
+      class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-clinical-accent/15 text-clinical-textDark border border-clinical-accent/30 hover:bg-clinical-accent/25 transition-all">
+      <span>🧠</span>
+      <span>LEVA IA</span>
+    </button>
+
+    <!-- Role Dropdown Selector -->
+    <div class="relative">
+      <button 
+        (click)="toggleDropdown()"
+        class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:border-slate-300 transition-all bg-slate-50 cursor-pointer">
+        <span class="text-slate-500">Rol:</span>
+        <span class="px-2 py-0.5 rounded text-[11px] font-bold" [ngClass]="getRoleColor(currentRole)">
+          {{ getRoleLabel(currentRole) }}
+        </span>
+        <span class="text-[10px] text-slate-400">▼</span>
+      </button>
+
+      <!-- Dropdown Menu -->
+      <div 
+        *ngIf="showRoleDropdown"
+        class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
+        <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+          Cambiar Perspectiva / Rol
+        </div>
+        <button
+          *ngFor="let r of rolesList"
+          (click)="selectRole(r.value)"
+          class="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors"
+          [class.bg-slate-100]="r.value === currentRole">
+          <span class="font-medium text-slate-700">{{ r.label }}</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded" [ngClass]="r.badgeColor" *ngIf="r.value === currentRole">
+            ✓ Activo
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- User Profile Header Summary -->
+    <div class="flex items-center gap-2 pl-3 border-l border-slate-200">
+      <div class="w-8 h-8 rounded-full bg-clinical-dark text-white flex items-center justify-center text-xs font-bold shadow-xs">
+        DR
+      </div>
+      <div class="hidden md:block text-left">
+        <p class="text-xs font-bold text-clinical-textDark leading-tight">{{ roleService.currentUserName }}</p>
+        <p class="text-[10px] text-slate-500">Sesión Segura</p>
+      </div>
+    </div>
+  </div>
+</header>

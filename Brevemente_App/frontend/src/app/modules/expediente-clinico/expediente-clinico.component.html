@@ -1,0 +1,282 @@
+<div class="space-y-6 max-w-7xl mx-auto select-none" *ngIf="patient">
+  <!-- Top Navigation & Return -->
+  <div class="flex items-center justify-between">
+    <a routerLink="/pacientes" class="text-xs text-clinical-accent font-bold hover:underline flex items-center gap-1">
+      ← Volver al Directorio de Pacientes
+    </a>
+    <div class="flex items-center gap-2">
+      <button 
+        (click)="openSessionModal()"
+        class="px-3.5 py-2 bg-clinical-dark hover:bg-clinical-darkLight text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+        <span>+</span> Registrar Sesión TBE
+      </button>
+      <button 
+        (click)="roleService.toggleLeva()"
+        class="px-3.5 py-2 bg-clinical-accent/20 hover:bg-clinical-accent/30 text-clinical-textDark font-bold text-xs rounded-xl border border-clinical-accent/40 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+        <span>🧠</span> Consultar con LEVA
+      </button>
+    </div>
+  </div>
+
+  <!-- Patient Summary Banner -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-clinical-dark to-clinical-accent flex items-center justify-center text-white text-xl font-bold shadow-md">
+          {{ patient.name.substring(0, 2).toUpperCase() }}
+        </div>
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-xl font-bold text-clinical-textDark">{{ patient.name }}</h1>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold" 
+              [ngClass]="patient.capacidadConsentimiento.estado === 'REPRESENTADO_POR_EDAD' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'">
+              {{ patient.capacidadConsentimiento.estado }}
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">
+            CURP: <span class="font-mono">{{ patient.curp }}</span> · {{ patient.edadCalculada }} años · Terapeuta: {{ patient.therapistName }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Consent Alert / Quick Status in Banner -->
+      <div *ngIf="patient.capacidadConsentimiento.estado === 'REPRESENTADO_POR_EDAD'" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs flex items-center gap-3">
+        <div>
+          <span class="font-bold text-amber-900 block">Persona de Apoyo: {{ patient.representante?.nombreCompleto || 'Designada' }}</span>
+          <span class="text-amber-700 text-[11px]">
+            {{ patient.consentimientoRepresentanteFirmado ? '✓ Consentimiento formalizado en expediente' : '⚠️ Consentimiento pendiente de firma' }}
+          </span>
+        </div>
+        <button 
+          *ngIf="!patient.consentimientoRepresentanteFirmado"
+          (click)="firmarConsentimiento()"
+          class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs shadow-xs cursor-pointer">
+          Firmar Ahora
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs Navigation Bar -->
+    <div class="flex border-b border-slate-200 mt-6 gap-6 text-xs font-semibold">
+      <button 
+        (click)="setTab('formulacion')"
+        class="pb-3 border-b-2 transition-all cursor-pointer"
+        [ngClass]="activeTab === 'formulacion' ? 'border-clinical-dark text-clinical-dark font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'">
+        📋 Formulación TBE
+      </button>
+      <button 
+        (click)="setTab('sesiones')"
+        class="pb-3 border-b-2 transition-all cursor-pointer"
+        [ngClass]="activeTab === 'sesiones' ? 'border-clinical-dark text-clinical-dark font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'">
+        🗓️ Sesiones y Notas ({{ sessions.length }})
+      </button>
+      <button 
+        (click)="setTab('audio')"
+        class="pb-3 border-b-2 transition-all cursor-pointer"
+        [ngClass]="activeTab === 'audio' ? 'border-clinical-dark text-clinical-dark font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'">
+        🎙️ Simulador de Audio & LEVA
+      </button>
+      <button 
+        (click)="setTab('legal')"
+        class="pb-3 border-b-2 transition-all cursor-pointer"
+        [ngClass]="activeTab === 'legal' ? 'border-clinical-dark text-clinical-dark font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'">
+        ⚖️ Representación Legal
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab 1: Formulación TBE -->
+  <div *ngIf="activeTab === 'formulacion'" class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Diagnóstico Operativo TBE</h3>
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+        <p class="text-sm font-bold text-clinical-teal">{{ record?.trastornoEstrategico || 'Fobia de Rendimiento / Ansiedad de Ejecución' }}</p>
+        <p class="text-xs text-slate-600 mt-1">{{ record?.description || 'Bloqueo fóbico en situaciones académicas con respuesta ansiosa intensa y evitación reiterada.' }}</p>
+      </div>
+
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Sistema Perceptivo-Reactivo (SPR)</h3>
+      <p class="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200">
+        {{ record?.sprInicial || 'Percepción de peligro inminente ante la evaluación. La reacción de búsqueda de auxilio y evitación confirma y amplifica la incapacidad percibida.' }}
+      </p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Intentos de Solución Previos (Redundantes)</h3>
+      <ul class="text-xs text-slate-700 space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200 list-disc list-inside">
+        <li>Evitación activa de exámenes y presentaciones.</li>
+        <li>Búsqueda constante de reaseguramiento y acompañamiento materno.</li>
+        <li>Tentativa de control voluntario de reacciones fisiológicas (respiración forzada).</li>
+      </ul>
+
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Objetivo Terapéutico TBE</h3>
+      <p class="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200">
+        {{ record?.objectiveTherapist || 'Desarticular la evitación fóbica e instaurar la confrontación mediante la peor fantasía y la declaración del secreto.' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Tab 2: Sesiones y Notas -->
+  <div *ngIf="activeTab === 'sesiones'" class="space-y-4 animate-in fade-in">
+    <div *ngFor="let s of sessions" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 bg-clinical-dark text-white rounded-lg text-xs font-bold">
+            Sesión #{{ s.number }}
+          </span>
+          <span class="text-xs text-slate-500 font-medium">{{ s.date }}</span>
+          <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-semibold">{{ s.protocol }}</span>
+        </div>
+        <span class="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+          {{ s.status }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div>
+          <p class="font-bold text-clinical-textDark mb-1">Prescripciones Estratégicas:</p>
+          <div *ngFor="let px of s.px" class="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-lg text-amber-900 mb-1.5 font-medium">
+            💡 {{ px }}
+          </div>
+        </div>
+        <div>
+          <p class="font-bold text-clinical-textDark mb-1">Observaciones del Terapeuta:</p>
+          <p class="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 italic">
+            {{ s.oss || 'Sin observaciones registradas.' }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Simulador de Audio y Asistencia LEVA -->
+  <div *ngIf="activeTab === 'audio'" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6 animate-in fade-in">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-bold text-clinical-textDark">Grabación Asistida por LEVA (Modo Clínico)</h3>
+        <p class="text-xs text-slate-500">Transcribe en tiempo real y detecta intentos de solución redundantes</p>
+      </div>
+      <button 
+        (click)="toggleRecording()"
+        class="px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+        [ngClass]="isRecording ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' : 'bg-clinical-teal hover:bg-clinical-tealHover text-white'">
+        <span>{{ isRecording ? '⏹ Detener Grabación' : '🎙️ Iniciar Grabación Simulada' }}</span>
+        <span *ngIf="isRecording" class="font-mono text-xs">({{ recordingSeconds }}s)</span>
+      </button>
+    </div>
+
+    <!-- Onda de Voz Simulada -->
+    <div *ngIf="isRecording" class="h-16 bg-slate-900 rounded-xl flex items-center justify-center gap-1.5 px-4">
+      <span class="w-1.5 h-8 bg-clinical-accent rounded-full animate-bounce"></span>
+      <span class="w-1.5 h-12 bg-clinical-teal rounded-full animate-bounce [animation-delay:0.1s]"></span>
+      <span class="w-1.5 h-6 bg-clinical-accent rounded-full animate-bounce [animation-delay:0.2s]"></span>
+      <span class="w-1.5 h-10 bg-clinical-teal rounded-full animate-bounce [animation-delay:0.3s]"></span>
+      <span class="w-1.5 h-14 bg-clinical-accent rounded-full animate-bounce [animation-delay:0.15s]"></span>
+      <span class="text-xs font-mono text-white ml-3">Captura de audio en progreso...</span>
+    </div>
+
+    <!-- Transcripción y Sugerencia LEVA -->
+    <div *ngIf="transcriptText" class="space-y-4">
+      <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Transcripción Automática</p>
+        <p class="text-xs text-slate-800 leading-relaxed font-mono">{{ transcriptText }}</p>
+      </div>
+
+      <div *ngIf="levaAdvice" class="p-4 bg-clinical-accent/10 border border-clinical-accent/30 rounded-xl">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-base">🧠</span>
+          <p class="text-xs font-bold text-clinical-textDark">Análisis Clínico Estratégico (LEVA):</p>
+        </div>
+        <p class="text-xs text-clinical-dark leading-relaxed font-medium">{{ levaAdvice }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Representación Legal y Consentimiento -->
+  <div *ngIf="activeTab === 'legal'" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6 animate-in fade-in">
+    <div class="border-b border-slate-100 pb-4">
+      <h3 class="text-sm font-bold text-clinical-textDark">Modelo Unificado de Capacidad y Consentimiento</h3>
+      <p class="text-xs text-slate-500">Regulado bajo la normativa de menores y personas de apoyo designadas</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+      <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+        <p class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider">Estado Jurídico del Paciente</p>
+        <div>
+          <span class="text-slate-500">Capacidad:</span>
+          <strong class="ml-2 text-slate-800">{{ patient.capacidadConsentimiento.estado }}</strong>
+        </div>
+        <div>
+          <span class="text-slate-500">Edad Determinada:</span>
+          <strong class="ml-2 text-slate-800">{{ patient.edadCalculada }} años</strong>
+        </div>
+        <div>
+          <span class="text-slate-500">Fecha de Nacimiento:</span>
+          <strong class="ml-2 text-slate-800">{{ patient.fechaNacimiento }}</strong>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3" *ngIf="patient.representante">
+        <p class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider">Persona de Apoyo Designada</p>
+        <div>
+          <span class="text-slate-500">Nombre Completo:</span>
+          <strong class="ml-2 text-slate-800">{{ patient.representante.nombreCompleto }}</strong>
+        </div>
+        <div>
+          <span class="text-slate-500">Parentesco / Vínculo:</span>
+          <strong class="ml-2 text-slate-800">{{ patient.representante.parentesco }}</strong>
+        </div>
+        <div>
+          <span class="text-slate-500">Teléfono:</span>
+          <strong class="ml-2 text-slate-800">{{ patient.representante.telefono }}</strong>
+        </div>
+        <div class="pt-2">
+          <span class="px-2.5 py-1 rounded-full text-[10px] font-bold"
+            [ngClass]="patient.consentimientoRepresentanteFirmado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
+            {{ patient.consentimientoRepresentanteFirmado ? '✓ Consentimiento Firmado' : '⚠️ Pendiente de Firma' }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registrar Sesión TBE -->
+  <div *ngIf="showSessionModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div>
+          <h2 class="text-base font-bold text-clinical-textDark">Registrar Nueva Sesión TBE</h2>
+          <p class="text-[11px] text-slate-500">Estratagemas y prescripciones para {{ patient.name }}</p>
+        </div>
+        <button (click)="closeSessionModal()" class="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Protocolo Clínico</label>
+          <input type="text" [(ngModel)]="newSessionProtocol" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Estratagema Asignada</label>
+          <input type="text" [(ngModel)]="newSessionEstratagema" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Prescripción / Tarea para el Paciente *</label>
+          <textarea [(ngModel)]="newSessionPrescripcion" rows="2" placeholder="Ej: Realizar la media hora de lo peor de 7 a 7:30 am..." class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs"></textarea>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Observaciones Clínicas</label>
+          <textarea [(ngModel)]="newSessionNotes" rows="2" placeholder="Reacciones, resonancia al cambio y efecto de las maniobras..." class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-5 pt-3 border-t border-slate-100">
+        <button (click)="closeSessionModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button (click)="guardarSesion()" class="px-4 py-2 rounded-lg text-xs font-bold bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark shadow-xs">
+          Guardar Sesión
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

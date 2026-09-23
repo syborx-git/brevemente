@@ -1,0 +1,190 @@
+<div class="space-y-6 max-w-7xl mx-auto select-none">
+  <!-- Header con Botón de Alta -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-clinical-textDark tracking-tight">Directorio Clínico de Pacientes</h1>
+      <p class="text-xs text-clinical-textMuted mt-0.5">
+        Gestión de expedientes bajo el modelo TBE y consentimiento normativo unificado
+      </p>
+    </div>
+    <button 
+      (click)="openCreateModal()"
+      class="px-4 py-2.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto">
+      <span class="text-sm">+</span> Registrar Nuevo Paciente
+    </button>
+  </div>
+
+  <!-- Barra de Filtros y Búsqueda -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-4 justify-between items-center">
+    <div class="w-full md:w-96 relative">
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm"
+        placeholder="Buscar por nombre de paciente o CURP..."
+        class="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:border-clinical-accent bg-slate-50/50" />
+      <span class="absolute left-3 top-2.5 text-xs text-slate-400">🔍</span>
+    </div>
+
+    <!-- Filtros de Estado y Consentimiento -->
+    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+      <div class="flex items-center gap-1.5 text-xs">
+        <span class="text-slate-500 font-semibold text-[11px]">Estado:</span>
+        <select 
+          [(ngModel)]="statusFilter"
+          class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-slate-50 font-medium focus:outline-hidden">
+          <option value="todos">Todos</option>
+          <option value="activo">Activos</option>
+          <option value="completado">Completados</option>
+          <option value="pendiente">Pendientes</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-1.5 text-xs">
+        <span class="text-slate-500 font-semibold text-[11px]">Consentimiento:</span>
+        <select 
+          [(ngModel)]="consentFilter"
+          class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-slate-50 font-medium focus:outline-hidden">
+          <option value="TODOS">Todos</option>
+          <option value="AUTONOMO">Autónomos (Mayoría)</option>
+          <option value="REPRESENTADO_POR_EDAD">Representados por Edad (&lt;18)</option>
+          <option value="PENDIENTE_DETERMINACION">Pendiente Determinación</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla Clínica de Pacientes -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50/80 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <th class="py-3 px-4">Paciente</th>
+            <th class="py-3 px-4">CURP / Identificador</th>
+            <th class="py-3 px-4">Edad</th>
+            <th class="py-3 px-4">Capacidad Jurídica</th>
+            <th class="py-3 px-4">Riesgo</th>
+            <th class="py-3 px-4">Estado</th>
+            <th class="py-3 px-4 text-right">Acción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-xs">
+          <tr *ngFor="let p of filteredPacientes" class="hover:bg-slate-50/80 transition-colors">
+            <td class="py-3 px-4">
+              <p class="font-bold text-clinical-textDark">{{ p.name }}</p>
+              <p class="text-[10px] text-slate-400">{{ p.phone }} · {{ p.email }}</p>
+            </td>
+            <td class="py-3 px-4 font-mono text-[11px] text-slate-600">
+              {{ p.curp }}
+            </td>
+            <td class="py-3 px-4 font-semibold text-slate-700">
+              {{ p.edadCalculada }} años
+              <span *ngIf="p.edadCalculada < 18" class="text-[10px] text-amber-600 font-bold ml-1">(Menor)</span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight" [ngClass]="getBadgeConsentClass(p.capacidadConsentimiento.estado)">
+                {{ p.capacidadConsentimiento.estado }}
+              </span>
+              <p *ngIf="p.representante" class="text-[10px] text-slate-500 mt-0.5">
+                Apoyo: {{ p.representante.nombreCompleto }} ({{ p.representante.parentesco }})
+              </p>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase" [ngClass]="getRiskClass(p.riskLevel)">
+                {{ p.riskLevel }}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="text-[11px] font-medium text-slate-600 capitalize">
+                {{ p.status }}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right">
+              <a 
+                [routerLink]="['/expediente', p.id]"
+                class="inline-block px-3 py-1.5 bg-slate-100 hover:bg-clinical-accent hover:text-clinical-textDark text-clinical-dark font-bold text-xs rounded-lg transition-all shadow-2xs">
+                Expediente Clínico →
+              </a>
+            </td>
+          </tr>
+          <tr *ngIf="filteredPacientes.length === 0">
+            <td colspan="7" class="py-8 text-center text-slate-400 text-xs">
+              No se encontraron pacientes con los criterios de búsqueda.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Crear Paciente -->
+  <div *ngIf="showCreateModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div>
+          <h2 class="text-base font-bold text-clinical-textDark">Registrar Paciente</h2>
+          <p class="text-[11px] text-slate-500">Modelo unificado TBE con detección automática de edad</p>
+        </div>
+        <button (click)="closeCreateModal()" class="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nombre Completo *</label>
+          <input type="text" [(ngModel)]="newNombre" placeholder="Ej: Santiago Morales Vega" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Fecha de Nacimiento *</label>
+            <input type="date" [(ngModel)]="newFechaNacimiento" (change)="onFechaNacimientoChange()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">CURP</label>
+            <input type="text" [(ngModel)]="newCurp" placeholder="18 caracteres" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono" />
+          </div>
+        </div>
+
+        <!-- Alerta de Minoría de Edad Automática -->
+        <div *ngIf="calculatedAge !== null" class="p-2.5 rounded-lg text-xs" [ngClass]="isMinor ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'">
+          <span class="font-bold">Edad Calculada:</span> {{ calculatedAge }} años.
+          <span *ngIf="isMinor"> Requiere designación de <strong>persona de apoyo</strong> (representación por edad).</span>
+          <span *ngIf="!isMinor"> Paciente mayor de edad (capacidad jurídica autónoma).</span>
+        </div>
+
+        <!-- Campos de Persona de Apoyo si es menor -->
+        <div *ngIf="isMinor" class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <p class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider">Persona de Apoyo Designada (Obligatorio en menores)</p>
+          <div>
+            <label class="block font-medium text-slate-600 mb-0.5">Nombre del Representante / Apoyo *</label>
+            <input type="text" [(ngModel)]="newPersonaApoyoNombre" placeholder="Ej: Claudia Vega (Madre)" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+          </div>
+          <div>
+            <label class="block font-medium text-slate-600 mb-0.5">Teléfono de Contacto del Apoyo</label>
+            <input type="text" [(ngModel)]="newPersonaApoyoTelefono" placeholder="+52 55 1234 5678" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Teléfono</label>
+            <input type="text" [(ngModel)]="newTelefono" placeholder="+52 55 9876 5432" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Motivo Principal</label>
+            <input type="text" [(ngModel)]="newMotif" placeholder="Ej: Ataques de pánico" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
+        <button (click)="closeCreateModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button (click)="guardarPaciente()" class="px-4 py-2 rounded-lg text-xs font-bold bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark shadow-xs">
+          Guardar Paciente
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
