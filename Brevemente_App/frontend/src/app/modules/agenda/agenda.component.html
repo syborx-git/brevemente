@@ -1,0 +1,161 @@
+<div class="space-y-6 max-w-7xl mx-auto select-none">
+  <!-- Header de la Agenda -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-clinical-textDark tracking-tight">Agenda de Sesiones Clínicas</h1>
+      <p class="text-xs text-clinical-textMuted mt-0.5">
+        Gestión de sesiones TBE con bloqueo normativo para expedientes con consentimiento pendiente
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- Switcher Vista -->
+      <div class="bg-white border border-slate-200 rounded-xl p-1 flex gap-1 shadow-2xs">
+        <button 
+          (click)="viewMode = 'semana'"
+          [class.bg-clinical-dark]="viewMode === 'semana'"
+          [class.text-white]="viewMode === 'semana'"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 transition-all cursor-pointer">
+          Semana
+        </button>
+        <button 
+          (click)="viewMode = 'dia'"
+          [class.bg-clinical-dark]="viewMode === 'dia'"
+          [class.text-white]="viewMode === 'dia'"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 transition-all cursor-pointer">
+          Día
+        </button>
+      </div>
+
+      <button 
+        (click)="openNewModal()"
+        class="px-4 py-2.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer">
+        <span class="text-sm">+</span> Agendar Cita
+      </button>
+    </div>
+  </div>
+
+  <!-- Banner Normativo de Agenda si hay bloqueo -->
+  <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900">
+    <div class="flex items-center gap-2.5">
+      <span class="text-base">⚖️</span>
+      <span>
+        <strong>Control Normativo:</strong> Los pacientes menores de edad sin consentimiento formalizado de la persona de apoyo mantienen sus sesiones en estado <em>Bloqueada / Pendiente</em>.
+      </span>
+    </div>
+  </div>
+
+  <!-- Grid de Citas Programadas -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div 
+      *ngFor="let c of citas" 
+      class="bg-white rounded-2xl border p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between"
+      [ngClass]="isPatientBlocked(c.patientId) ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200'">
+      
+      <div>
+        <!-- Cita Header -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-sm font-bold text-clinical-textDark px-2 py-0.5 rounded-md bg-slate-100">
+              {{ c.time }}
+            </span>
+            <span class="text-[10px] text-slate-500 font-semibold">{{ c.date }}</span>
+          </div>
+          <span 
+            class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight"
+            [ngClass]="isPatientBlocked(c.patientId) ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'">
+            {{ isPatientBlocked(c.patientId) ? 'Bloqueada por Normativa' : c.status }}
+          </span>
+        </div>
+
+        <!-- Cita Info -->
+        <h3 class="text-sm font-bold text-clinical-textDark mb-1">{{ c.patientName }}</h3>
+        <p class="text-xs text-slate-500 capitalize mb-3">Sesión de {{ c.type }} · 50 min</p>
+
+        <!-- Bloqueo Alert Box dentro de la tarjeta -->
+        <div *ngIf="isPatientBlocked(c.patientId)" class="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-900 text-[11px] mb-3">
+          <p class="font-bold">⚠️ Falta Consentimiento del Representante</p>
+          <p class="text-[10px] text-red-700 mt-0.5">Se requiere firma en el expediente para confirmar y habilitar la sesión.</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+        <a [routerLink]="['/expediente', c.patientId]" class="text-clinical-accent font-bold hover:underline text-[11px]">
+          Ver Expediente →
+        </a>
+        <div class="flex gap-1.5">
+          <button 
+            *ngIf="!isPatientBlocked(c.patientId) && c.status !== 'confirmada'"
+            (click)="cambiarEstado(c, 'confirmada')"
+            class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px]">
+            Confirmar
+          </button>
+          <button 
+            *ngIf="c.status !== 'cancelada'"
+            (click)="cambiarEstado(c, 'cancelada')"
+            class="px-2.5 py-1 bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 rounded-lg font-semibold text-[11px]">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agendar Nueva Cita -->
+  <div *ngIf="showNewModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div>
+          <h2 class="text-base font-bold text-clinical-textDark">Agendar Sesión Clínica</h2>
+          <p class="text-[11px] text-slate-500">Programación con verificación de consentimiento</p>
+        </div>
+        <button (click)="closeNewModal()" class="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Paciente *</label>
+          <select [(ngModel)]="selectedPatientId" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50">
+            <option *ngFor="let p of pacientes" [value]="p.id">
+              {{ p.name }} ({{ p.edadCalculada }} años)
+            </option>
+          </select>
+        </div>
+
+        <!-- Warning si el paciente está bloqueado -->
+        <div *ngIf="isPatientBlocked(selectedPatientId)" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
+          <strong>⚠️ Aviso:</strong> Este paciente es menor de edad y su representante aún no firma el consentimiento. La cita quedará registrada como <em>Bloqueada</em>.
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Fecha</label>
+            <input type="date" [(ngModel)]="newDate" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Hora</label>
+            <input type="time" [(ngModel)]="newTime" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Tipo de Sesión</label>
+          <select [(ngModel)]="newType" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50">
+            <option value="primera">Primera Sesión / Diagnóstico</option>
+            <option value="seguimiento">Seguimiento e Intervención</option>
+            <option value="cierre">Cierre y Consolidación</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
+        <button (click)="closeNewModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button (click)="guardarCita()" class="px-4 py-2 rounded-lg text-xs font-bold bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark shadow-xs">
+          Guardar Cita
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

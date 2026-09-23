@@ -1,0 +1,142 @@
+<div class="space-y-6 max-w-7xl mx-auto select-none">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-clinical-textDark tracking-tight">Panel Principal</h1>
+      <p class="text-xs text-clinical-textMuted mt-0.5">
+        Resumen operativo y clínico para <span class="font-semibold text-clinical-dark">{{ roleService.currentUserName }}</span>
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a routerLink="/pacientes" class="px-3.5 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5">
+        <span>+</span> Nuevo Paciente
+      </a>
+      <a routerLink="/agenda" class="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-clinical-textDark font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5">
+        <span>📅</span> Agendar Cita
+      </a>
+    </div>
+  </div>
+
+  <!-- Alerta Prioritaria de Consentimiento Legal si existe -->
+  <div *ngFor="let alert of alertasUrgentes" class="bg-red-50 border-l-4 border-red-500 rounded-xl p-4 shadow-xs">
+    <div class="flex items-start justify-between">
+      <div class="flex gap-3">
+        <span class="text-xl">⚠️</span>
+        <div>
+          <h3 class="text-xs font-bold text-red-900 uppercase tracking-wider">{{ alert.titulo }}</h3>
+          <p class="text-xs text-red-700 mt-1">{{ alert.descripcion }}</p>
+        </div>
+      </div>
+      <a [routerLink]="['/expediente', alert.pacienteId]" class="text-xs font-bold text-red-800 hover:text-red-950 underline shrink-0 ml-4">
+        Resolver en Expediente →
+      </a>
+    </div>
+  </div>
+
+  <!-- Stat Cards Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
+        👥
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-clinical-textMuted uppercase tracking-wider">Pacientes Activos</p>
+        <p class="text-2xl font-bold text-clinical-textDark">{{ stats.totalPacientes }}</p>
+        <span class="text-[10px] text-emerald-600 font-semibold">TBE en Curso</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-teal-50 text-clinical-teal flex items-center justify-center text-xl font-bold">
+        📅
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-clinical-textMuted uppercase tracking-wider">Citas Programadas</p>
+        <p class="text-2xl font-bold text-clinical-textDark">{{ stats.citasHoyCount }}</p>
+        <span class="text-[10px] text-clinical-teal font-semibold">Agenda Activa</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">
+        ⚖️
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-clinical-textMuted uppercase tracking-wider">Alertas Normativas</p>
+        <p class="text-2xl font-bold text-clinical-textDark">{{ stats.alertasPendientes }}</p>
+        <span class="text-[10px] text-amber-600 font-semibold">Consentimiento Pendiente</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl font-bold">
+        🎓
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-clinical-textMuted uppercase tracking-wider">Horas Supervisión</p>
+        <p class="text-2xl font-bold text-clinical-textDark">{{ stats.horasSupervisadas }}h</p>
+        <span class="text-[10px] text-purple-600 font-semibold">Acreditación Formativa</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two Column Layout: Today's Appointments & Recent Patients -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Appointments Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-clinical-textDark">Agenda Inmediata</h2>
+        <a routerLink="/agenda" class="text-xs text-clinical-accent font-bold hover:underline">Ver Agenda Completa →</a>
+      </div>
+      <div class="divide-y divide-slate-100">
+        <div *ngFor="let cita of citasHoy" class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+          <div class="flex items-center gap-3">
+            <span class="px-2 py-1 bg-slate-100 text-slate-700 rounded-md font-mono text-xs font-bold">{{ cita.time }}</span>
+            <div>
+              <p class="text-xs font-bold text-clinical-textDark">{{ cita.patientName }}</p>
+              <p class="text-[10px] text-clinical-textMuted uppercase">{{ cita.type }} · {{ cita.status }}</p>
+            </div>
+          </div>
+          <div>
+            <span 
+              *ngIf="cita.status === 'no_presentado'" 
+              class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-100 text-red-700">
+              No presentado
+            </span>
+            <span 
+              *ngIf="cita.status !== 'no_presentado'" 
+              class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700">
+              Confirmada
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Patients Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-clinical-textDark">Pacientes con Actividad Reciente</h2>
+        <a routerLink="/pacientes" class="text-xs text-clinical-accent font-bold hover:underline">Ir a Directorio →</a>
+      </div>
+      <div class="divide-y divide-slate-100">
+        <div *ngFor="let p of pacientesRecientes" class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+          <div>
+            <p class="text-xs font-bold text-clinical-textDark">{{ p.name }}</p>
+            <p class="text-[10px] text-clinical-textMuted">CURP: {{ p.curp }} · {{ p.edadCalculada }} años</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span 
+              class="px-2 py-0.5 text-[10px] font-bold rounded-full"
+              [ngClass]="p.capacidadConsentimiento.estado === 'REPRESENTADO_POR_EDAD' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'">
+              {{ p.capacidadConsentimiento.estado }}
+            </span>
+            <a [routerLink]="['/expediente', p.id]" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-clinical-dark font-bold rounded-lg transition-colors">
+              Expediente
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

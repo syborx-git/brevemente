@@ -1,0 +1,55 @@
+<aside class="w-64 bg-clinical-dark text-white flex flex-col shrink-0 h-screen shadow-lg border-r border-slate-800 select-none">
+  <!-- Brand Header -->
+  <div class="p-5 border-b border-slate-700/60 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-clinical-accent to-clinical-darkLight flex items-center justify-center shadow-md border border-clinical-accent/30 text-xl font-bold">
+        Ψ
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight tracking-wide text-white">BreveMente</h1>
+        <p class="text-[10px] text-clinical-accent font-medium tracking-wider uppercase">Terapia Breve Estratégica</p>
+      </div>
+    </div>
+    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">v1.0</span>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+    <div *ngFor="let section of sections" class="space-y-1">
+      <h2 class="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+        {{ section.title }}
+      </h2>
+      <ng-container *ngFor="let item of section.items">
+        <a 
+          *ngIf="isItemVisible(item)"
+          [routerLink]="item.path" 
+          routerLinkActive="bg-clinical-darkLight text-white font-semibold border-l-4 border-clinical-accent pl-2.5 shadow-sm"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all text-xs group relative">
+          <span class="text-base group-hover:scale-110 transition-transform">{{ item.icon }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span class="truncate">{{ item.label }}</span>
+              <span *ngIf="item.badge" class="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-clinical-accent/20 text-clinical-accent rounded border border-clinical-accent/30">
+                {{ item.badge }}
+              </span>
+            </div>
+            <p *ngIf="item.subtitle" class="text-[9px] text-slate-400 truncate">{{ item.subtitle }}</p>
+          </div>
+        </a>
+      </ng-container>
+    </div>
+  </nav>
+
+  <!-- User Active Info Footer -->
+  <div class="p-3 border-t border-slate-700/60 bg-slate-900/40">
+    <div class="flex items-center gap-2.5 px-2 py-2">
+      <div class="w-8 h-8 rounded-full bg-clinical-accent/20 border border-clinical-accent/40 flex items-center justify-center text-xs font-bold text-clinical-accent">
+        AS
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-bold text-white truncate">{{ roleService.currentUserName }}</p>
+        <p class="text-[10px] text-slate-400 truncate">{{ getRoleLabel(currentRole) }}</p>
+      </div>
+    </div>
+  </div>
+</aside>
