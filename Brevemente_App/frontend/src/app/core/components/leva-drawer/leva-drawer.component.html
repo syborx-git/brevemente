@@ -1,0 +1,79 @@
+<!-- Overlay -->
+<div 
+  *ngIf="isOpen" 
+  (click)="close()" 
+  class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 transition-opacity">
+</div>
+
+<!-- Drawer Panel -->
+<aside 
+  class="fixed inset-y-0 right-0 w-96 max-w-full bg-white z-50 shadow-2xl flex flex-col border-l border-slate-200 transition-transform duration-300 ease-in-out select-none"
+  [class.translate-x-full]="!isOpen"
+  [class.translate-x-0]="isOpen">
+
+  <!-- Header -->
+  <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-clinical-accent to-clinical-dark flex items-center justify-center text-lg text-white shadow-sm">
+        🧠
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-clinical-textDark">LEVA — Asistente Clínico</h3>
+        <p class="text-[10px] text-clinical-accent font-semibold tracking-wide uppercase">Inteligencia Estratégica TBE</p>
+      </div>
+    </div>
+    <button 
+      (click)="close()" 
+      class="w-7 h-7 rounded-lg hover:bg-slate-200/60 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+      ✕
+    </button>
+  </div>
+
+  <!-- Quick Action Pills -->
+  <div class="px-4 py-2 border-b border-slate-100 bg-white flex gap-1.5 overflow-x-auto text-[11px]">
+    <button 
+      *ngFor="let p of quickPrompts"
+      (click)="usePrompt(p)"
+      class="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-clinical-accent/15 hover:text-clinical-dark font-medium text-slate-600 transition-all border border-slate-200/60">
+      {{ p }}
+    </button>
+  </div>
+
+  <!-- Messages Stream -->
+  <div class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div *ngFor="let m of messages" [class.items-end]="m.sender === 'user'" class="flex flex-col">
+      <div 
+        class="max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-xs"
+        [ngClass]="m.sender === 'user' ? 'bg-clinical-dark text-white rounded-tr-none' : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/60'">
+        <p>{{ m.text }}</p>
+
+        <!-- Stratagem Suggestion Card -->
+        <div *ngIf="m.stratagem" class="mt-2.5 pt-2 border-t border-slate-200/60 bg-white/70 rounded-lg p-2 text-slate-900">
+          <p class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">💡 Estratagema Sugerida:</p>
+          <p class="font-semibold text-clinical-teal text-[11px] mb-1">{{ m.stratagem }}</p>
+          <div *ngIf="m.prescription" class="bg-amber-50 border border-amber-200 rounded p-1.5 text-[10px] text-amber-900">
+            <strong>Prescripción:</strong> {{ m.prescription }}
+          </div>
+        </div>
+      </div>
+      <span class="text-[9px] text-slate-400 mt-1 px-1">{{ m.time }}</span>
+    </div>
+  </div>
+
+  <!-- Input Bar -->
+  <div class="p-3 border-t border-slate-200 bg-white">
+    <div class="flex gap-2">
+      <input 
+        type="text" 
+        [(ngModel)]="inputText"
+        (keyup.enter)="sendMessage()"
+        placeholder="Consultar a LEVA sobre el caso..."
+        class="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:border-clinical-accent bg-slate-50" />
+      <button 
+        (click)="sendMessage()"
+        class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl shadow-xs transition-all">
+        Enviar
+      </button>
+    </div>
+  </div>
+</aside>
