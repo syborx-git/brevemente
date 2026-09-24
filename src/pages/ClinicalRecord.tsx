@@ -5,7 +5,7 @@ import {
   Sparkles, Plus, Save, AlertTriangle, TrendingUp, GitBranch,
   ShieldAlert, Clipboard, User, Heart, AlertOctagon, Check,
   Lock, ShieldCheck, UserCheck, CreditCard, Trash2, MessageCircle,
-  BookOpen, CheckCircle2, Paperclip, Download, Eye
+  BookOpen, CheckCircle2, Paperclip, Download, Eye, ArrowRightLeft, Send
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -14,7 +14,7 @@ import {
 
 import {
   Role, Patient, ClinicalRecord as ClinicalRecordType, Session, AuditLog, Payment,
-  SupervisionLog, PhysicalCertificateLog
+  SupervisionLog, PhysicalCertificateLog, CounterReferral
 } from '../types/clinical';
 import { ProtocolDecisionPanel } from '../components/ProtocolDecisionPanel';
 import { RiskAlertBanner } from '../components/RiskAlertBanner';
@@ -23,6 +23,7 @@ import { riskSimulationService } from '../services/riskSimulationService';
 import { supervisionRequestService } from '../services/supervisionRequestService';
 import { supervisionLogService } from '../services/supervisionLogService';
 import { physicalCertificateService } from '../services/physicalCertificateService';
+import { counterReferralService, COUNTER_REFERRAL_CHANGED, canCreateCounterReferral } from '../services/counterReferralService';
 import { recordService } from '../services/recordService';
 import { sessionService } from '../services/sessionService';
 import { patientService } from '../services/patientService';
@@ -37,9 +38,11 @@ interface ClinicalRecordProps {
   userRole: Role;
   patients: Patient[];
   userName: string;
+  /** Ids de pacientes contra-referidos por el terapeuta actual (acceso de trazabilidad). */
+  derivedPatientIds?: string[];
 }
 
-export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patients, userName }) => {
+export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patients, userName, derivedPatientIds }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -67,7 +70,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   // Estados locales para simular persistencia
   const [clinicalRecord, setClinicalRecord] = useState<ClinicalRecordType | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos' | 'supervision' | 'constancias'>('datos');
+  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos' | 'supervision' | 'constancias' | 'contrareferencia'>('datos');
   const [tbeSubTab, setTbeSubTab] = useState<'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'>('sesiones');
   const [activeSessionDetail, setActiveSessionDetail] = useState<Session | null>(null);
   // Prescripción seleccionada para ver su compliance (EFF, ADD, OSS, RSS)
@@ -97,6 +100,62 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     window.addEventListener('brevemente_physical_certificate_changed', refresh);
     return () => window.removeEventListener('brevemente_physical_certificate_changed', refresh);
   }, [patientId, activePatient]);
+
+  // ── Contra-referencias (derivación entre terapeutas) ─────────────────────────
+  const [counterReferrals, setCounterReferrals] = useState<CounterReferral[]>([]);
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [referralReason, setReferralReason] = useState('');
+  const [referralSummary, setReferralSummary] = useState('');
+
+  useEffect(() => {
+    if (!activePatient) return;
+    const refresh = () => setCounterReferrals(counterReferralService.getByPatientId(activePatient.id));
+    refresh();
+    window.addEventListener(COUNTER_REFERRAL_CHANGED, refresh);
+    return () => window.removeEventListener(COUNTER_REFERRAL_CHANGED, refresh);
+  }, [patientId, activePatient]);
+
+  // En la demo hay 2 terapeutas: el destino siempre es "el otro" (el que no es el tratante actual).
+  const targetTherapist = activePatient
+    ? therapistService.getAll().find(t => t.id !== activePatient.therapistId)
+    : undefined;
+
+  // ¿Este expediente se abre por trazabilidad (paciente contra-referido por el terapeuta actual)?
+  const isDerivedView = !!activePatient && (derivedPatientIds?.includes(activePatient.id) ?? false);
+  const derivedReferral = isDerivedView
+    ? counterReferralService.getByPatientId(activePatient!.id).find(r => r.status === 'aceptada')
+    : undefined;
+
+  // ── Modo solo lectura (paciente contra-referido): bloquea acciones de escritura ──
+  const readOnly = isDerivedView;
+  const blockIfReadOnly = (): boolean => {
+    if (!readOnly) return false;
+    alert('Modo solo lectura: este paciente fue contra-referido. Solo puedes consultar su trazabilidad.');
+    return true;
+  };
+
+  const handleCreateReferral = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (blockIfReadOnly()) return;
+    if (!activePatient || !targetTherapist) return;
+    counterReferralService.create(
+      {
+        patientId: activePatient.id,
+        patientName: activePatient.name,
+        fromTherapistId: activePatient.therapistId,
+        fromTherapistName: activePatient.therapistName,
+        toTherapistId: targetTherapist.id,
+        toTherapistName: targetTherapist.name,
+        reason: referralReason,
+        clinicalSummary: referralSummary || undefined,
+      },
+      { id: 'user-current', name: userName, role: userRole }
+    );
+    setShowReferralModal(false);
+    setReferralReason('');
+    setReferralSummary('');
+    alert('✓ Solicitud de contra-referencia enviada al terapeuta receptor y registrada en auditoría.');
+  };
 
   // ── Registro de pagos (Pestaña Pagos) ───────────────────────────────────────
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -130,6 +189,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   const handleAddPayment = (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfReadOnly()) return;
     if (!activePatient) return;
     const amount = parseFloat(newPayment.amount);
     if (!newPayment.concept.trim() || !newPayment.date || isNaN(amount) || amount < 0) {
@@ -151,6 +211,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   };
 
   const handleSendPaymentReminder = (pay: Payment) => {
+    if (blockIfReadOnly()) return;
     const phoneDigits = (activePatient?.phone || '').replace(/\D/g, '');
     if (!phoneDigits) {
       alert('El paciente no tiene teléfono registrado.');
@@ -168,6 +229,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   const handleSignRepresentativeConsent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfReadOnly()) return;
     if (!activePatient || !activePatient.representante) return;
 
     if (!repSignatureName.trim()) {
@@ -198,6 +260,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   };
 
   const handleFormalizeAutonomousReconsent = async () => {
+    if (blockIfReadOnly()) return;
     if (!activePatient || isFormalizingReconsent) return;
     setIsFormalizingReconsent(true);
 
@@ -456,6 +519,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   }, []);
 
   const handleStartRecording = () => {
+    if (blockIfReadOnly()) return;
     if (isRecordingBlocked) {
       alert(LEGAL_CONSENT_TOOLTIP);
       return;
@@ -466,6 +530,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   };
 
   const handleStopRecording = () => {
+    if (blockIfReadOnly()) return;
     setIsRecording(false);
     setAudioBlobUrl('blob:http://localhost:5173/mock-audio-uuid');
 
@@ -479,6 +544,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   };
 
   const handleAiProcess = () => {
+    if (blockIfReadOnly()) return;
     setIsAiProcessing(true);
     setTimeout(() => {
       setIsAiProcessing(false);
@@ -522,6 +588,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   // [DEMO] Disparador de un clic para simular una señal de riesgo en presentaciones
   const handleSimulateRisk = () => {
+    if (blockIfReadOnly()) return;
     if (!activePatient) return;
     const demoNote =
       'La paciente se mostró muy angustiada y mencionó en dos ocasiones que en los momentos más difíciles ha pensado en hacerse daño y que a veces siente que ya no puede más.';
@@ -548,6 +615,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   // [Opción B] Override manual de fase (registrado en auditoría para trazabilidad)
   const handleManualPhaseChange = (phase: string) => {
+    if (blockIfReadOnly()) return;
     setNewSessPhase(phase);
     auditLogService.addLog(
       'Ajuste manual de fase clínica',
@@ -560,6 +628,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   // [Opción B] Al abrir el formulario, la nueva sesión HEREDA la fase de la última sesión
   const handleStartNewSession = () => {
+    if (blockIfReadOnly()) return;
     const lastPhase = sessions.length > 0
       ? sessions[sessions.length - 1].phase
       : 'Definición del problema';
@@ -570,6 +639,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   const handleSaveSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfReadOnly()) return;
 
     const newSessionNumber = sessions.length + 1;
     const newSession: Session = {
@@ -650,6 +720,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   const handleSaveDx = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfReadOnly()) return;
     if (!clinicalRecord) return;
 
     await recordService.saveByPatientId(patientId, clinicalRecord);
@@ -667,6 +738,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   const handleSavePsychiatry = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfReadOnly()) return;
     if (!clinicalRecord) return;
 
     const updatedRecord = {
@@ -729,6 +801,19 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
   return (
     <div className="space-y-6">
+      {/* Banner: paciente contra-referido (acceso de trazabilidad del terapeuta de origen) */}
+      {isDerivedView && derivedReferral && (
+        <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 flex items-start gap-3 text-xs text-sky-900">
+          <ArrowRightLeft className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold block">Paciente contra-referido a {derivedReferral.toTherapistName}</span>
+            <span className="text-[11px] text-sky-700 block mt-0.5">
+              Acceso de trazabilidad: este paciente ya no está en tu caseload. La derivación quedó registrada en la pestaña «Contra-referencia».
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Risk alert banner (sticky: te sigue al hacer scroll) */}
       {activeRiskAlert && activePatient && (
         <div className="sticky top-0 z-40">
@@ -926,7 +1011,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               <button
                 type="button"
                 onClick={handleFormalizeAutonomousReconsent}
-                disabled={isFormalizingReconsent}
+                disabled={isFormalizingReconsent || readOnly}
                 className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition-all flex items-center justify-center gap-1 shrink-0"
               >
                 <UserCheck className="w-3.5 h-3.5" />
@@ -974,8 +1059,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               {!activePatient.consentimientoRepresentanteFirmado && activePatient.representante && (
                 <button
                   type="button"
+                  disabled={readOnly}
                   onClick={() => setShowConsentSignModal(true)}
-                  className="mt-2 px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-[11px] font-bold shadow-sm transition-all flex items-center justify-center gap-1"
+                  className="mt-2 px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-[11px] font-bold shadow-sm transition-all flex items-center justify-center gap-1 disabled:opacity-50"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Formalizar Consentimiento
@@ -1062,6 +1148,21 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           {physicalCertificates.length > 0 && (
             <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${activeTab === 'constancias' ? 'bg-clinical-accent/15 text-clinical-accent' : 'bg-slate-100 text-slate-500'}`}>
               {physicalCertificates.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('contrareferencia')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all flex items-center gap-1.5 ${activeTab === 'contrareferencia'
+            ? 'border-clinical-accent text-clinical-accent'
+            : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+        >
+          <span>Contra-referencia</span>
+          {counterReferrals.length > 0 && (
+            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${activeTab === 'contrareferencia' ? 'bg-clinical-accent/15 text-clinical-accent' : 'bg-slate-100 text-slate-500'}`}>
+              {counterReferrals.length}
             </span>
           )}
         </button>
@@ -1182,7 +1283,8 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold flex items-center gap-1.5 shadow"
+                  disabled={readOnly}
+                  className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold flex items-center gap-1.5 shadow disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
                   Guardar DX Estratégico
@@ -1198,7 +1300,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm h-fit">
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-xl">
                   <span className="font-bold text-xs text-clinical-dark uppercase">Historial Clínico</span>
-                  {['admin_platform', 'admin_clinical', 'therapist'].includes(userRole) && !isCreatingSession && (
+                  {['admin_platform', 'admin_clinical', 'therapist'].includes(userRole) && !isCreatingSession && !readOnly && (
                     <button
                       onClick={handleStartNewSession}
                       className="px-2 py-1 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded text-[10px] font-bold shadow flex items-center gap-0.5"
@@ -1693,7 +1795,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                       </button>
                       <button
                         type="submit"
-                        disabled={sessionMode === 'ia' && !aiValidated}
+                        disabled={readOnly || (sessionMode === 'ia' && !aiValidated)}
                         className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow disabled:opacity-50 flex items-center gap-1.5"
                       >
                         <Save className="w-4 h-4" />
@@ -2075,7 +2177,8 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
             <button
               type="submit"
-              className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5"
+              disabled={readOnly}
+              className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               Guardar Expediente Psiquiátrico
@@ -2204,7 +2307,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               <CreditCard className="w-5 h-5 text-clinical-accent" />
               <h3 className="text-sm font-bold text-clinical-dark">Registro de Pagos</h3>
             </div>
-            {canManagePayments ? (
+            {canManagePayments && !readOnly ? (
               <button
                 onClick={() => setShowPaymentModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow-sm transition-all"
@@ -2214,7 +2317,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               </button>
             ) : (
               <span className="text-[9px] bg-slate-100 text-slate-500 border border-slate-200 px-2 py-1 rounded-full font-bold uppercase">
-                Solo lectura · gestionado por el asistente
+                Solo lectura {readOnly ? '· trazabilidad' : '· gestionado por el asistente'}
               </span>
             )}
           </div>
@@ -2274,8 +2377,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           </span>
                           {(pay.status === 'pendiente' || pay.status === 'parcial') && showPaymentReminder && (
                             <button
+                              disabled={readOnly}
                               onClick={() => handleSendPaymentReminder(pay)}
-                              className="flex items-center gap-1 px-2 py-1 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-full text-[9px] font-bold shadow-sm transition-all"
+                              className="flex items-center gap-1 px-2 py-1 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-full text-[9px] font-bold shadow-sm transition-all disabled:opacity-40"
                               title="Enviar recordatorio de pago por WhatsApp"
                             >
                               <MessageCircle className="w-3 h-3" />
@@ -2290,8 +2394,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           <div className="flex items-center justify-end gap-2">
                             <select
                               value={pay.status}
+                              disabled={readOnly}
                               onChange={(e) => paymentService.updatePaymentStatus(pay.id, e.target.value as Payment['status'], { id: 'user-current', name: userName, role: userRole })}
-                              className="border border-slate-200 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-clinical-accent"
+                              className="border border-slate-200 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-clinical-accent disabled:opacity-50"
                             >
                               <option value="pagado">Pagado</option>
                               <option value="pendiente">Pendiente</option>
@@ -2299,12 +2404,14 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                               <option value="reembolsado">Reembolsado</option>
                             </select>
                             <button
+                              disabled={readOnly}
                               onClick={() => {
+                                if (blockIfReadOnly()) return;
                                 if (confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')) {
                                   paymentService.deletePayment(pay.id, { id: 'user-current', name: userName, role: userRole });
                                 }
                               }}
-                              className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded transition-colors"
+                              className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded transition-colors disabled:opacity-40"
                               title="Eliminar pago"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -2346,7 +2453,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                disabled={readOnly}
                 onClick={() => {
+                  if (blockIfReadOnly()) return;
                   supervisionRequestService.createRequest(
                     activePatient.id,
                     activePatient.name,
@@ -2355,7 +2464,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                   );
                   alert('✓ Solicitud de supervisión enviada al supervisor clínico de guardia y registrada en auditoría.');
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-40"
               >
                 <Clipboard className="w-3.5 h-3.5 text-amber-600" />
                 <span>Solicitar Supervisión</span>
@@ -2363,8 +2472,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
               <button
                 type="button"
+                disabled={readOnly}
                 onClick={() => setShowSupervisionModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-clinical-dark hover:bg-clinical-darkLight text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2 bg-clinical-dark hover:bg-clinical-darkLight text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-40"
               >
                 <Plus className="w-3.5 h-3.5 text-clinical-teal" />
                 <span> Nueva Bitácora</span>
@@ -2446,12 +2556,14 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                       </span>
                       <button
                         type="button"
+                        disabled={readOnly}
                         onClick={() => {
+                          if (blockIfReadOnly()) return;
                           if (confirm(`¿Eliminar la bitácora de la Sesión ${log.sessionNumber}?`)) {
                             supervisionLogService.deleteLog(log.id, { id: 'user-current', name: userName, role: userRole });
                           }
                         }}
-                        className="p-1 text-slate-300 hover:text-red-600 transition-colors"
+                        className="p-1 text-slate-300 hover:text-red-600 transition-colors disabled:opacity-40"
                         title="Eliminar bitácora"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -2576,8 +2688,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
             <button
               type="button"
-              onClick={() => setShowRegisterCertModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
+              disabled={readOnly}
+              onClick={() => { if (!blockIfReadOnly()) setShowRegisterCertModal(true); }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 disabled:opacity-40"
             >
               <Plus className="w-3.5 h-3.5" />
               <span> Registrar Constancia Física</span>
@@ -2609,8 +2722,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 <p className="text-slate-500 font-medium">No se han registrado constancias físicas emitidas para este paciente.</p>
                 <button
                   type="button"
-                  onClick={() => setShowRegisterCertModal(true)}
-                  className="px-4 py-2 bg-clinical-accent text-white rounded-xl text-xs font-bold shadow-sm"
+                  disabled={readOnly}
+                  onClick={() => { if (!blockIfReadOnly()) setShowRegisterCertModal(true); }}
+                  className="px-4 py-2 bg-clinical-accent text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-40"
                 >
                   Registrar Primera Constancia
                 </button>
@@ -2668,12 +2782,14 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
 
                       <button
                         type="button"
+                        disabled={readOnly}
                         onClick={() => {
+                          if (blockIfReadOnly()) return;
                           if (confirm(`¿Eliminar del registro la constancia ${cert.physicalFolio}?`)) {
                             physicalCertificateService.deleteCertificateRecord(cert.id, { id: 'user-current', name: userName, role: userRole });
                           }
                         }}
-                        className="p-2 text-slate-300 hover:text-red-600 transition-colors"
+                        className="p-2 text-slate-300 hover:text-red-600 transition-colors disabled:opacity-40"
                         title="Eliminar registro"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -2683,6 +2799,162 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* PESTAÑA: CONTRA-REFERENCIA (DERIVACIÓN ENTRE TERAPEUTAS) */}
+      {activeTab === 'contrareferencia' && activePatient && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-6 text-xs text-slate-700 animate-fadeIn">
+          {/* Cabecera */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-clinical-dark shrink-0">
+                <ArrowRightLeft className="w-5 h-5 text-clinical-accent" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-clinical-dark flex items-center gap-2">
+                  Contra-referencia · {activePatient.name}
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    {counterReferrals.length} {counterReferrals.length === 1 ? 'registro' : 'registros'}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Derivación del paciente a otro terapeuta del sistema, con trazabilidad completa en el expediente.
+                </p>
+              </div>
+            </div>
+
+            {canCreateCounterReferral(userRole) && !readOnly ? (
+              <button
+                type="button"
+                onClick={() => setShowReferralModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span> Nueva Contra-referencia</span>
+              </button>
+            ) : (
+              <span className="text-[10px] text-slate-400 font-semibold italic shrink-0">
+                {readOnly ? 'Paciente derivado: solo lectura de trazabilidad.' : 'Solo el terapeuta tratante y roles administrativos pueden derivar.'}
+              </span>
+            )}
+          </div>
+
+          {/* Contexto demo: solo 2 terapeutas */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-xs leading-relaxed text-slate-600">
+            <UserCheck className="w-5 h-5 text-clinical-accent shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-clinical-dark block text-xs mb-0.5">Tratante actual vs. destino</span>
+              <p className="text-[11px] text-slate-500">
+                Tratante actual: <b className="text-slate-700">{activePatient.therapistName}</b>.
+                Destino disponible (demo con 2 terapeutas):{' '}
+                <b className="text-slate-700">{targetTherapist ? targetTherapist.name : '—'}</b>.
+              </p>
+            </div>
+          </div>
+
+          {/* Historial de contra-referencias */}
+          <div className="space-y-3">
+            <span className="font-bold text-clinical-dark uppercase tracking-wider text-[10px] block">
+              Historial de Contra-referencias
+            </span>
+
+            {counterReferrals.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
+                <ArrowRightLeft className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-slate-500 font-medium">Este paciente no tiene contra-referencias registradas.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
+                {counterReferrals.map((ref) => (
+                  <div key={ref.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] border ${ref.status === 'aceptada' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ref.status === 'rechazada' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                          {ref.status === 'solicitada' ? '⏳ Solicitada' : ref.status === 'aceptada' ? '✓ Aceptada' : '✕ Rechazada'}
+                        </span>
+                        <span className="font-bold text-clinical-dark text-xs">
+                          {ref.fromTherapistName} → {ref.toTherapistName}
+                        </span>
+                      </div>
+                      <p className="text-slate-600 text-[11px] leading-relaxed">
+                        <span className="font-bold text-slate-500">Motivo: </span>{ref.reason}
+                      </p>
+                      {ref.clinicalSummary && (
+                        <p className="text-slate-500 text-[11px] leading-relaxed bg-slate-50/70 p-2 rounded-lg border border-slate-100">
+                          "{ref.clinicalSummary}"
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-400">
+                        <span>Solicitada: <b className="text-slate-600">{ref.createdAt.slice(0, 10)}</b></span>
+                        {ref.resolvedAt && (
+                          <>
+                            <span>•</span>
+                            <span>{ref.status === 'aceptada' ? 'Aceptada' : 'Rechazada'} el: <b className="text-slate-600">{ref.resolvedAt.slice(0, 10)}</b></span>
+                            {ref.resolvedBy && <span>por <b className="text-slate-600">{ref.resolvedBy}</b></span>}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nueva Contra-referencia */}
+      {showReferralModal && activePatient && targetTherapist && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+            <div className="p-4 bg-clinical-dark text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ArrowRightLeft className="w-5 h-5 text-clinical-accent" />
+                <h3 className="font-bold text-xs uppercase tracking-wider">Nueva Contra-referencia · {activePatient.name}</h3>
+              </div>
+              <button type="button" onClick={() => setShowReferralModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateReferral} className="p-5 space-y-4 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-600 space-y-1">
+                <span className="font-bold text-clinical-dark block">Destino de la derivación:</span>
+                <p>De <b>{activePatient.therapistName}</b> → <b>{targetTherapist.name}</b> (único terapeuta disponible en la demo).</p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Motivo de la contra-referencia *</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Ej. Especialización requerida, agenda saturada, afinidad terapéutica, etc."
+                  value={referralReason}
+                  onChange={(e) => setReferralReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-clinical-dark uppercase tracking-wider mb-1">Resumen clínico para el terapeuta receptor (opcional)</label>
+                <textarea
+                  rows={3}
+                  placeholder="Contexto clínico, avances, medicación vigente, pendientes..."
+                  value={referralSummary}
+                  onChange={(e) => setReferralSummary(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-clinical-accent focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button type="button" onClick={() => setShowReferralModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 font-bold">
+                  Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow-sm">
+                  Enviar solicitud de contra-referencia
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 ﻿import React from "react";
 import { Shield, User, ChevronDown, Check } from "lucide-react";
 import { Role, Patient } from "../types/clinical";
+import { therapistService } from "../services/therapistService";
 
 interface HeaderProps {
   currentRole: Role;
@@ -10,6 +11,8 @@ interface HeaderProps {
   patients?: Patient[];
   currentPatientId?: string;
   onChangePatient?: (patientId: string) => void;
+  currentTherapistId?: string;
+  onChangeTherapist?: (therapistId: string) => void;
 }
 
 const ROLES_INFO: Record<Role, { name: string; color: string }> = {
@@ -30,9 +33,12 @@ export const Header: React.FC<HeaderProps> = ({
   patients = [],
   currentPatientId,
   onChangePatient,
+  currentTherapistId,
+  onChangeTherapist,
 }) => {
   const [showRoleDropdown, setShowRoleDropdown] = React.useState(false);
   const [showPatientDropdown, setShowPatientDropdown] = React.useState(false);
+  const [showTherapistDropdown, setShowTherapistDropdown] = React.useState(false);
 
   const rolesList: { value: Role; label: string }[] = [
     { value: "therapist", label: "Terapeuta (Especialista)" },
@@ -45,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   const currentPatient = patients.find((p) => p.id === currentPatientId);
+  const currentTherapist = therapistService.getAll().find((t) => t.id === currentTherapistId);
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 select-none relative z-40">
@@ -113,6 +120,53 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
+        {/* Selector de Terapeuta — solo visible para el rol terapeuta */}
+        {currentRole === 'therapist' && onChangeTherapist && (
+          <div className="relative" data-tour="demo-therapist">
+            <button
+              onClick={() => setShowTherapistDropdown(!showTherapistDropdown)}
+              className="flex items-center gap-2 px-3 py-1.5 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-slate-700 rounded-lg text-xs font-semibold shadow-sm transition-all"
+            >
+              <span className="text-[10px] text-blue-700 font-bold uppercase">Ver como:</span>
+              <span className="text-slate-800 font-medium">
+                {currentTherapist?.name ?? "Seleccionar terapeuta"}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {showTherapistDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowTherapistDropdown(false)} />
+                <div className="absolute right-0 mt-1.5 w-64 bg-white border border-slate-200 rounded-lg shadow-xl py-1.5 z-50 text-xs">
+                  <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Navegar perfil del terapeuta
+                  </div>
+                  {therapistService.getAll().map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        onChangeTherapist(t.id);
+                        setShowTherapistDropdown(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 text-left font-semibold text-slate-700 transition-colors"
+                    >
+                      <div>
+                        <span className="block">{t.name}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {t.hasAssistant ? `Asistente: ${t.assistantName}` : "Sin asistente asignado"}
+                        </span>
+                      </div>
+                      {currentTherapistId === t.id && (
+                        <Check className="w-3.5 h-3.5 text-[#75AFBC] shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Selector de Roles */}
         <div className="relative" data-tour="demo-roles">
           <button
@@ -157,7 +211,9 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Info del usuario */}
         <div className="flex items-center gap-2.5">
           <div className="text-right">
-            <span className="text-xs font-bold text-slate-800 block">{userName}</span>
+            <span className="text-xs font-bold text-slate-800 block">
+              {currentRole === 'therapist' ? (currentTherapist?.name ?? userName) : userName}
+            </span>
             <span className={`text-[9px] px-2 py-0.5 border rounded-full font-bold uppercase ${ROLES_INFO[currentRole].color}`}>
               {ROLES_INFO[currentRole].name}
             </span>

@@ -14,7 +14,9 @@ import { Role, Appointment, Patient } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
 import { mockStudentProfile } from '../services/academicData';
+import { therapistService } from '../services/therapistService';
 import { checkAgingMinorPatients } from '../utils/legalConsent';
+import { sessionMinutes } from '../utils/sessionDuration';
 
 interface DashboardProps {
   userRole: Role;
@@ -37,6 +39,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
 
   // --- SELECTOR DE PERSPECTIVA DE GRÁFICA (ZONA 5) ---
   const [chartPerspective, setChartPerspective] = useState<string>('citas');
+  // Doctor seleccionado para la gráfica (solo roles superiores al terapeuta)
+  const [chartTherapist, setChartTherapist] = useState<string>('all');
 
   // --- DRILLDOWNS (MODALES) ---
   const [activeDrilldown, setActiveDrilldown] = useState<string | null>(null);
@@ -118,6 +122,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
     }
     return true; // mes/trimestre/año muestra todo el set de demo
   });
+
+  // Alcance de la gráfica por doctor (selector solo para roles superiores al terapeuta)
+  const chartPatients = chartTherapist !== 'all'
+    ? filteredPatients.filter(p => p.therapistId === chartTherapist)
+    : filteredPatients;
+  const chartAppointments = chartTherapist !== 'all'
+    ? filteredAppointments.filter(a => patients.find(p => p.id === a.patientId)?.therapistId === chartTherapist)
+    : filteredAppointments;
 
   // Citas de hoy específicas
   const todayAppointments = filteredAppointments.filter(app => app.date === todayStr);
@@ -514,16 +526,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Selecciona el ángulo analítico a visualizar en el viewport principal.</p>
             </div>
 
-            {/* Selector de Perspectiva (Dropdown) */}
-            <select
-              className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
-              value={chartPerspective}
-              onChange={(e) => setChartPerspective(e.target.value)}
-            >
-              <option value="citas">Citas completadas (Histórico)</option>
-              <option value="fases">Distribución por Fase TBE</option>
-              <option value="protocolos">Casos Activos por Protocolo</option>
-            </select>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Selector de Doctor (solo roles superiores al terapeuta) */}
+              {['admin_clinical', 'admin_platform', 'supervisor'].includes(userRole) && (
+                <select
+                  className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
+                  value={chartTherapist}
+                  onChange={(e) => setChartTherapist(e.target.value)}
+                >
+                  <option value="all">Todos los doctores</option>
+                  {therapistService.getAll().map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Selector de Perspectiva (Dropdown) */}
+              <select
+                className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
+                value={chartPerspective}
+                onChange={(e) => setChartPerspective(e.target.value)}
+              >
+                <option value="citas">Citas completadas (Histórico)</option>
+                <option value="fases">Distribución por Fase TBE</option>
+                <option value="protocolos">Casos Activos por Protocolo</option>
+              </select>
+            </div>
           </div>
 
           <div className="h-64 flex items-center justify-center">
@@ -532,10 +560,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Fase 1: Admisión/Definición', value: filteredPatients.filter(p => p.status === 'pendiente').length || (filteredPatients.length === 0 ? 0 : 0) },
-                      { name: 'Fase 2: Desbloqueo', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel !== 'bajo').length },
-                      { name: 'Fase 3: Consolidación', value: filteredPatients.filter(p => p.status === 'activo' && p.riskLevel === 'bajo').length },
-                      { name: 'Fase 4: Cierre/Alta', value: filteredPatients.filter(p => p.status === 'completado' || p.status === 'archivado').length }
+                      { name: 'Fase 1: Admisión/Definición', value: chartPatients.filter(p => p.status === 'pendiente').length || (chartPatients.length === 0 ? 0 : 0) },
+                      { name: 'Fase 2: Desbloqueo', value: chartPatients.filter(p => p.status === 'activo' && p.riskLevel !== 'bajo').length },
+                      { name: 'Fase 3: Consolidación', value: chartPatients.filter(p => p.status === 'activo' && p.riskLevel === 'bajo').length },
+                      { name: 'Fase 4: Cierre/Alta', value: chartPatients.filter(p => p.status === 'completado' || p.status === 'archivado').length }
                     ]}
                     cx="50%"
                     cy="50%"
@@ -558,10 +586,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             {chartPerspective === 'protocolos' && (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
-                  { name: 'Ataque Pánico', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length },
-                  { name: 'TOC Control', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'TOC Control').length },
-                  { name: 'Fobia Escolar', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Escolar').length },
-                  { name: 'Fobia Social', casos: filteredPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Social').length }
+                  { name: 'Ataque Pánico', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length },
+                  { name: 'TOC Control', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'TOC Control').length },
+                  { name: 'Fobia Escolar', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Escolar').length },
+                  { name: 'Fobia Social', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Social').length }
                 ]}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} />
@@ -577,21 +605,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               </ResponsiveContainer>
             )}
 
-            {chartPerspective === 'citas' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={[
-                  { week: 'Sem 1', citas: Math.max(1, Math.round(filteredAppointments.length * 0.5)) },
-                  { week: 'Sem 2', citas: Math.max(1, Math.round(filteredAppointments.length * 0.8)) },
-                  { week: 'Sem 3 (Actual)', citas: filteredAppointments.length }
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="citas" name="Citas Atendidas" stroke="#304768" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+            {chartPerspective === 'citas' && (() => {
+              // Agrupar citas reales por mes para reflejar diferencias entre terapeutas
+              const monthData = ['2026-07', '2026-08', '2026-09'].map((prefix, i) => {
+                const label = ['Jul', 'Ago', 'Sep'][i];
+                return {
+                  month: label,
+                  citas: chartAppointments.filter(a => a.date.startsWith(prefix)).length
+                };
+              });
+              return (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={monthData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                    <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} allowDecimals={false} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="citas" name="Citas por Mes" stroke="#304768" strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -757,7 +791,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               <div>
                 <span className="text-sm font-extrabold text-clinical-dark block">{nextAppointment.patientName}</span>
                 <span className="text-[10px] text-slate-500 block mt-0.5">
-                  Protocolo: {getPatientProtocol(nextPatient.id)} • Modalidad: {getPatientModality(nextPatient.id).toUpperCase()} • Tipo: {nextAppointment.type.toUpperCase()}
+                  Protocolo: {getPatientProtocol(nextPatient.id)} • Modalidad: {getPatientModality(nextPatient.id).toUpperCase()} • Tipo: {nextAppointment.type.toUpperCase()} • Duración: {sessionMinutes(nextAppointment)} min
                 </span>
                 <div className="flex items-center gap-2 mt-2 text-[9px] text-slate-400 font-bold uppercase flex-wrap">
                   <span className={nextPatient.status !== 'pendiente' ? 'text-emerald-700' : 'text-amber-600'}>
@@ -977,7 +1011,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                       <div key={app.id} className="py-2.5 flex justify-between items-center">
                         <div>
                           <span className="font-extrabold text-clinical-dark block">{app.patientName}</span>
-                          <span className="text-[9px] text-slate-500">Hora: {app.time} • Fecha: {app.date}</span>
+                          <span className="text-[9px] text-slate-500">Hora: {app.time} • Duración: {sessionMinutes(app)} min • Fecha: {app.date}</span>
                         </div>
                         <span className="text-[10px] font-bold text-clinical-teal">{app.status.toUpperCase()}</span>
                       </div>

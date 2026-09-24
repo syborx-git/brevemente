@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'; import { useNavigate } from 'react-router-dom';
-import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert, Trash2, Users, Clock, UserCheck } from 'lucide-react';
-import { Patient, Payment, Role } from '../types/clinical';
+import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert, Trash2, Users, Clock, UserCheck, ArrowRightLeft } from 'lucide-react';
+import { Patient, Payment, Role, CounterReferral } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { paymentService } from '../services/paymentService';
 import { CreatePatientModal } from '../components/CreatePatientModal';
@@ -11,9 +11,11 @@ interface PatientsProps {
   userName: string;
   onDeletePatient: (id: string) => void;
   onAddPatient: (patient: Patient) => void;
+  /** Contra-referencias aceptadas donde el terapeuta actual es el origen (trazabilidad). */
+  derivedReferrals?: CounterReferral[];
 }
 
-export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName, onDeletePatient, onAddPatient }) => {
+export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName, onDeletePatient, onAddPatient, derivedReferrals = [] }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -244,6 +246,46 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
           </table>
         </div>
       </div>
+
+      {/* Pacientes contra-referidos (trazabilidad del terapeuta de origen) */}
+      {derivedReferrals.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
+            <ArrowRightLeft className="w-4 h-4 text-clinical-accent" />
+            <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider">
+              Pacientes contra-referidos (trazabilidad)
+            </span>
+            <span className="text-[10px] text-slate-400 font-semibold ml-auto">
+              Ya no están en tu caseload · acceso de solo lectura
+            </span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {derivedReferrals.map((r) => (
+              <div key={r.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="font-bold text-clinical-dark block">{r.patientName}</span>
+                  <span className="text-[11px] text-slate-500">
+                    Contra-referido a <b className="text-slate-700">{r.toTherapistName}</b>
+                    {r.resolvedAt ? <> · Aceptada el {r.resolvedAt.slice(0, 10)}</> : null}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-sky-50 text-sky-700 border border-sky-200">
+                    Derivado
+                  </span>
+                  <button
+                    onClick={() => handleOpenRecord(r.patientId, r.patientName)}
+                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold transition-colors flex items-center gap-1"
+                  >
+                    <FolderHeart className="w-3.5 h-3.5" />
+                    Ver trazabilidad
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Modal Crear Paciente */}
       <CreatePatientModal

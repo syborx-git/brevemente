@@ -30,6 +30,7 @@ import { auditLogService } from './services/auditLogService';
 import { demoStateService } from './services/demoStateService';
 import { patientService } from './services/patientService';
 import { appointmentService } from './services/appointmentService';
+import { counterReferralService } from './services/counterReferralService';
 import { recordService } from './services/recordService';
 import { sessionService } from './services/sessionService';
 import { hasPermission } from './utils/permissions';
@@ -54,6 +55,7 @@ function App() {
   const [edadMinimaConfig, setEdadMinimaConfig] = useState<number>(0);
   // Paciente actualmente simulado en la vista de demo de paciente
   const [currentPatientId, setCurrentPatientId] = useState<string>('patient-1');
+  const [currentTherapistId, setCurrentTherapistId] = useState<string>('therapist-1');
 
   // Estados de la Demo y LEVA
   const [activeTour, setActiveTour] = useState<'executiva' | 'clinica' | 'academic' | 'none'>('none');
@@ -117,10 +119,17 @@ function App() {
     window.addEventListener('brevemente_demo_step_change', handleStepChange);
     window.addEventListener('brevemente_demo_tour_change', handleTourChange);
 
+    // Reasignación de paciente por contra-referencia → refrescar caseloads
+    const handlePatientsChanged = () => {
+      loadLocalData();
+    };
+    window.addEventListener('brevemente_patients_changed', handlePatientsChanged);
+
     return () => {
       window.removeEventListener('brevemente_demo_reset', handleDemoReset);
       window.removeEventListener('brevemente_demo_step_change', handleStepChange);
       window.removeEventListener('brevemente_demo_tour_change', handleTourChange);
+      window.removeEventListener('brevemente_patients_changed', handlePatientsChanged);
     };
   }, []);
 
@@ -159,6 +168,10 @@ function App() {
 
   const handleRoleChange = (role: Role) => {
     setCurrentRole(role);
+    // El terapeuta y su asistente parten con el caseload de Dr. Silva.
+    if (role === 'therapist' || role === 'assistant') {
+      setCurrentTherapistId('therapist-1');
+    }
     auditLogService.addLog(
       'Cambio de Rol (Demo)',
       `Simuló cambio de acceso al rol: ${role.toUpperCase().replace('_', ' ')}`,
@@ -202,6 +215,26 @@ function App() {
     demoStateService.setActiveStep(0);
   };
 
+  // Alcance clínico por terapeuta: solo el terapeuta y su asistente ven un caseload acotado.
+  const isTherapistScopeRole = currentRole === 'therapist' || currentRole === 'assistant';
+  const scopedPatients = isTherapistScopeRole
+    ? patients.filter(p => p.therapistId === currentTherapistId)
+    : patients;
+  const scopedAppointments = isTherapistScopeRole
+    ? appointments.filter(a => patients.find(p => p.id === a.patientId)?.therapistId === currentTherapistId)
+    : appointments;
+
+  // Pacientes contra-referidos por el terapeuta actual (trazabilidad).
+  // El terapeuta de origen conserva acceso a los expedientes que derivó, aunque
+  // ya no estén en su caseload, para poder ver la trazabilidad de la derivación.
+  const derivedReferrals = currentRole === 'therapist'
+    ? counterReferralService.getAll().filter(r => r.status === 'aceptada' && r.fromTherapistId === currentTherapistId)
+    : [];
+  const derivedPatientIds = derivedReferrals.map(r => r.patientId);
+  const clinicalPatients = currentRole === 'therapist'
+    ? [...scopedPatients, ...patients.filter(p => derivedPatientIds.includes(p.id))]
+    : scopedPatients;
+
   return (
     <Router>
       <Routes>
@@ -222,7 +255,12 @@ function App() {
             <div className="flex h-screen overflow-hidden bg-clinical-bg">
               {/* Sidebar Izquierda (Solo renderiza si el rol no es paciente, o si está autorizado) */}
               {hasPermission(currentRole, 'dashboard') && (
-                <Sidebar userRole={currentRole} onLogout={handleLogout} />
+                <Sidebar
+                  userRole={currentRole}
+                  userName={USER_NAMES[currentRole]}
+                  currentTherapistId={currentTherapistId}
+                  onLogout={handleLogout}
+                />
               )}
 
               {/* Contenedor Principal */}
@@ -236,6 +274,8 @@ function App() {
                   patients={patients}
                   currentPatientId={currentPatientId}
                   onChangePatient={setCurrentPatientId}
+                  currentTherapistId={currentTherapistId}
+                  onChangeTherapist={setCurrentTherapistId}
                 />
 
                 {/* Área de Contenido */}
@@ -248,8 +288,8 @@ function App() {
                         hasPermission(currentRole, 'dashboard') ? (
                           <Dashboard
                             userRole={currentRole}
-                            appointments={appointments}
-                            patients={patients}
+                            appointments={scopedAppointments}
+                            patients={scopedPatients}
                             userName={USER_NAMES[currentRole]}
                           />
                         ) : currentRole === 'student' ? (
@@ -284,8 +324,9 @@ function App() {
                         !['student', 'patient'].includes(currentRole) ? (
                           <MiConsulta
                             userRole={currentRole}
-                            appointments={appointments}
-                            patients={patients}
+                            appointments={scopedAppointments}
+                            currentTherapistId={currentTherapistId}
+                            patients={scopedPatients}
                             userName={USER_NAMES[currentRole]}
                           />
                         ) : (
@@ -301,10 +342,11 @@ function App() {
                         hasPermission(currentRole, 'patients') ? (
                           <Patients
                             userRole={currentRole}
-                            patients={patients}
+                            patients={scopedPatients}
                             userName={USER_NAMES[currentRole]}
                             onDeletePatient={handleDeletePatient}
                             onAddPatient={handleAddPatient}
+                            derivedReferrals={derivedReferrals}
                           />
                         ) : (
                           <Navigate to="/" replace />
@@ -341,8 +383,8 @@ function App() {
                         hasPermission(currentRole, 'agenda') ? (
                           <Agenda
                             userRole={currentRole}
-                            appointments={appointments}
-                            patients={patients}
+                            appointments={scopedAppointments}
+                            patients={scopedPatients}
                             onAddAppointment={handleAddAppointment}
                             onAddPatient={handleAddPatient}
                             onDeleteAppointment={handleDeleteAppointment}
@@ -361,8 +403,9 @@ function App() {
                         hasPermission(currentRole, 'expedientes') ? (
                           <ClinicalRecord
                             userRole={currentRole}
-                            patients={patients}
+                            patients={clinicalPatients}
                             userName={USER_NAMES[currentRole]}
+                            derivedPatientIds={derivedPatientIds}
                           />
                         ) : (
                           <Navigate to="/" replace />
@@ -410,7 +453,7 @@ function App() {
                         hasPermission(currentRole, 'reportes') ? (
                           <Reports
                             userRole={currentRole}
-                            patients={patients}
+                            patients={scopedPatients}
                             userName={USER_NAMES[currentRole]}
                           />
                         ) : (
@@ -426,7 +469,7 @@ function App() {
                         hasPermission(currentRole, 'supervision') ? (
                           <Supervision
                             userRole={currentRole}
-                            patients={patients}
+                            patients={scopedPatients}
                             userName={USER_NAMES[currentRole]}
                           />
                         ) : (
