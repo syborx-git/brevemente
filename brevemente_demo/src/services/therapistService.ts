@@ -29,9 +29,28 @@ const THERAPIST_DIRECTORY: TherapistDirectoryEntry[] = [
   },
 ];
 
+/**
+ * Mapeo demo rol → terapeuta autenticado (mismo criterio de canManagePayments).
+ * En producción esto proviene del usuario autenticado.
+ */
+const ROLE_TO_THERAPIST: Partial<Record<Role, string>> = {
+  therapist: 'therapist-1',
+  admin_clinical: 'therapist-2',
+};
+
+/** Devuelve el id del terapeuta que representa un rol en la demo (o undefined). */
+export function getTherapistIdForRole(role: Role): string | undefined {
+  return ROLE_TO_THERAPIST[role];
+}
+
 export const therapistService = {
   getEntry(therapistId: string): TherapistDirectoryEntry | undefined {
     return THERAPIST_DIRECTORY.find((t) => t.id === therapistId);
+  },
+
+  /** Lista completa del directorio de terapeutas (para selectores de demo). */
+  getAll(): TherapistDirectoryEntry[] {
+    return THERAPIST_DIRECTORY;
   },
 
     /** ¿El terapeuta cuenta con asistente clínico asignado? */
@@ -64,11 +83,7 @@ export const therapistService = {
    *   - admin_clinical = Dra. Patricia Ortiz  (therapist-2, SIN asistente)
    */
   canManagePayments(role: Role): boolean {
-    const ROLE_TO_THERAPIST: Partial<Record<Role, string>> = {
-      therapist: 'therapist-1',
-      admin_clinical: 'therapist-2',
-    };
-    const therapistId = ROLE_TO_THERAPIST[role];
+    const therapistId = getTherapistIdForRole(role);
     if (!therapistId) return false; // asistentes/admins/supervisores → solo lectura
     return !this.hasAssistant(therapistId);
   },

@@ -8,17 +8,20 @@ import { Role, Appointment, Patient, RiskAlert, SupervisionRequest } from '../ty
 import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
 import { supervisionRequestService } from '../services/supervisionRequestService';
+import { therapistService } from '../services/therapistService';
 import { CrisisResolutionModal } from '../components/CrisisResolutionModal';
 import { CrisisIncidentDetailModal } from '../components/CrisisIncidentDetailModal';
+import { sessionMinutes } from '../utils/sessionDuration';
 
 interface MiConsultaProps {
   userRole: Role;
   appointments: Appointment[];
   patients: Patient[];
   userName: string;
+  currentTherapistId?: string;
 }
 
-export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, patients, userName }) => {
+export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, patients, userName, currentTherapistId }) => {
   const navigate = useNavigate();
 
   // Seguridad real: Alumno y Paciente no deben acceder
@@ -51,16 +54,18 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
     return 'Mi Consulta';
   };
 
-  // Datos simulados del caseload del doctor
+  // Datos simulados del caseload del terapeuta activo
   const todayStr = '2026-08-24';
-  const myPatients = patients.filter(p => p.therapistId === 'therapist-1');
+  const activeTherapistId = currentTherapistId || 'therapist-1';
+  const activeTherapistName = therapistService.getEntry(activeTherapistId)?.name || userName;
+  const myPatients = patients.filter(p => p.therapistId === activeTherapistId);
   const myAppointments = appointments.filter(app => {
     const p = patients.find(pat => pat.id === app.patientId);
-    return p?.therapistId === 'therapist-1' && app.date === todayStr;
+    return p?.therapistId === activeTherapistId && app.date === todayStr;
   });
 
   // Próxima cita de mi agenda
-  const nextApp = appointments.find(app => app.patientId === 'patient-1') || appointments[0];
+  const nextApp = myAppointments[0] || appointments[0];
 
   // Alertas de riesgo activas, en tiempo real (desde el circuito de riesgo)
   const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>(riskSimulationService.getAlerts());
@@ -90,7 +95,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
       {/* Cabecera */}
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-clinical-dark">{getPageTitle()} — Dr. Alejandro Silva</h2>
+          <h2 className="text-xl font-bold text-clinical-dark">{getPageTitle()} — {activeTherapistName}</h2>
           <p className="text-[11px] text-clinical-textMuted mt-0.5">Espacio de trabajo operativo y control diario de citas y notas de sesión.</p>
         </div>
         <div className="flex bg-slate-100 p-0.5 rounded-lg text-center font-bold text-[10px] shrink-0">
@@ -120,7 +125,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                         'Simulación estado sesión',
                         `El terapeuta cambió simulación de sesión a estado: ${st}`,
                         'sesion',
-                        { id: 'therapist-1', name: userName, role: userRole }
+                        { id: activeTherapistId, name: activeTherapistName, role: userRole }
                       );
                     }}
                     className={`px-2 py-1 rounded capitalize transition-all ${sessionState === st ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -220,7 +225,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                     </span>
                     <div>
                       <span className="font-bold text-clinical-dark block">{app.patientName}</span>
-                      <span className="text-[10px] text-slate-500 font-semibold">{app.type.toUpperCase()} • Presencial</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">{app.type.toUpperCase()} • Presencial • {sessionMinutes(app)} min</span>
                     </div>
                   </div>
                   <span className="text-[9px] font-extrabold text-clinical-teal">{app.status.toUpperCase()}</span>

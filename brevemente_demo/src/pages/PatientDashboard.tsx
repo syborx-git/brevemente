@@ -4,10 +4,12 @@ import {
   ChevronDown, ChevronUp, ExternalLink, User, Clock,
   CheckCircle2, XCircle, AlertCircle, Ban
 } from "lucide-react";
-import { Appointment, Patient, Session, RiskAlert } from "../types/clinical";
+import { Appointment, Patient, Session, RiskAlert, CounterReferral } from "../types/clinical";
 import { sessionService } from "../services/sessionService";
 import { riskSimulationService } from "../services/riskSimulationService";
 import { therapistService } from "../services/therapistService";
+import { counterReferralService } from "../services/counterReferralService";
+import { sessionMinutes } from "../utils/sessionDuration";
 
 interface PatientDashboardProps {
   patient: Patient;
@@ -146,7 +148,7 @@ const AppointmentRow: React.FC<AppointmentRowProps> = ({ appointment, sessions }
       >
         <div className="min-w-[160px]">
           <p className="text-xs font-bold text-clinical-dark capitalize">{formatDate(appointment.date)}</p>
-          <p className="text-[10px] text-slate-400">{appointment.time} hrs &middot; {APPOINTMENT_TYPE_LABEL[appointment.type]}</p>
+          <p className="text-[10px] text-slate-400">{appointment.time} hrs &middot; {sessionMinutes(appointment)} min &middot; {APPOINTMENT_TYPE_LABEL[appointment.type]}</p>
         </div>
 
         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${attendance.color}`}>
@@ -216,6 +218,23 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
   useEffect(() => {
     sessionService.getByPatientId(patient.id).then(setSessions);
+  }, [patient.id]);
+
+  // Contra-referencia aprobada → push visible en el portal del paciente
+  const [approvedReferral, setApprovedReferral] = useState<CounterReferral | null>(null);
+  const [dismissedReferralId, setDismissedReferralId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refresh = () => {
+      const latest = counterReferralService
+        .getByPatientId(patient.id)
+        .filter(r => r.status === "aceptada")
+        .sort((a, b) => (b.resolvedAt || b.createdAt).localeCompare(a.resolvedAt || a.createdAt))[0];
+      setApprovedReferral(latest || null);
+    };
+    refresh();
+    window.addEventListener("brevemente_counter_referral_changed", refresh);
+    return () => window.removeEventListener("brevemente_counter_referral_changed", refresh);
   }, [patient.id]);
 
   // Alertas de riesgo activas para ESTE paciente (conexión alerta ↔ portal)
@@ -323,6 +342,34 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Push de contra-referencia aprobada */}
+      {approvedReferral && dismissedReferralId !== approvedReferral.id && (
+        <section className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <h3 className="font-bold text-emerald-800 text-sm">Tu contra-referencia fue aprobada</h3>
+            </div>
+            <button
+              onClick={() => setDismissedReferralId(approvedReferral.id)}
+              className="text-emerald-500 hover:text-emerald-700 font-bold"
+              title="Cerrar aviso"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="text-xs text-emerald-800 leading-relaxed">
+            A partir de ahora tu terapeuta asignado es <b>{approvedReferral.toTherapistName}</b>.
+          </p>
+          <div className="bg-white/70 border border-emerald-200 rounded-xl p-3 text-[11px] text-emerald-900 space-y-1">
+            <span className="font-bold block">Detalles de tu nuevo terapeuta:</span>
+            <div>Nombre: {approvedReferral.toTherapistName}</div>
+            <div>Deriva de: {approvedReferral.fromTherapistName}</div>
+            <div>Aprobada el: {(approvedReferral.resolvedAt || approvedReferral.createdAt).slice(0, 10)}</div>
+          </div>
+        </section>
+      )}
 
       {/* Alerta de riesgo activa (conexión alerta ↔ portal del paciente) */}
       {activePatientAlerts.length > 0 && (

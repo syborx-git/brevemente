@@ -5,12 +5,20 @@ import {
   MapPin, Video, AlertTriangle, MessageSquare, Clipboard, User,
   PlusCircle, RefreshCw, X, ShieldAlert, Sparkles, Check, CheckSquare, Lock
 } from 'lucide-react';
-import { Role, Appointment, Patient, Holiday } from '../types/clinical';
+import { Role, Appointment, Patient, Holiday, SessionDuration } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { appointmentService } from '../services/appointmentService';
 import { holidayService } from '../services/holidayService';
 import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP, calculateAge } from '../utils/legalConsent';
 import { addDays, addMonths, addYears, startOfWeek, startOfMonth, daysInMonth, dayName, monthName, monthOf, parseISO } from '../utils/dateUtils';
+import {
+  SESSION_DURATION_OPTIONS,
+  DEFAULT_FORM_DURATION,
+  DEFAULT_LEGACY_DURATION,
+  sessionMinutes,
+  appointmentsOverlap,
+  overlapDescription,
+} from '../utils/sessionDuration';
 
 interface AgendaProps {
   userRole: Role;
@@ -65,6 +73,7 @@ export const Agenda: React.FC<AgendaProps> = ({
   const [date, setDate] = useState('2026-08-24');
   const [time, setTime] = useState('10:00');
   const [type, setType] = useState<'primera' | 'seguimiento' | 'cierre' | 'supervision' | 'evaluacion'>('seguimiento');
+  const [duration, setDuration] = useState<SessionDuration>(DEFAULT_FORM_DURATION);
   const [appModality, setAppModality] = useState<'presencial' | 'online'>('online');
   const [office, setOffice] = useState('Consultorio A');
 
@@ -81,6 +90,7 @@ export const Agenda: React.FC<AgendaProps> = ({
   // Reprogramación local en el Drawer
   const [reprogrammingTime, setReprogrammingTime] = useState('10:00');
   const [reprogrammingDate, setReprogrammingDate] = useState('2026-08-24');
+  const [reprogrammingDuration, setReprogrammingDuration] = useState<SessionDuration>(DEFAULT_LEGACY_DURATION);
 
   // ── Navegación jerárquica del calendario ────────────────────────────────────
   const weekStart = startOfWeek(anchorDate);
@@ -206,10 +216,27 @@ export const Agenda: React.FC<AgendaProps> = ({
     return matchesTherapist && matchesModality && matchesStatus;
   });
 
+  // ── Solapamiento de citas (usa la duración real de cada cita) ────────────────
+  const findOverlaps = (
+    dateISO: string,
+    startTime: string,
+    minutes: SessionDuration,
+    excludeId?: string
+  ): Appointment[] =>
+    initialAppointments.filter(a =>
+      a.id !== excludeId &&
+      a.date === dateISO &&
+      appointmentsOverlap({ time: startTime, duration: minutes }, a)
+    );
+
+  const hasOverlap = (app: Appointment): boolean =>
+    findOverlaps(app.date, app.time, app.duration ?? DEFAULT_LEGACY_DURATION, app.id).length > 0;
+
   const handleSelectAppointment = (app: Appointment) => {
     setSelectedApp(app);
     setReprogrammingTime(app.time);
     setReprogrammingDate(app.date);
+    setReprogrammingDuration(app.duration ?? DEFAULT_LEGACY_DURATION);
     setIsEditing(false);
 
     // Auditoría de acceso a detalle
@@ -228,6 +255,22 @@ export const Agenda: React.FC<AgendaProps> = ({
       const h = getHolidayForDate(date);
       alert(`No se puede agendar el ${date}: ${h?.name} (día no laborable).`);
       return;
+    }
+
+    // Detección de solapamiento: avisa pero no bloquea el agendado (demo)
+    const overlaps = findOverlaps(date, time, duration);
+    if (overlaps.length > 0) {
+      const detalle = overlapDescription(overlaps);
+      const continuar = confirm(
+        `⚠️ Solapamiento de horario:\n\n${detalle}\n\n¿Deseas agendar la consulta de todos modos?`
+      );
+      if (!continuar) return;
+      auditLogService.addLog(
+        'Conflicto de agenda',
+        `Agendó una cita solapada el ${date} a las ${time} (${duration} min). Choque con: ${detalle}`,
+        'sesion',
+        { id: 'user-current', name: userName, role: userRole }
+      );
     }
 
     let patientId = selectedPatientId;
@@ -281,7 +324,8 @@ export const Agenda: React.FC<AgendaProps> = ({
       time,
       date,
       type: type as any,
-      status: 'pendiente'
+      status: 'pendiente',
+      duration
     };
 
     onAddAppointment(newApp);
@@ -289,7 +333,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     // Registrar cita en auditoría
     auditLogService.addLog(
       'Creación de cita',
-      `Agendó nueva cita para ${patientName} el ${date} a las ${time}`,
+      `Agendó nueva cita para ${patientName} el ${date} a las ${time} (${duration} min)`,
       'sesion',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -303,6 +347,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     setEmail('');
     setSelectedPatientId('');
     setIsNewPatient(false);
+    setDuration(DEFAULT_FORM_DURATION);
   };
 
     const handleReprogram = async () => {
@@ -312,20 +357,35 @@ export const Agenda: React.FC<AgendaProps> = ({
       ...selectedApp,
       time: reprogrammingTime,
       date: reprogrammingDate,
+      duration: reprogrammingDuration,
       status: 'pendiente' // al reagendar, la cita queda pendiente de confirmación
     };
+
+    // Aviso de solapamiento con otras citas del día (excluyendo la propia)
+    const reprogramOverlaps = findOverlaps(reprogrammingDate, reprogrammingTime, reprogrammingDuration, selectedApp.id);
+    if (reprogramOverlaps.length > 0) {
+      const detalle = overlapDescription(reprogramOverlaps);
+      if (!confirm(`⚠️ La nueva franja se solapa con:\n\n${detalle}\n\n¿Reprogramar de todos modos?`)) return;
+      auditLogService.addLog(
+        'Conflicto de agenda',
+        `Reprogramó la cita de ${selectedApp.patientName} con solapamiento. Nueva franja: ${reprogrammingDate} ${reprogrammingTime} (${reprogrammingDuration} min). Choque con: ${detalle}`,
+        'sesion',
+        { id: 'user-current', name: userName, role: userRole }
+      );
+    }
 
     await appointmentService.update(updatedApp);
 
     // Reflejo local inmediato (mismo patrón que handleConfirmAppointment)
     selectedApp.time = reprogrammingTime;
     selectedApp.date = reprogrammingDate;
+    selectedApp.duration = reprogrammingDuration;
     selectedApp.status = 'pendiente';
 
     // Registrar en auditoría
     auditLogService.addLog(
       'Reprogramación de cita',
-      `Cita reprogramada para ${selectedApp.patientName}. Nueva fecha: ${reprogrammingDate} a las ${reprogrammingTime}`,
+      `Cita reprogramada para ${selectedApp.patientName}. Nueva fecha: ${reprogrammingDate} a las ${reprogrammingTime} (${reprogrammingDuration} min)`,
       'sesion',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -652,8 +712,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 const pat = patients.find(p => p.id === app.patientId);
                                 const isCarlos = app.patientId === 'patient-2';
 
-                                // Conflict validation (colisión)
-                                const isConflict = slotApps.length > 1;
+                                // Conflict validation (colisión por duración real)
+                                const isConflict = slotApps.length > 1 || hasOverlap(app);
 
                                 // Colores por frecuencia de sesiones del paciente
                                 let borderClass = 'border-l-4 border-l-[#75AFBC] border border-slate-200';
@@ -681,6 +741,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     </div>
                                     <div className="flex justify-between items-center text-[8px] text-slate-400">
                                       <span className="font-semibold">{app.type.toUpperCase()}</span>
+                                      <span className="font-bold px-1 rounded bg-slate-100 text-slate-600">
+                                        {sessionMinutes(app)}′
+                                      </span>
                                       <span className="font-bold">
                                         {appModality === 'online' ? 'VIRTUAL' : 'SALA A'}
                                       </span>
@@ -748,7 +811,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             onClick={(e) => { e.stopPropagation(); handleSelectAppointment(app); }}
                             className={`border-l-2 px-1 py-0.5 rounded text-[8px] truncate font-semibold text-clinical-dark cursor-pointer ${freqClass}`}
                           >
-                            {app.time} - {app.patientName}
+                            {app.time} · {sessionMinutes(app)}′ · {app.patientName}
                           </div>
                         );
                       })}
@@ -799,7 +862,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                             <div className="flex justify-between items-start gap-2">
                               <div>
                                 <span className="font-bold text-clinical-dark block">{app.patientName}</span>
-                                <span className="text-[10px] text-slate-400">{app.type.toUpperCase()} • {pat?.registryMode === 'ia' ? 'IA ACTIVA' : 'MANUAL'}</span>
+                                <span className="text-[10px] text-slate-400">{app.type.toUpperCase()} • {sessionMinutes(app)} min • {pat?.registryMode === 'ia' ? 'IA ACTIVA' : 'MANUAL'}</span>
+                                {hasOverlap(app) && (
+                                  <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1 mt-0.5">
+                                    <AlertTriangle className="w-3 h-3" /> Solapamiento de horario
+                                  </span>
+                                )}
                               </div>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase shrink-0 ${statusConf.color}`}>
                                 {statusConf.label}
@@ -908,6 +976,29 @@ export const Agenda: React.FC<AgendaProps> = ({
               <span className="text-sm font-extrabold text-clinical-dark block">{selectedApp.patientName}</span>
             </div>
 
+            {/* Franja agendada: fecha, hora y duración de la sesión */}
+            <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 border border-slate-100 rounded-xl">
+              <div>
+                <span className="text-[9px] text-slate-400 font-bold uppercase block">Fecha:</span>
+                <span className="font-bold text-clinical-dark">{selectedApp.date}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 font-bold uppercase block">Horario:</span>
+                <span className="font-bold text-clinical-dark">{selectedApp.time}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 font-bold uppercase block">Duración:</span>
+                <span className="font-bold text-clinical-dark">{sessionMinutes(selectedApp)} minutos</span>
+              </div>
+            </div>
+
+            {hasOverlap(selectedApp) && (
+              <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[10px]">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span>Esta cita se solapa con otra cita del mismo día en la agenda.</span>
+              </div>
+            )}
+
             {/* Ficha de Estado Consentimiento/Intake */}
             {(() => {
               const selectedAppPatient = patients.find(p => p.id === selectedApp.patientId);
@@ -974,7 +1065,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
             {/* Reprogramación */}
             <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3">
-              <span className="font-bold text-clinical-dark block">Reprogramación de Fecha y Hora</span>
+              <span className="font-bold text-clinical-dark block">Reprogramación de Fecha, Hora y Duración</span>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -995,6 +1086,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                     onChange={(e) => setReprogrammingTime(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Duración:</label>
+                <select
+                  className="w-full px-2 py-1 border border-slate-200 bg-white rounded focus:outline-none text-[10px] font-semibold"
+                  value={reprogrammingDuration}
+                  onChange={(e) => setReprogrammingDuration(Number(e.target.value) as SessionDuration)}
+                >
+                  {SESSION_DURATION_OPTIONS.map(minutes => (
+                    <option key={minutes} value={minutes}>{minutes} minutos</option>
+                  ))}
+                </select>
               </div>
 
               <button
@@ -1134,7 +1238,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-slate-500 font-semibold mb-0.5">Fecha:</label>
                   <input
@@ -1178,7 +1282,33 @@ export const Agenda: React.FC<AgendaProps> = ({
                     <option value="evaluacion">Evaluación</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-0.5">Duración:</label>
+                  <select
+                    className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded focus:outline-none"
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value) as SessionDuration)}
+                  >
+                    {SESSION_DURATION_OPTIONS.map(minutes => (
+                      <option key={minutes} value={minutes}>{minutes} minutos</option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {(() => {
+                const pendingOverlaps = findOverlaps(date, time, duration);
+                if (pendingOverlaps.length === 0) return null;
+                return (
+                  <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold block">Solapamiento de horario detectado:</span>
+                      <span className="text-[10px]">{overlapDescription(pendingOverlaps)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
                 <button

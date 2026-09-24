@@ -92,6 +92,9 @@ export interface Patient {
 }
 
 
+/** Duración de la sesión en minutos, elegida por el terapeuta al agendar. */
+export type SessionDuration = 30 | 45 | 60;
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -102,6 +105,34 @@ export interface Appointment {
   status: 'confirmada' | 'pendiente' | 'completada' | 'cancelada' | 'ausente' | 'no_presentado' | 'solicita_reagendar';
   /** Estado de pago de la sesión. Campo simulado en demo; editable por asistente en versión real. */
   paymentStatus?: 'pagada' | 'pendiente' | 'exenta';
+  /**
+   * Duración de la sesión en minutos (30 | 45 | 60).
+   * Opcional por compatibilidad: las citas de demo anteriores se interpretan como 60 min.
+   */
+  duration?: SessionDuration;
+}
+
+/** Estado del ciclo de vida de una contra-referencia entre terapeutas. */
+export type CounterReferralStatus = 'solicitada' | 'aceptada' | 'rechazada';
+
+/**
+ * Contra-referencia: derivación de un paciente de su terapeuta tratante a otro
+ * terapeuta del sistema, con trazabilidad completa en el expediente.
+ */
+export interface CounterReferral {
+  id: string;
+  patientId: string;
+  patientName: string;
+  fromTherapistId: string;
+  fromTherapistName: string;
+  toTherapistId: string;
+  toTherapistName: string;
+  reason: string;
+  clinicalSummary?: string;
+  status: CounterReferralStatus;
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
 }
 
 
