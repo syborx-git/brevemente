@@ -64,19 +64,24 @@ Esta Skill define el protocolo de ejecución fullstack para cerrar las brechas i
 
 ---
 
-### Fase 2: Backend Spring Boot (Java 21)
-1. **Entidad JPA (`@Entity`)**:
-   - Ubicar en `com.syborx.brevemente.domain.model` (o paquete modular correspondiente).
-   - Uso de Jakarta Persistence (`jakarta.persistence.*`).
-   - Clave primaria `String` (UUID/código) o `Long` según diseño de la tabla.
-2. **Repositorio (`@Repository`)**:
-   - Extender `JpaRepository<Entidad, ID>`.
-3. **DTOs (Records)**:
-   - Declarar DTOs inmutables con Java Records para solicitudes y respuestas.
-   - Añadir anotaciones de Bean Validation (`@NotNull`, `@NotBlank`, `@Email`, etc.).
-4. **Controlador REST (`@RestController`)**:
-   - Anotar con `@RestController` y `@RequestMapping("/api/v1/[modulo]")`.
-   - Inyectar el servicio correspondiente y retornar `ResponseEntity<T>`.
+### Fase 2: Backend Spring Boot (Arquitectura Hexagonal & OpenAPI)
+1. **Núcleo de Dominio (`domain/`)**:
+   - Modelos de dominio POJO puros en `domain/model/` libres de anotaciones JPA o Spring.
+   - Excepciones clínicas de negocio en `domain/exception/`.
+2. **Capa de Aplicación y Puertos (`application/`)**:
+   - Puertos de Entrada (Casos de Uso) en `application/ports/in/` (`Crear[Modulo]UseCase`, etc.).
+   - Puertos de Salida (Persistencia) en `application/ports/out/` (`[Modulo]RepositoryPort`).
+   - Servicio orquestador en `application/service/` implementando los casos de uso.
+3. **Adaptador de Persistencia (`infrastructure/adapters/out/persistence/`)**:
+   - Entidad JPA en `entity/[Modulo]JpaEntity.java` con Jakarta Persistence.
+   - `[Modulo]JpaRepository.java` extendiendo `JpaRepository`.
+   - `[Modulo]PersistenceAdapter.java` implementando `[Modulo]RepositoryPort`.
+   - Mapper entre entidad JPA y modelo de dominio puro.
+4. **Adaptador REST y Documentación OpenAPI (`infrastructure/adapters/in/rest/`)**:
+   - Controlador REST anotado con `@RestController`, `@RequestMapping("/[modulo]")` (context-path `/api/v1` en yml).
+   - Documentación viva Swagger: `@Tag` a nivel de clase, `@Operation` y `@ApiResponse` por endpoint.
+   - DTOs inmutables (Java Records) anotados con Bean Validation y `@Schema(description = "...", example = "...")`.
+   - Mapper entre DTOs y modelo de dominio.
 
 ---
 
