@@ -3,7 +3,7 @@ export const environment = {
   apiBaseUrl: '/api/v1',
   features: {
     dashboardBackend: false,
-    pacientesBackend: false,
+    pacientesBackend: true,
     expedienteClinicoBackend: false,
     agendaBackend: false,
     asistenteLevaBackend: false,
