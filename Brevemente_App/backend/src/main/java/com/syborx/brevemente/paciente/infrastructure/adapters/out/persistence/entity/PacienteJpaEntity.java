@@ -1,4 +1,4 @@
-package com.syborx.brevemente.domain.model;
+package com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,7 +15,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PacienteEntity {
+public class PacienteJpaEntity {
 
     @Id
     @Column(name = "id", length = 36, nullable = false)
@@ -70,7 +70,7 @@ public class PacienteEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "terapeuta_id")
-    private TerapeutaEntity terapeuta;
+    private TerapeutaJpaEntity terapeuta;
 
     // Metadatos de consentimiento
     @Column(name = "fecha_determinacion_consentimiento")

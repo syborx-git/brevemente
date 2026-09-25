@@ -1,4 +1,4 @@
-package com.syborx.brevemente.domain.model;
+package com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,7 +17,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TerapeutaEntity {
+public class TerapeutaJpaEntity {
 
     @Id
     @Column(name = "id", length = 36, nullable = false)
