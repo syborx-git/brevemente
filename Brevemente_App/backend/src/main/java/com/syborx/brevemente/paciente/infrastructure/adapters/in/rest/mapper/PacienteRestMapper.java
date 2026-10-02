@@ -58,8 +58,8 @@ public class PacienteRestMapper {
                 domain.getRiskLevel() != null ? domain.getRiskLevel() : "bajo",
                 domain.getRegistryMode() != null ? domain.getRegistryMode() : "manual",
                 domain.getMotivoConsulta(),
-                domain.getTerapeutaId() != null ? domain.getTerapeutaId() : "ter-001",
-                domain.getTerapeutaNombre() != null ? domain.getTerapeutaNombre() : "Dr. Alejandro Silva",
+                domain.getTerapeutaId(),
+                domain.getTerapeutaNombre(),
                 birthDateStr,
                 domain.getEdadCalculada(),
                 consentDTO,
@@ -118,7 +118,7 @@ public class PacienteRestMapper {
                 .sessionFrequency(request.sessionFrequency() != null ? request.sessionFrequency() : "semanal")
                 .quienCompletaRegistro(request.quienCompletaRegistro() != null ? request.quienCompletaRegistro() : (edad < 18 ? "FAMILIAR_O_APOYO" : "PACIENTE"))
                 .motivoConsulta(request.motif())
-                .terapeutaId(request.therapistId() != null ? request.therapistId() : "ter-001")
+                .terapeutaId(request.therapistId())
                 .terapeutaNombre(request.therapistName())
                 .capacidadConsentimiento(consentimiento)
                 .representante(representante)

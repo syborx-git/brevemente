@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Component
 public class PacientePersistenceMapper {
 
-    public Paciente toDomain(PacienteJpaEntity entity) {
+    public Paciente toDomain(PacienteJpaEntity entity, String terapeutaNombre) {
         if (entity == null) return null;
 
         CapacidadConsentimiento consentimiento = new CapacidadConsentimiento(
@@ -36,10 +36,7 @@ public class PacientePersistenceMapper {
             );
         }
 
-        String terapeutaId = entity.getTerapeuta() != null ? entity.getTerapeuta().getId() : "ter-001";
-        String terapeutaNombre = entity.getTerapeuta() != null 
-                ? (entity.getTerapeuta().getNombre() + " " + entity.getTerapeuta().getApellidos()).trim() 
-                : "Dr. Alejandro Silva";
+        String terapeutaId = entity.getTerapeuta() != null ? entity.getTerapeuta().getId() : null;
 
         LocalDate fechaReg = entity.getCreatedAt() != null 
                 ? entity.getCreatedAt().toLocalDate() 

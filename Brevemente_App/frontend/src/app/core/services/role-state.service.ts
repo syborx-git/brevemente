@@ -1,31 +1,54 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Role } from '../types/clinical.types';
+import { Role, User } from '../types/clinical.types';
 
-export const USER_NAMES: Record<Role, string> = {
-  admin_platform: 'Ing. Rodrigo Pérez',
-  admin_clinical: 'Dra. Patricia Ortiz',
-  therapist: 'Dr. Alejandro Silva',
-  assistant: 'Marta Gómez',
-  supervisor: 'Dra. Isabel Cárdenas',
-  patient: 'Sofía Martínez',
-  student: 'Carlos Mendoza'
-};
+const SESSION_KEY = 'brevemente_session';
 
 @Injectable({
   providedIn: 'root'
 })
 export class RoleStateService {
-  private readonly currentRoleSubject = new BehaviorSubject<Role>('therapist');
+  // Identidad autenticada (usuario real devuelto por el backend).
+  private readonly currentUserSubject = new BehaviorSubject<User | null>(this.loadUserFromSession());
+
+  // Estado de UI (no es autenticación).
   private readonly currentPatientIdSubject = new BehaviorSubject<string>('patient-1');
   private readonly isLevaOpenSubject = new BehaviorSubject<boolean>(false);
 
-  readonly currentRole$: Observable<Role> = this.currentRoleSubject.asObservable();
+  readonly currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
   readonly currentPatientId$: Observable<string> = this.currentPatientIdSubject.asObservable();
   readonly isLevaOpen$: Observable<boolean> = this.isLevaOpenSubject.asObservable();
 
+  get currentUser(): User | null {
+    return this.currentUserSubject.value;
+  }
+
+  /** Roles reales del usuario autenticado (multi-rol). */
+  get roles(): Role[] {
+    return this.currentUser?.roles ?? [];
+  }
+
+  /** Rol primario (compatibilidad con vistas que esperan un único rol). */
   get currentRole(): Role {
-    return this.currentRoleSubject.value;
+    return this.roles[0] ?? 'therapist';
+  }
+
+  /** Nombre real del usuario autenticado. */
+  get currentUserName(): string {
+    return this.currentUser?.name ?? '';
+  }
+
+  hasRole(role: Role): boolean {
+    return this.roles.includes(role);
+  }
+
+  setUser(user: User): void {
+    this.currentUserSubject.next(user);
+  }
+
+  logout(): void {
+    localStorage.removeItem(SESSION_KEY);
+    this.currentUserSubject.next(null);
   }
 
   get currentPatientId(): string {
@@ -34,15 +57,6 @@ export class RoleStateService {
 
   get isLevaOpen(): boolean {
     return this.isLevaOpenSubject.value;
-  }
-
-  get currentUserName(): string {
-    return USER_NAMES[this.currentRole];
-  }
-
-  setRole(role: Role): void {
-    this.currentRoleSubject.next(role);
-    localStorage.setItem('brevemente_role', role);
   }
 
   setPatientId(patientId: string): void {
@@ -55,5 +69,18 @@ export class RoleStateService {
 
   setLevaOpen(open: boolean): void {
     this.isLevaOpenSubject.next(open);
+  }
+
+  private loadUserFromSession(): User | null {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const session = JSON.parse(raw) as { user?: User };
+      return session?.user ?? null;
+    } catch {
+      return null;
+    }
   }
 }

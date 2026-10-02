@@ -18,6 +18,11 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-brevemente-demo-2026-syborx-clinical-engineering-change-me}
+    expiration-minutes: 60
+
 server:
   port: 8080
   servlet:

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { RoleStateService } from '../../services/role-state.service';
@@ -25,9 +25,7 @@ interface NavSection {
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
-export class SidebarComponent implements OnInit {
-  currentRole: Role = 'therapist';
-
+export class SidebarComponent {
   sections: NavSection[] = [
     {
       title: 'INICIO',
@@ -55,14 +53,14 @@ export class SidebarComponent implements OnInit {
 
   constructor(public readonly roleService: RoleStateService) {}
 
-  ngOnInit(): void {
-    this.roleService.currentRole$.subscribe((role) => {
-      this.currentRole = role;
-    });
+  /** Rol primario del usuario (para la etiqueta inferior del sidebar). */
+  get currentRole(): Role {
+    return this.roleService.currentRole;
   }
 
   isItemVisible(item: NavItem): boolean {
-    return item.roles.includes(this.currentRole);
+    const userRoles = this.roleService.roles;
+    return item.roles.some((r) => userRoles.includes(r));
   }
 
   getRoleLabel(role: Role): string {

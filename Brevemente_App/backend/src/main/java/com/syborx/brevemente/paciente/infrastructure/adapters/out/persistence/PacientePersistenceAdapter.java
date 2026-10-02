@@ -24,20 +24,20 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
     @Override
     public List<Paciente> findAll() {
         return springDataPacienteRepository.findAll().stream()
-                .map(pacientePersistenceMapper::toDomain)
+                .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)))
                 .toList();
     }
 
     @Override
     public Optional<Paciente> findById(String id) {
         return springDataPacienteRepository.findById(id)
-                .map(pacientePersistenceMapper::toDomain);
+                .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)));
     }
 
     @Override
     public Optional<Paciente> findByCurp(String curp) {
         return springDataPacienteRepository.findByCurp(curp)
-                .map(pacientePersistenceMapper::toDomain);
+                .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)));
     }
 
     @Override
@@ -51,12 +51,16 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
         if (paciente.getTerapeutaId() != null) {
             terapeuta = springDataTerapeutaRepository.findById(paciente.getTerapeutaId()).orElse(null);
         }
-        if (terapeuta == null) {
-            terapeuta = springDataTerapeutaRepository.findById("ter-001").orElse(null);
-        }
 
         PacienteJpaEntity jpaEntity = pacientePersistenceMapper.toJpaEntity(paciente, terapeuta);
         PacienteJpaEntity saved = springDataPacienteRepository.save(jpaEntity);
-        return pacientePersistenceMapper.toDomain(saved);
+        return pacientePersistenceMapper.toDomain(saved, resolveTherapistName(saved));
+    }
+
+    private String resolveTherapistName(PacienteJpaEntity entity) {
+        if (entity.getTerapeuta() == null) {
+            return null;
+        }
+        return springDataTerapeutaRepository.findTherapistDisplayName(entity.getTerapeuta().getId()).orElse(null);
     }
 }

@@ -38,7 +38,7 @@ public record PacienteCreateRequest(
         @Schema(description = "Terapeuta responsable asignado", example = "ter-001")
         String therapistId,
 
-        @Schema(description = "Nombre del terapeuta", example = "Dr. Alejandro Silva")
+        @Schema(description = "Nombre del terapeuta", example = "Dra. Sofía Ramírez Lozano")
         String therapistName,
 
         @Schema(description = "Alias de fecha de nacimiento", example = "2002-05-14")
