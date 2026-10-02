@@ -23,14 +23,8 @@ public class TerapeutaJpaEntity {
     @Column(name = "id", length = 36, nullable = false)
     private String id;
 
-    @Column(name = "nombre", length = 100, nullable = false)
-    private String nombre;
-
-    @Column(name = "apellidos", length = 100, nullable = false)
-    private String apellidos;
-
-    @Column(name = "email", length = 150, nullable = false, unique = true)
-    private String email;
+    @Column(name = "usuario_id", length = 36)
+    private String usuarioId;
 
     @Column(name = "cedula_profesional", length = 50)
     private String cedulaProfesional;

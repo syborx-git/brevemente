@@ -3,7 +3,7 @@ export type Role = 'admin_platform' | 'admin_clinical' | 'therapist' | 'assistan
 export interface User {
   id: string;
   name: string;
-  role: Role;
+  roles: Role[];
   email: string;
   avatar?: string;
   license?: string;

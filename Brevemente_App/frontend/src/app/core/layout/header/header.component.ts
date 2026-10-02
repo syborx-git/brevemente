@@ -1,7 +1,28 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { RoleStateService } from '../../services/role-state.service';
 import { Role } from '../../types/clinical.types';
+
+const ROLE_LABELS: Record<Role, string> = {
+  admin_platform: 'Administrador Plataforma',
+  admin_clinical: 'Administrador Clínico',
+  therapist: 'Terapeuta',
+  assistant: 'Asistente',
+  supervisor: 'Supervisor Clínico',
+  patient: 'Paciente',
+  student: 'Alumno'
+};
+
+const ROLE_COLORS: Record<Role, string> = {
+  admin_platform: 'bg-indigo-100 text-indigo-800',
+  admin_clinical: 'bg-emerald-100 text-emerald-800',
+  therapist: 'bg-blue-100 text-blue-800',
+  assistant: 'bg-orange-100 text-orange-800',
+  supervisor: 'bg-purple-100 text-purple-800',
+  patient: 'bg-slate-100 text-slate-800',
+  student: 'bg-teal-100 text-teal-800'
+};
 
 @Component({
   selector: 'app-header',
@@ -10,44 +31,37 @@ import { Role } from '../../types/clinical.types';
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss'
 })
-export class HeaderComponent implements OnInit {
-  currentRole: Role = 'therapist';
-  showRoleDropdown = false;
+export class HeaderComponent {
+  constructor(
+    public readonly roleService: RoleStateService,
+    private readonly router: Router
+  ) {}
 
-  readonly rolesList: { value: Role; label: string; badgeColor: string }[] = [
-    { value: 'therapist', label: 'Terapeuta (Especialista TBE)', badgeColor: 'bg-blue-100 text-blue-800' },
-    { value: 'assistant', label: 'Asistente / Secretaria', badgeColor: 'bg-orange-100 text-orange-800' },
-    { value: 'supervisor', label: 'Supervisor Clínico', badgeColor: 'bg-purple-100 text-purple-800' },
-    { value: 'student', label: 'Alumno (En Formación)', badgeColor: 'bg-teal-100 text-teal-800' },
-    { value: 'admin_clinical', label: 'Administrador Clínico', badgeColor: 'bg-emerald-100 text-emerald-800' },
-    { value: 'admin_platform', label: 'Administrador Plataforma', badgeColor: 'bg-indigo-100 text-indigo-800' },
-    { value: 'patient', label: 'Paciente (Simulador)', badgeColor: 'bg-slate-100 text-slate-800' }
-  ];
-
-  constructor(public readonly roleService: RoleStateService) {}
-
-  ngOnInit(): void {
-    this.roleService.currentRole$.subscribe((role) => {
-      this.currentRole = role;
-    });
+  get roles(): Role[] {
+    return this.roleService.roles;
   }
 
-  toggleDropdown(): void {
-    this.showRoleDropdown = !this.showRoleDropdown;
-  }
-
-  selectRole(role: Role): void {
-    this.roleService.setRole(role);
-    this.showRoleDropdown = false;
+  get initials(): string {
+    const name = this.roleService.currentUserName.trim();
+    if (!name) {
+      return 'US';
+    }
+    const parts = name.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.charAt(0) ?? '';
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+    return (first + last).toUpperCase();
   }
 
   getRoleLabel(role: Role): string {
-    const found = this.rolesList.find(r => r.value === role);
-    return found ? found.label : role;
+    return ROLE_LABELS[role] ?? role;
   }
 
   getRoleColor(role: Role): string {
-    const found = this.rolesList.find(r => r.value === role);
-    return found ? found.badgeColor : 'bg-slate-100 text-slate-800';
+    return ROLE_COLORS[role] ?? 'bg-slate-100 text-slate-800';
+  }
+
+  logout(): void {
+    this.roleService.logout();
+    this.router.navigate(['/login']);
   }
 }

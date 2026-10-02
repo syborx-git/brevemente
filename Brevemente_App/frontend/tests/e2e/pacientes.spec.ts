@@ -27,6 +27,14 @@ test.describe('Módulo de Pacientes — Validación E2E de Oráculo y Regresión
         http500Errors.push(`[HTTP ${response.status()}] ${response.url()}`);
       }
     });
+
+    // 3. Autenticación previa: el módulo de pacientes requiere sesión y token JWT
+    await page.goto('/login');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#email').fill('sofia.ramirez@brevemente.org');
+    await page.locator('#password').fill('demo123');
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL('**/dashboard', { timeout: 15000 });
   });
 
   test.afterEach(() => {
