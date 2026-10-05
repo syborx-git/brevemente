@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "Datos del usuario autenticado")
+@Schema(description = "Datos del usuario autenticado con roles y permisos efectivos")
 public record UserResponseDTO(
         @Schema(description = "Identificador del usuario", example = "usr-001")
         String id,
@@ -14,6 +14,9 @@ public record UserResponseDTO(
 
         @Schema(description = "Roles (multi-rol)", example = "[\"therapist\", \"supervisor\"]")
         List<String> roles,
+
+        @Schema(description = "Permisos efectivos agregados de todos sus roles (PBAC)", example = "[\"PACIENTES_LEER\", \"PACIENTES_CREAR\"]")
+        List<String> permissions,
 
         @Schema(description = "Correo institucional", example = "sofia.ramirez@brevemente.org")
         String email,

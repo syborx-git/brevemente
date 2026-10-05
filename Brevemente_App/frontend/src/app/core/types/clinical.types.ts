@@ -1,9 +1,28 @@
 export type Role = 'admin_platform' | 'admin_clinical' | 'therapist' | 'assistant' | 'supervisor' | 'patient' | 'student';
 
+export type Permission =
+  | 'PACIENTES_LEER'
+  | 'PACIENTES_CREAR'
+  | 'PACIENTES_EDITAR'
+  | 'PACIENTES_ELIMINAR'
+  | 'EXPEDIENTE_LEER'
+  | 'EXPEDIENTE_ESCRIBIR'
+  | 'EXPEDIENTE_FIRMAR'
+  | 'AGENDA_GESTIONAR'
+  | 'SUPERVISION_LEER'
+  | 'SUPERVISION_EVALUAR'
+  | 'ADMIN_USUARIOS'
+  | 'DASHBOARD_LEER'
+  | 'MI_CONSULTA_LEER'
+  | 'LEVA_USAR'
+  | 'REPORTES_VER'
+  | 'CONFIGURACION_SISTEMA';
+
 export interface User {
   id: string;
   name: string;
   roles: Role[];
+  permissions?: Permission[];
   email: string;
   avatar?: string;
   license?: string;

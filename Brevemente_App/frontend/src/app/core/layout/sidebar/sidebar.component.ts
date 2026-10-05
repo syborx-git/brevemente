@@ -65,9 +65,10 @@ export class SidebarComponent {
 
   getRoleLabel(role: Role): string {
     switch (role) {
+      case 'admin_platform': return 'Administrador Plataforma';
+      case 'admin_clinical': return 'Admin Clínico';
       case 'therapist': return 'Dr. / Terapeuta';
       case 'supervisor': return 'Supervisor Clínico';
-      case 'admin_clinical': return 'Admin Clínico';
       case 'assistant': return 'Asistente Clínico';
       default: return role;
     }

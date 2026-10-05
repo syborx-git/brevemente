@@ -29,7 +29,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/pacientes")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('THERAPIST','ADMIN_CLINICAL','SUPERVISOR')")
 @Tag(name = "Pacientes", description = "Operaciones clínicas y normativas para la gestión de expedientes y directorio de pacientes TBE")
 public class PacienteRestController {
 
@@ -40,6 +39,7 @@ public class PacienteRestController {
     private final PacienteRestMapper pacienteRestMapper;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PACIENTES_LEER')")
     @Operation(
             summary = "Listar directorio clínico de pacientes",
             description = "Recupera la totalidad de los pacientes registrados en la plataforma con sus determinaciones de consentimiento, estatus y nivel de riesgo."
@@ -62,6 +62,7 @@ public class PacienteRestController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PACIENTES_LEER')")
     @Operation(
             summary = "Consultar expediente de paciente por ID",
             description = "Obtiene los detalles demográficos, representación legal y estado clínico del paciente especificado."
@@ -83,6 +84,7 @@ public class PacienteRestController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PACIENTES_CREAR')")
     @Operation(
             summary = "Registrar nuevo paciente",
             description = "Da de alta a un paciente en el sistema calculando automáticamente su mayoría o minoría de edad y aplicando las reglas de consentimiento informado TBE."
@@ -105,6 +107,7 @@ public class PacienteRestController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('PACIENTES_EDITAR')")
     @Operation(
             summary = "Actualizar atributos clínicos del paciente",
             description = "Permite la actualización parcial de información clínica, estado del tratamiento, reconsentimiento o datos de contacto."

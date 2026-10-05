@@ -2,7 +2,9 @@ package com.syborx.brevemente.auth.infrastructure.adapters.out.persistence;
 
 import com.syborx.brevemente.auth.application.ports.out.AutenticacionRepositoryPort;
 import com.syborx.brevemente.auth.application.ports.out.LicenseLookupPort;
+import com.syborx.brevemente.auth.domain.model.EstadoSesion;
 import com.syborx.brevemente.auth.domain.model.Usuario;
+import com.syborx.brevemente.auth.infrastructure.adapters.out.persistence.entity.UsuarioJpaEntity;
 import com.syborx.brevemente.auth.infrastructure.adapters.out.persistence.mapper.AuthPersistenceMapper;
 import com.syborx.brevemente.auth.infrastructure.adapters.out.persistence.repository.SpringDataUsuarioRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +22,28 @@ public class AuthPersistenceAdapter implements AutenticacionRepositoryPort {
 
     @Override
     public Optional<Usuario> findByEmail(String email) {
-        return springDataUsuarioRepository.findByEmail(email)
-                .map(entity -> authPersistenceMapper.toDomain(
-                        entity,
-                        licenseLookupPort.findLicenseByUsuarioId(entity.getId())
-                ));
+        return springDataUsuarioRepository.findByEmail(email).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Usuario> findById(String usuarioId) {
+        return springDataUsuarioRepository.findByIdWithPermisos(usuarioId).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<EstadoSesion> findEstadoSesion(String usuarioId) {
+        return springDataUsuarioRepository.findEstadoSesion(usuarioId)
+                .map(v -> new EstadoSesion(
+                        v.getTokenVersion() != null ? v.getTokenVersion() : 1,
+                        Boolean.TRUE.equals(v.getActivo())));
+    }
+
+    @Override
+    public void incrementarTokenVersion(String usuarioId) {
+        springDataUsuarioRepository.incrementTokenVersion(usuarioId);
+    }
+
+    private Usuario toDomain(UsuarioJpaEntity entity) {
+        return authPersistenceMapper.toDomain(entity, licenseLookupPort.findLicenseByUsuarioId(entity.getId()));
     }
 }

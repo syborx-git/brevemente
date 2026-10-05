@@ -1,6 +1,9 @@
 package com.syborx.brevemente.auth.infrastructure.adapters.in.rest.advice;
 
 import com.syborx.brevemente.auth.domain.exception.CredencialesInvalidasException;
+import com.syborx.brevemente.auth.domain.exception.DemasiadosIntentosException;
+import com.syborx.brevemente.auth.domain.exception.SesionInvalidaException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +25,23 @@ public class AuthExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
         problem.setTitle("Credenciales inválidas");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
+    }
+
+    @ExceptionHandler(SesionInvalidaException.class)
+    public ResponseEntity<ProblemDetail> handleSesionInvalida(SesionInvalidaException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("Sesión inválida");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
+    }
+
+    @ExceptionHandler(DemasiadosIntentosException.class)
+    public ResponseEntity<ProblemDetail> handleDemasiadosIntentos(DemasiadosIntentosException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        problem.setTitle("Demasiados intentos");
+        problem.setProperty("retryAfterSeconds", ex.getRetryAfterSeconds());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(problem);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
