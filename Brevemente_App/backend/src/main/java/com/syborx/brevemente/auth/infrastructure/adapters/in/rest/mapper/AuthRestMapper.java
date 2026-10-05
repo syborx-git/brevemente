@@ -16,10 +16,14 @@ public class AuthRestMapper {
         List<String> roles = usuario.getRoles() != null
                 ? usuario.getRoles().stream().sorted().toList()
                 : List.of();
+        List<String> permissions = usuario.getPermissions() != null
+                ? usuario.getPermissions().stream().sorted().toList()
+                : List.of();
         return new UserResponseDTO(
                 usuario.getId(),
                 usuario.getNombre(),
                 roles,
+                permissions,
                 usuario.getEmail(),
                 usuario.getLicense()
         );

@@ -17,13 +17,15 @@
       <span>LEVA IA</span>
     </button>
 
-    <!-- Roles del usuario autenticado (solo lectura, provienen del backend) -->
+    <!-- Roles del usuario autenticado (con selector visual si es multi-rol) -->
     <div class="flex items-center gap-1.5">
       <span class="text-slate-500 text-xs font-semibold">Rol:</span>
       <span
         *ngFor="let r of roles"
-        class="px-2 py-0.5 rounded text-[11px] font-bold"
-        [ngClass]="getRoleColor(r)">
+        (click)="selectRole(r)"
+        [title]="roles.length > 1 ? 'Alternar a vista ' + getRoleLabel(r) : ''"
+        class="px-2 py-0.5 rounded text-[11px] font-bold transition-all select-none"
+        [ngClass]="[getRoleColor(r), r === activeRole ? 'ring-2 ring-clinical-accent ring-offset-1 cursor-default' : (roles.length > 1 ? 'opacity-60 hover:opacity-100 cursor-pointer' : '')]">
         {{ getRoleLabel(r) }}
       </span>
     </div>

@@ -23,11 +23,19 @@ public class Usuario {
     private final String passwordHash;
     /** Códigos de rol (multi-rol): therapist, supervisor, admin_clinical, ... */
     private final Set<String> roles;
+    /** Permisos efectivos: unión de los permisos de todos sus roles (PACIENTES_LEER, ...). */
+    private final Set<String> permissions;
     /** Cédula profesional (solo therapist; null para el resto de roles). */
     private final String license;
     private final boolean activo;
+    /** Versión vigente de tokens; al incrementarse invalida todos los access tokens emitidos. */
+    private final int tokenVersion;
 
     public boolean tieneRol(String codigo) {
         return roles != null && roles.contains(codigo);
+    }
+
+    public boolean tienePermiso(String codigo) {
+        return permissions != null && permissions.contains(codigo);
     }
 }

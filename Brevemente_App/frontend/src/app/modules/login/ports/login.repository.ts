@@ -20,5 +20,6 @@ export interface AuthSession {
  */
 export abstract class LoginRepository {
   abstract autenticar(credentials: LoginCredentials): Observable<AuthSession | null>;
+  abstract refrescarSesion(): Observable<AuthSession | null>;
   abstract cerrarSesion(): Observable<void>;
 }

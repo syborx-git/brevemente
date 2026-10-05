@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { RoleStateService } from '../../services/role-state.service';
 import { Role } from '../../types/clinical.types';
+import { LoginRepository } from '../../../modules/login/ports/login.repository';
 
 const ROLE_LABELS: Record<Role, string> = {
   admin_platform: 'Administrador Plataforma',
@@ -34,11 +35,16 @@ const ROLE_COLORS: Record<Role, string> = {
 export class HeaderComponent {
   constructor(
     public readonly roleService: RoleStateService,
+    private readonly loginRepo: LoginRepository,
     private readonly router: Router
   ) {}
 
   get roles(): Role[] {
     return this.roleService.roles;
+  }
+
+  get activeRole(): Role {
+    return this.roleService.activeRole;
   }
 
   get initials(): string {
@@ -60,8 +66,20 @@ export class HeaderComponent {
     return ROLE_COLORS[role] ?? 'bg-slate-100 text-slate-800';
   }
 
+  selectRole(role: Role): void {
+    this.roleService.switchActiveRole(role);
+  }
+
   logout(): void {
-    this.roleService.logout();
-    this.router.navigate(['/login']);
+    this.loginRepo.cerrarSesion().subscribe({
+      next: () => {
+        this.roleService.logout();
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.roleService.logout();
+        this.router.navigate(['/login']);
+      }
+    });
   }
 }

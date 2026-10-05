@@ -38,7 +38,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // JWT stateless: el token viaja en header Authorization, no en cookie/sesión.
+                // JWT stateless: el token viaja en header Authorization; el refresh token en cookie HttpOnly.
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -47,6 +47,8 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -67,7 +69,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Replica WebCorsConfig (incluye PATCH usado por PacienteRestController).
         config.setAllowedOrigins(List.of(
                 "http://localhost:4200",
                 "http://localhost:3000",
@@ -100,7 +101,7 @@ public class SecurityConfig {
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
             ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                     HttpStatus.FORBIDDEN,
-                    "Acceso denegado"
+                    "Acceso denegado: permisos insuficientes para la operación solicitada"
             );
             objectMapper.writeValue(response.getWriter(), problem);
         };

@@ -1,0 +1,7 @@
+services:
+  brevemente-demo:
+    build: .
+    container_name: brevemente-demo
+    restart: unless-stopped
+    ports:
+      - "80:80"
