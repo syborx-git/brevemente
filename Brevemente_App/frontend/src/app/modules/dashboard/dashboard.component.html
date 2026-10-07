@@ -129,7 +129,7 @@
             <span 
               class="px-2 py-0.5 text-[10px] font-bold rounded-full"
               [ngClass]="p.capacidadConsentimiento.estado === 'REPRESENTADO_POR_EDAD' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'">
-              {{ p.capacidadConsentimiento.estado }}
+              {{ formatEstadoConsentimiento(p.capacidadConsentimiento.estado) }}
             </span>
             <a [routerLink]="['/expediente', p.id]" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-clinical-dark font-bold rounded-lg transition-colors">
               Expediente

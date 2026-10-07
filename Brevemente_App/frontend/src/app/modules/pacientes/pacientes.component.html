@@ -83,7 +83,7 @@
             </td>
             <td class="py-3 px-4">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight" [ngClass]="getBadgeConsentClass(p.capacidadConsentimiento.estado)">
-                {{ p.capacidadConsentimiento.estado }}
+                {{ formatEstadoConsentimiento(p.capacidadConsentimiento.estado) }}
               </span>
               <p *ngIf="p.representante" class="text-[10px] text-slate-500 mt-0.5">
                 Apoyo: {{ p.representante.nombreCompleto }} ({{ p.representante.parentesco }})

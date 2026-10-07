@@ -72,6 +72,9 @@ public class PacienteJpaEntity {
     @JoinColumn(name = "terapeuta_id")
     private TerapeutaJpaEntity terapeuta;
 
+    @Column(name = "usuario_id", length = 36)
+    private String usuarioId;
+
     // Metadatos de consentimiento
     @Column(name = "fecha_determinacion_consentimiento")
     private LocalDate fechaDeterminacionConsentimiento;

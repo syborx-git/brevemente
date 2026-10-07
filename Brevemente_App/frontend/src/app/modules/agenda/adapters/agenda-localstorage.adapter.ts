@@ -7,11 +7,12 @@ import { mockAppointments, mockPatients } from '../../../core/data/mockData';
 @Injectable({
   providedIn: 'root'
 })
-export class AgendaLocalStorageAdapter implements AgendaRepository {
+export class AgendaLocalStorageAdapter extends AgendaRepository {
   private readonly appointmentsKey = 'brevemente_appointments';
   private readonly patientsKey = 'brevemente_patients';
 
   constructor() {
+    super();
     if (!localStorage.getItem(this.appointmentsKey)) {
       localStorage.setItem(this.appointmentsKey, JSON.stringify(mockAppointments));
     }

@@ -6,6 +6,7 @@ import { DashboardRepository, DashboardStats, UrgentAlert } from './ports/dashbo
 import { DashboardLocalStorageAdapter } from './adapters/dashboard-localstorage.adapter';
 import { DashboardHttpAdapter } from './adapters/dashboard-http.adapter';
 import { Appointment, Patient } from '../../core/types/clinical.types';
+import { formatEstadoConsentimientoLabel } from '../../core/utils/consentimiento.utils';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
 
@@ -43,5 +44,13 @@ export class DashboardComponent implements OnInit {
     this.dashboardRepo.obtenerCitasHoy().subscribe(c => this.citasHoy = c);
     this.dashboardRepo.obtenerAlertasUrgentes().subscribe(a => this.alertasUrgentes = a);
     this.dashboardRepo.obtenerPacientesRecientes().subscribe(p => this.pacientesRecientes = p);
+  }
+
+  /**
+   * Traduce el estado crudo de capacidad de consentimiento (persistido en BD, p. ej.
+   * `REPRESENTADO_POR_EDAD`) a una etiqueta legible en español para la UI.
+   */
+  formatEstadoConsentimiento(estado?: string | null): string {
+    return formatEstadoConsentimientoLabel(estado);
   }
 }

@@ -6,13 +6,15 @@ import com.syborx.brevemente.auth.infrastructure.adapters.out.persistence.entity
 import com.syborx.brevemente.auth.infrastructure.adapters.out.persistence.entity.UsuarioJpaEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
 public class AuthPersistenceMapper {
 
-    public Usuario toDomain(UsuarioJpaEntity entity, String license) {
+    public Usuario toDomain(UsuarioJpaEntity entity, String license,
+                            List<String> terapeutaIds, String pacienteId) {
         if (entity == null) {
             return null;
         }
@@ -39,6 +41,8 @@ public class AuthPersistenceMapper {
                 .roles(roles)
                 .permissions(permissions)
                 .license(license)
+                .terapeutaIds(terapeutaIds != null ? terapeutaIds : List.of())
+                .pacienteId(pacienteId)
                 .activo(Boolean.TRUE.equals(entity.getActivo()))
                 .tokenVersion(entity.getTokenVersion() != null ? entity.getTokenVersion() : 1)
                 .build();

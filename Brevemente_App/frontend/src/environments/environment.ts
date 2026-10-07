@@ -5,7 +5,7 @@ export const environment = {
     dashboardBackend: false,
     pacientesBackend: true,
     expedienteClinicoBackend: false,
-    agendaBackend: false,
+    agendaBackend: true,
     asistenteLevaBackend: false,
     supervisionBackend: false,
     miConsultaBackend: false

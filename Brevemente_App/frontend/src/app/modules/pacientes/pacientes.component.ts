@@ -7,6 +7,7 @@ import { PacienteRepository } from './ports/paciente.repository';
 import { PacienteLocalStorageAdapter } from './adapters/paciente-localstorage.adapter';
 import { PacienteHttpAdapter } from './adapters/paciente-http.adapter';
 import { Patient } from '../../core/types/clinical.types';
+import { formatEstadoConsentimientoLabel } from '../../core/utils/consentimiento.utils';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -154,6 +155,10 @@ export class PacientesComponent implements OnInit {
       this.cargarPacientes();
       this.closeCreateModal();
     });
+  }
+
+  formatEstadoConsentimiento(estado?: string | null): string {
+    return formatEstadoConsentimientoLabel(estado);
   }
 
   getBadgeConsentClass(estado: string): string {

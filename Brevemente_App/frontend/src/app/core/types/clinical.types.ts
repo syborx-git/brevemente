@@ -9,6 +9,8 @@ export type Permission =
   | 'EXPEDIENTE_ESCRIBIR'
   | 'EXPEDIENTE_FIRMAR'
   | 'AGENDA_GESTIONAR'
+  | 'AGENDA_LEER'
+  | 'MIS_CITAS_LEER'
   | 'SUPERVISION_LEER'
   | 'SUPERVISION_EVALUAR'
   | 'ADMIN_USUARIOS'
@@ -26,6 +28,8 @@ export interface User {
   email: string;
   avatar?: string;
   license?: string;
+  terapeutaIds?: string[];
+  pacienteId?: string;
 }
 
 export type CapacidadConsentimientoEstado =
@@ -105,6 +109,19 @@ export interface Appointment {
   type: 'primera' | 'seguimiento' | 'cierre';
   status: 'confirmada' | 'pendiente' | 'completada' | 'cancelada' | 'ausente' | 'no_presentado' | 'solicita_reagendar';
   paymentStatus?: 'pagada' | 'pendiente' | 'exenta';
+  terapeutaId?: string;
+  duration?: 30 | 45 | 60;
+  modality?: 'PRESENCIAL' | 'ONLINE';
+  office?: 'A' | 'B';
+  bloqueadaPorNormativa?: boolean;
+}
+
+export interface DiaNoLaborable {
+  id: string;
+  fecha: string;
+  nombre: string;
+  tipo: 'oficial' | 'personal';
+  terapeutaId?: string | null;
 }
 
 export type PaymentStatus = 'pagado' | 'pendiente' | 'parcial' | 'reembolsado';

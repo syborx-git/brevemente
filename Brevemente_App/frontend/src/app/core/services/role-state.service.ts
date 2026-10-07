@@ -32,6 +32,11 @@ export class RoleStateService {
     return this.currentUser?.roles ?? [];
   }
 
+  /** Terapeutas sobre los que opera la agenda (para el selector del modal). */
+  get terapeutaIds(): string[] {
+    return this.currentUser?.terapeutaIds ?? [];
+  }
+
   /** Rol activo actual (contexto visual y operativo). */
   get activeRole(): Role {
     return this.activeRoleSubject.value;

@@ -22,5 +22,11 @@ public record UserResponseDTO(
         String email,
 
         @Schema(description = "Cédula profesional (solo therapist)", example = "CED-782190-PSIC")
-        String license
+        String license,
+
+        @Schema(description = "Terapeutas sobre los que opera la agenda", example = "[\"ter-001\"]")
+        List<String> terapeutaIds,
+
+        @Schema(description = "Paciente vinculado (solo patient)", example = "pac-001")
+        String pacienteId
 ) {}

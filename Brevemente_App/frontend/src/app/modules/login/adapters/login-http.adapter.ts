@@ -15,6 +15,8 @@ interface TokenResponseBackend {
     permissions?: string[];
     email: string;
     license: string | null;
+    terapeutaIds?: string[];
+    pacienteId?: string | null;
   };
 }
 
@@ -37,6 +39,8 @@ const VALID_PERMISSIONS: Permission[] = [
   'EXPEDIENTE_ESCRIBIR',
   'EXPEDIENTE_FIRMAR',
   'AGENDA_GESTIONAR',
+  'AGENDA_LEER',
+  'MIS_CITAS_LEER',
   'SUPERVISION_LEER',
   'SUPERVISION_EVALUAR',
   'ADMIN_USUARIOS',
@@ -93,7 +97,9 @@ export class LoginHttpAdapter implements LoginRepository {
       roles: this.validRoles(res.user.roles),
       permissions: this.validPermissions(res.user.permissions),
       email: res.user.email,
-      license: res.user.license ?? undefined
+      license: res.user.license ?? undefined,
+      terapeutaIds: res.user.terapeutaIds ?? [],
+      pacienteId: res.user.pacienteId ?? undefined
     };
     const session: AuthSession = { token: res.token, user };
     localStorage.setItem(this.sessionKey, JSON.stringify(session));

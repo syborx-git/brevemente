@@ -25,7 +25,9 @@ public class AuthRestMapper {
                 roles,
                 permissions,
                 usuario.getEmail(),
-                usuario.getLicense()
+                usuario.getLicense(),
+                usuario.getTerapeutaIds() != null ? List.copyOf(usuario.getTerapeutaIds()) : List.of(),
+                usuario.getPacienteId()
         );
     }
 }

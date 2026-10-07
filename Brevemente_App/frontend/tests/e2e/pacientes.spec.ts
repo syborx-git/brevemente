@@ -64,7 +64,7 @@ test.describe('Módulo de Pacientes — Validación E2E de Oráculo y Regresión
 
     // Validar visualización de minoría de edad para Mateo (17 años)
     await expect(table.getByText('(Menor)')).toBeVisible();
-    await expect(table.getByText('REPRESENTADO_POR_EDAD')).toBeVisible();
+    await expect(table.getByText('Representado por edad')).toBeVisible();
   });
 
   test('TC-PAC-02: Búsqueda reactiva por Nombre y CURP', async ({ page }) => {
