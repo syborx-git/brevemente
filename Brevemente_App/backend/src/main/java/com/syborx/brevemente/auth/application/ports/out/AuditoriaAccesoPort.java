@@ -17,4 +17,7 @@ public interface AuditoriaAccesoPort {
 
     /** Registra un evento de sesión (LOGOUT, REFRESH_REUSE_DETECTED, ...). */
     void registrarEvento(String usuarioId, String accion, String ip, String detalle);
+
+    /** Registra un acceso genérico con recurso explícito (p. ej. 'citas'). */
+    void registrarAcceso(String usuarioId, String recurso, String accion, String ip, String detalle);
 }

@@ -2,6 +2,7 @@ package com.syborx.brevemente.auth.infrastructure.adapters.out.persistence;
 
 import com.syborx.brevemente.auth.application.ports.out.AutenticacionRepositoryPort;
 import com.syborx.brevemente.auth.application.ports.out.LicenseLookupPort;
+import com.syborx.brevemente.auth.application.ports.out.VinculoIdentidadPort;
 import com.syborx.brevemente.auth.domain.model.EstadoSesion;
 import com.syborx.brevemente.auth.domain.model.Usuario;
 import com.syborx.brevemente.auth.infrastructure.adapters.out.persistence.entity.UsuarioJpaEntity;
@@ -19,6 +20,7 @@ public class AuthPersistenceAdapter implements AutenticacionRepositoryPort {
     private final SpringDataUsuarioRepository springDataUsuarioRepository;
     private final AuthPersistenceMapper authPersistenceMapper;
     private final LicenseLookupPort licenseLookupPort;
+    private final VinculoIdentidadPort vinculoIdentidadPort;
 
     @Override
     public Optional<Usuario> findByEmail(String email) {
@@ -44,6 +46,11 @@ public class AuthPersistenceAdapter implements AutenticacionRepositoryPort {
     }
 
     private Usuario toDomain(UsuarioJpaEntity entity) {
-        return authPersistenceMapper.toDomain(entity, licenseLookupPort.findLicenseByUsuarioId(entity.getId()));
+        return authPersistenceMapper.toDomain(
+                entity,
+                licenseLookupPort.findLicenseByUsuarioId(entity.getId()),
+                vinculoIdentidadPort.findTerapeutaIdsByUsuarioId(entity.getId()),
+                vinculoIdentidadPort.findPacienteIdByUsuarioId(entity.getId())
+        );
     }
 }

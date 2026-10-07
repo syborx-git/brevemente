@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class JwtService {
@@ -43,6 +44,8 @@ public class JwtService {
                 .subject(usuario.getId())
                 .claim("roles", usuario.getRoles())
                 .claim("permissions", usuario.getPermissions())
+                .claim("terapeutaIds", usuario.getTerapeutaIds() != null ? usuario.getTerapeutaIds() : List.of())
+                .claim("pacienteId", usuario.getPacienteId())
                 .claim("tokenVersion", usuario.getTokenVersion())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))

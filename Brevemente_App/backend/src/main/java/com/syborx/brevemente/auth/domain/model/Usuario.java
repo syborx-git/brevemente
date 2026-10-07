@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -27,6 +28,10 @@ public class Usuario {
     private final Set<String> permissions;
     /** Cédula profesional (solo therapist; null para el resto de roles). */
     private final String license;
+    /** Terapeutas sobre los que opera la agenda (therapist → su id; assistant → terapeutas asignados). */
+    private final List<String> terapeutaIds;
+    /** Paciente vinculado (solo rol patient). */
+    private final String pacienteId;
     private final boolean activo;
     /** Versión vigente de tokens; al incrementarse invalida todos los access tokens emitidos. */
     private final int tokenVersion;

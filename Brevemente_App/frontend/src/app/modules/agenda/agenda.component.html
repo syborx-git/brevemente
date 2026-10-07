@@ -1,109 +1,152 @@
-<div class="space-y-6 max-w-7xl mx-auto select-none">
-  <!-- Header de la Agenda -->
+<div class="space-y-6 max-w-7xl mx-auto">
+  <!-- Cabecera y selector de vistas -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-bold text-clinical-textDark tracking-tight">Agenda de Sesiones Clínicas</h1>
+      <h1 class="text-2xl font-bold text-clinical-textDark tracking-tight">Agenda y Calendario Clínico</h1>
       <p class="text-xs text-clinical-textMuted mt-0.5">
-        Gestión de sesiones TBE con bloqueo normativo para expedientes con consentimiento pendiente
+        Planifica tus consultas, valida el estado legal de los pacientes y navega el calendario.
       </p>
     </div>
-    <div class="flex items-center gap-3">
-      <!-- Switcher Vista -->
+    <div class="flex items-center gap-3 flex-wrap">
       <div class="bg-white border border-slate-200 rounded-xl p-1 flex gap-1 shadow-2xs">
-        <button 
-          (click)="viewMode = 'semana'"
-          [class.bg-clinical-dark]="viewMode === 'semana'"
-          [class.text-white]="viewMode === 'semana'"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 transition-all cursor-pointer">
-          Semana
-        </button>
-        <button 
-          (click)="viewMode = 'dia'"
-          [class.bg-clinical-dark]="viewMode === 'dia'"
-          [class.text-white]="viewMode === 'dia'"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 transition-all cursor-pointer">
-          Día
-        </button>
+        <button (click)="setView('dia')" [ngClass]="viewLevel === 'dia' ? 'bg-clinical-dark text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer">Día</button>
+        <button (click)="setView('semana')" [ngClass]="viewLevel === 'semana' ? 'bg-clinical-dark text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer">Semana</button>
+        <button (click)="setView('mes')" [ngClass]="viewLevel === 'mes' ? 'bg-clinical-dark text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer">Mes</button>
+        <button (click)="setView('anio')" [ngClass]="viewLevel === 'anio' ? 'bg-clinical-dark text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer">Año</button>
       </div>
-
-      <button 
-        (click)="openNewModal()"
-        class="px-4 py-2.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer">
+      <button (click)="openNewModal()" class="px-4 py-2.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer">
         <span class="text-sm">+</span> Agendar Cita
       </button>
     </div>
   </div>
 
-  <!-- Banner Normativo de Agenda si hay bloqueo -->
-  <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900">
-    <div class="flex items-center gap-2.5">
-      <span class="text-base">⚖️</span>
-      <span>
-        <strong>Control Normativo:</strong> Los pacientes menores de edad sin consentimiento formalizado de la persona de apoyo mantienen sus sesiones en estado <em>Bloqueada / Pendiente</em>.
-      </span>
-    </div>
+  <!-- Banner Normativo -->
+  <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
+    <span class="text-base">⚖️</span>
+    <span>
+      <strong>Control Normativo:</strong> Los pacientes menores de edad sin consentimiento formalizado de la persona de apoyo mantienen sus sesiones en estado <em>Bloqueada / Pendiente</em>.
+    </span>
   </div>
 
-  <!-- Grid de Citas Programadas -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-    <div 
-      *ngFor="let c of citas" 
-      class="bg-white rounded-2xl border p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between"
-      [ngClass]="isPatientBlocked(c.patientId) ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200'">
-      
-      <div>
-        <!-- Cita Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-          <div class="flex items-center gap-2">
-            <span class="font-mono text-sm font-bold text-clinical-textDark px-2 py-0.5 rounded-md bg-slate-100">
-              {{ c.time }}
-            </span>
-            <span class="text-[10px] text-slate-500 font-semibold">{{ c.date }}</span>
+  <!-- Calendario + leyenda -->
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div class="lg:col-span-3 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col min-w-0">
+      <!-- Navegación del período -->
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50">
+        <div class="flex items-center gap-3">
+          <button (click)="goPrev()" class="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer">‹</button>
+          <span class="text-xs font-bold text-clinical-textDark uppercase">{{ periodLabel }}</span>
+          <button (click)="goNext()" class="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer">›</button>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" [(ngModel)]="blockHolidays" class="w-4 h-4 accent-clinical-accent" />
+            <span class="font-semibold text-[10px] text-slate-600">Bloquear festivos para agendar</span>
+          </label>
+          <button (click)="goToday()" class="px-2.5 py-1 border border-slate-200 hover:bg-slate-100 rounded text-[10px] font-bold text-slate-600 cursor-pointer">Hoy</button>
+        </div>
+      </div>
+
+      <!-- VISTA SEMANAL -->
+      <div *ngIf="viewLevel === 'semana'" class="overflow-x-auto min-w-full">
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead>
+            <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold text-[10px] uppercase">
+              <th class="p-3 w-16 text-center border-r border-slate-100">Horario</th>
+              <th *ngFor="let day of weekDays" class="p-3 text-center border-r border-slate-100 last:border-r-0">
+                {{ day.name }}
+                <span class="block text-[9px] text-slate-400 mt-0.5">{{ day.date.slice(8, 10) }}</span>
+                <span *ngIf="getHoliday(day.date)" class="block text-[8px] font-bold mt-0.5" [ngClass]="getHoliday(day.date)!.tipo === 'personal' ? 'text-violet-500' : 'text-red-600'">● {{ getHoliday(day.date)!.nombre }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let hour of hours" class="h-16 hover:bg-slate-50/20 align-top">
+              <td class="p-3 text-center border-r border-slate-100 font-bold text-slate-400 align-top">{{ hour }}</td>
+              <td *ngFor="let day of weekDays" class="border-r border-slate-100 last:border-r-0 p-1.5 align-top" [ngClass]="isBlockedDate(day.date) ? 'bg-red-50/40' : ''">
+                <div *ngFor="let app of citasDeHora(day.date, hour)" (click)="selectApp(app)" class="p-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex flex-col gap-1 mb-1" [ngClass]="freqClass(app.patientId)">
+                  <div class="flex items-center justify-between font-bold text-clinical-textDark">
+                    <span class="truncate">{{ app.patientName }}</span>
+                    <span *ngIf="isPatientBlocked(app.patientId)" class="text-[9px] font-bold text-amber-600 shrink-0">⚖️</span>
+                  </div>
+                  <div class="flex justify-between items-center text-[8px] text-slate-400">
+                    <span class="font-semibold uppercase">{{ app.type }}</span>
+                    <span class="font-bold px-1 rounded bg-slate-100 text-slate-600">{{ app.duration ?? 50 }}′</span>
+                    <span class="font-bold">{{ app.modality === 'ONLINE' ? 'VIRTUAL' : (app.office ?? 'SALA A') }}</span>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- VISTA DIARIA -->
+      <div *ngIf="viewLevel === 'dia'" class="divide-y divide-slate-100 p-4 space-y-2">
+        <div class="text-xs font-bold text-clinical-textDark uppercase border-b border-slate-100 pb-2">{{ dayName(anchorDate) }}, {{ anchorDate }}</div>
+        <div *ngIf="getHoliday(anchorDate)" class="text-[10px] font-bold px-3 py-2 rounded-lg border" [ngClass]="getHoliday(anchorDate)!.tipo === 'personal' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-slate-100 text-red-700 border-red-300'">
+          {{ getHoliday(anchorDate)!.tipo === 'personal' ? '🟣' : '🔴' }} {{ getHoliday(anchorDate)!.nombre }} — día no laborable
+        </div>
+        <div *ngFor="let hour of hours" class="py-3 flex items-start gap-4 hover:bg-slate-50/50">
+          <span class="w-16 font-bold text-slate-400 text-xs shrink-0">{{ hour }}</span>
+          <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div *ngFor="let app of citasDeHora(anchorDate, hour)" (click)="selectApp(app)" class="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer shadow-sm hover:border-[#75AFBC] transition-all" [ngClass]="freqClass(app.patientId)">
+              <div class="flex justify-between items-start gap-2">
+                <div>
+                  <span class="font-bold text-clinical-textDark block">{{ app.patientName }}</span>
+                  <span class="text-[10px] text-slate-400 uppercase">{{ app.type }} • {{ app.duration ?? 50 }} min</span>
+                  <span *ngIf="isPatientBlocked(app.patientId)" class="text-[9px] font-bold text-amber-600 flex items-center gap-1 mt-0.5">⚖️ Bloqueada por Normativa</span>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase shrink-0" [ngClass]="statusColor(app.status)">{{ statusLabel(app.status) }}</span>
+              </div>
+            </div>
           </div>
-          <span 
-            class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight"
-            [ngClass]="isPatientBlocked(c.patientId) ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'">
-            {{ isPatientBlocked(c.patientId) ? 'Bloqueada por Normativa' : c.status }}
-          </span>
-        </div>
-
-        <!-- Cita Info -->
-        <h3 class="text-sm font-bold text-clinical-textDark mb-1">{{ c.patientName }}</h3>
-        <p class="text-xs text-slate-500 capitalize mb-3">Sesión de {{ c.type }} · 50 min</p>
-
-        <!-- Bloqueo Alert Box dentro de la tarjeta -->
-        <div *ngIf="isPatientBlocked(c.patientId)" class="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-900 text-[11px] mb-3">
-          <p class="font-bold">⚠️ Falta Consentimiento del Representante</p>
-          <p class="text-[10px] text-red-700 mt-0.5">Se requiere firma en el expediente para confirmar y habilitar la sesión.</p>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-        <a [routerLink]="['/expediente', c.patientId]" class="text-clinical-accent font-bold hover:underline text-[11px]">
-          Ver Expediente →
-        </a>
-        <div class="flex gap-1.5">
-          <button 
-            *ngIf="!isPatientBlocked(c.patientId) && c.status !== 'confirmada'"
-            (click)="cambiarEstado(c, 'confirmada')"
-            class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px]">
-            Confirmar
-          </button>
-          <button 
-            *ngIf="c.status !== 'cancelada'"
-            (click)="cambiarEstado(c, 'cancelada')"
-            class="px-2.5 py-1 bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 rounded-lg font-semibold text-[11px]">
-            Cancelar
-          </button>
+      <!-- VISTA MENSUAL -->
+      <div *ngIf="viewLevel === 'mes'" class="p-4 grid grid-cols-7 gap-1 text-center bg-slate-50 font-bold">
+        <div *ngFor="let d of ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']" class="py-2 text-[10px] text-slate-400">{{ d }}</div>
+        <div *ngFor="let b of leadingBlanksArray" class="min-h-20 rounded p-1.5 bg-slate-50/50"></div>
+        <div *ngFor="let i of monthDaysArray" (click)="zoomIn(monthDate(i), 'dia')" class="min-h-20 rounded p-1.5 text-left flex flex-col justify-between cursor-pointer transition-colors border" [ngClass]="isBlockedDate(monthDate(i)) ? 'bg-slate-100 border-red-300' : 'bg-white border-slate-150 hover:border-[#75AFBC]'">
+          <div>
+            <span class="font-bold text-slate-400">{{ i }}</span>
+            <span *ngIf="getHoliday(monthDate(i))" class="text-[7px] font-bold block truncate" [ngClass]="getHoliday(monthDate(i))!.tipo === 'personal' ? 'text-violet-600' : 'text-red-600'">{{ getHoliday(monthDate(i))!.nombre }}</span>
+          </div>
+          <div class="space-y-0.5 overflow-hidden">
+            <div *ngFor="let app of citasDeFecha(monthDate(i)).slice(0, 2)" (click)="$event.stopPropagation(); selectApp(app)" class="border-l-2 px-1 py-0.5 rounded text-[8px] truncate font-semibold text-clinical-textDark cursor-pointer" [ngClass]="freqClass(app.patientId)">
+              {{ app.time }} · {{ app.duration ?? 50 }}′ · {{ app.patientName }}
+            </div>
+            <span *ngIf="citasDeFecha(monthDate(i)).length > 2" class="text-[7px] text-slate-400 font-bold block">+{{ citasDeFecha(monthDate(i)).length - 2 }} más</span>
+          </div>
         </div>
+      </div>
+
+      <!-- VISTA ANUAL -->
+      <div *ngIf="viewLevel === 'anio'" class="p-4 grid grid-cols-3 sm:grid-cols-4 gap-3">
+        <div *ngFor="let m of monthsArray" (click)="zoomIn(monthKey(m) + '-01', 'mes')" class="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:border-[#75AFBC] transition-colors shadow-sm">
+          <span class="text-xs font-bold text-clinical-textDark block capitalize">{{ monthName(m) }}</span>
+          <span class="text-[10px] text-slate-400">{{ countCitasMes(monthKey(m)) }} cita{{ countCitasMes(monthKey(m)) !== 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leyenda -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 h-fit text-xs text-slate-600 leading-relaxed">
+      <div class="flex items-center gap-1.5 border-b border-slate-100 pb-2">
+        <span class="font-bold text-clinical-textDark uppercase">Frecuencia de Sesiones</span>
+      </div>
+      <div class="space-y-3 font-semibold">
+        <div class="flex items-center gap-2"><div class="w-3 h-3 bg-green-50 border border-green-300 rounded border-l-4 border-l-green-500 shrink-0"></div><span>Semanal</span></div>
+        <div class="flex items-center gap-2"><div class="w-3 h-3 bg-amber-50 border border-amber-300 rounded border-l-4 border-l-amber-500 shrink-0"></div><span>Quincenal</span></div>
+        <div class="flex items-center gap-2"><div class="w-3 h-3 bg-blue-50 border border-blue-200 rounded border-l-4 border-l-blue-600 shrink-0"></div><span>Mensual</span></div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Agendar Nueva Cita -->
+  <!-- Modal Agendar -->
   <div *ngIf="showNewModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <div>
           <h2 class="text-base font-bold text-clinical-textDark">Agendar Sesión Clínica</h2>
@@ -122,7 +165,6 @@
           </select>
         </div>
 
-        <!-- Warning si el paciente está bloqueado -->
         <div *ngIf="isPatientBlocked(selectedPatientId)" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
           <strong>⚠️ Aviso:</strong> Este paciente es menor de edad y su representante aún no firma el consentimiento. La cita quedará registrada como <em>Bloqueada</em>.
         </div>
@@ -146,16 +188,110 @@
             <option value="cierre">Cierre y Consolidación</option>
           </select>
         </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Duración</label>
+            <select [(ngModel)]="newDuration" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50">
+              <option [ngValue]="30">30 min</option>
+              <option [ngValue]="45">45 min</option>
+              <option [ngValue]="60">60 min</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Modalidad</label>
+            <select [(ngModel)]="newModalidad" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50">
+              <option value="PRESENCIAL">Presencial</option>
+              <option value="ONLINE">Online</option>
+            </select>
+          </div>
+        </div>
+
+        <div *ngIf="newModalidad === 'PRESENCIAL'">
+          <label class="block font-semibold text-slate-700 mb-1">Consultorio</label>
+          <select [(ngModel)]="newConsultorio" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50">
+            <option value="A">Consultorio A</option>
+            <option value="B">Consultorio B</option>
+          </select>
+        </div>
       </div>
 
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
-        <button (click)="closeNewModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">
-          Cancelar
-        </button>
-        <button (click)="guardarCita()" class="px-4 py-2 rounded-lg text-xs font-bold bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark shadow-xs">
-          Guardar Cita
-        </button>
+        <button (click)="closeNewModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button (click)="guardarCita()" class="px-4 py-2 rounded-lg text-xs font-bold bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark shadow-xs">Guardar Cita</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal confirmación de cancelación -->
+  <div *ngIf="showCancelConfirm" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-[60] p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <h2 class="text-base font-bold text-clinical-textDark">¿Cancelar esta cita?</h2>
+        <button (click)="cerrarConfirmacionCancelar()" class="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <p class="text-slate-600 leading-relaxed">
+          Vas a cancelar la cita de <strong class="text-clinical-textDark">{{ citaACancelar?.patientName }}</strong> del
+          <strong class="text-clinical-textDark">{{ citaACancelar?.date }}</strong> a las
+          <strong class="text-clinical-textDark">{{ citaACancelar?.time }}</strong>.
+          Esta acción es reversible desde el panel de estado.
+        </p>
+
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" [(ngModel)]="notificarPorWhatsApp" class="w-4 h-4 accent-clinical-accent" />
+          <span class="font-semibold text-slate-700">Notificar al paciente por WhatsApp</span>
+        </label>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
+        <button (click)="cerrarConfirmacionCancelar()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">No, mantener</button>
+        <button (click)="confirmarCancelacion()" class="px-4 py-2 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs">Sí, cancelar cita</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer detalle de cita -->
+  <div *ngIf="selectedApp" class="fixed inset-y-0 right-0 z-50 w-96 max-w-full bg-white border-l border-slate-200 shadow-2xl flex flex-col text-xs">
+    <div class="bg-clinical-dark p-4 text-white flex items-center justify-between shrink-0">
+      <div>
+        <h3 class="font-bold">Detalle de Consulta</h3>
+        <span class="text-[9px] text-slate-300 block">BreveMente Clinical Workflow</span>
+      </div>
+      <button (click)="closeDrawer()" class="text-slate-300 hover:text-white p-1">✕</button>
+    </div>
+
+    <div class="flex-1 p-5 overflow-y-auto space-y-4">
+      <div>
+        <span class="text-[10px] text-slate-400 font-bold uppercase block">Paciente:</span>
+        <span class="text-sm font-extrabold text-clinical-textDark block">{{ selectedApp.patientName }}</span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 border border-slate-100 rounded-xl">
+        <div><span class="text-[9px] text-slate-400 font-bold uppercase block">Fecha:</span><span class="font-bold text-clinical-textDark">{{ selectedApp.date }}</span></div>
+        <div><span class="text-[9px] text-slate-400 font-bold uppercase block">Horario:</span><span class="font-bold text-clinical-textDark">{{ selectedApp.time }}</span></div>
+        <div><span class="text-[9px] text-slate-400 font-bold uppercase block">Duración:</span><span class="font-bold text-clinical-textDark">{{ selectedApp.duration ?? 50 }} min</span></div>
+      </div>
+
+      <div class="flex items-center justify-between border-b border-slate-200 pb-1.5">
+        <span class="font-bold text-clinical-textDark">Estado de Confirmación</span>
+        <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase" [ngClass]="statusColor(selectedApp.status)">{{ statusLabel(selectedApp.status) }}</span>
+      </div>
+
+      <div *ngIf="isPatientBlocked(selectedApp.patientId)" class="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[10px]">
+        <span class="font-bold block">⚠️ Acción Bloqueada:</span>
+        <span>Se requiere firma del representante en el expediente para confirmar la sesión.</span>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button *ngIf="puedeConfirmar(selectedApp)" (click)="cambiarEstado(selectedApp, 'confirmada')" class="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px]">Confirmar</button>
+        <button *ngIf="puedeCancelar(selectedApp)" (click)="abrirConfirmacionCancelar(selectedApp)" class="flex-1 px-3 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 rounded-lg font-bold text-[11px]">Cancelar</button>
+      </div>
+
+      <button *ngIf="selectedApp.status === 'cancelada'" (click)="abrirWhatsAppCancelacion(selectedApp)" class="w-full px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] flex items-center justify-center gap-2">
+        📱 Notificar cancelación por WhatsApp
+      </button>
     </div>
   </div>
 </div>

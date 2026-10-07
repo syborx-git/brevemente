@@ -32,7 +32,7 @@ public class AuditoriaAccesoAdapter implements AuditoriaAccesoPort {
         // 2. Escribir la traza de auditoría de acceso
         Map<String, Object> detalles = baseDetalles(ip);
         detalles.put("roles", roles != null ? new ArrayList<>(roles) : List.of());
-        guardar(usuarioId, "LOGIN", detalles);
+        guardar(usuarioId, "auth", "LOGIN", detalles);
     }
 
     @Override
@@ -43,14 +43,21 @@ public class AuditoriaAccesoAdapter implements AuditoriaAccesoPort {
         Map<String, Object> detalles = baseDetalles(ip);
         detalles.put("email", email);
         detalles.put("motivo", motivo);
-        guardar(usuarioId, "LOGIN_FAILED", detalles);
+        guardar(usuarioId, "auth", "LOGIN_FAILED", detalles);
     }
 
     @Override
     public void registrarEvento(String usuarioId, String accion, String ip, String detalle) {
         Map<String, Object> detalles = baseDetalles(ip);
         detalles.put("detalle", detalle);
-        guardar(usuarioId, accion, detalles);
+        guardar(usuarioId, "auth", accion, detalles);
+    }
+
+    @Override
+    public void registrarAcceso(String usuarioId, String recurso, String accion, String ip, String detalle) {
+        Map<String, Object> detalles = baseDetalles(ip);
+        detalles.put("detalle", detalle);
+        guardar(usuarioId, recurso != null ? recurso : "auth", accion, detalles);
     }
 
     private Map<String, Object> baseDetalles(String ip) {
@@ -60,11 +67,11 @@ public class AuditoriaAccesoAdapter implements AuditoriaAccesoPort {
         return detalles;
     }
 
-    private void guardar(String usuarioId, String accion, Map<String, Object> detalles) {
+    private void guardar(String usuarioId, String recurso, String accion, Map<String, Object> detalles) {
         auditoriaAccesoRepository.save(AuditoriaAccesoJpaEntity.builder()
                 .id(UUID.randomUUID().toString())
                 .usuarioId(usuarioId)
-                .recursoAccedido("auth")
+                .recursoAccedido(recurso)
                 .accion(accion)
                 .detalles(detalles)
                 .build());

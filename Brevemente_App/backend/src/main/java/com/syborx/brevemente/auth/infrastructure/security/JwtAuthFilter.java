@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -63,7 +64,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
 
                 // 2. Mapeo de GrantedAuthorities (Roles como ROLE_<ROL> y Permisos granulares directos)
-                List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                List<GrantedAuthority> authorities = new ArrayList<>();
 
                 List<?> rawRoles = claims.get("roles", List.class);
                 if (rawRoles != null) {
@@ -83,8 +84,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     }
                 }
 
+                List<?> rawTerapeutaIds = claims.get("terapeutaIds", List.class);
+                List<String> terapeutaIds = new ArrayList<>();
+                if (rawTerapeutaIds != null) {
+                    for (Object t : rawTerapeutaIds) {
+                        if (t != null) {
+                            terapeutaIds.add(t.toString());
+                        }
+                    }
+                }
+                String pacienteId = claims.get("pacienteId", String.class);
+
+                UsuarioAutenticado principal =
+                        new UsuarioAutenticado(userId, terapeutaIds, pacienteId, authorities);
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception ex) {
