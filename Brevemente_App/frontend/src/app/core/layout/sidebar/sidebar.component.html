@@ -1,50 +1,51 @@
 <aside class="w-64 bg-clinical-dark text-white flex flex-col shrink-0 h-screen shadow-lg border-r border-slate-800 select-none">
   <!-- Brand Header -->
-  <div class="p-5 border-b border-slate-700/60 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-clinical-accent to-clinical-darkLight flex items-center justify-center shadow-md border border-clinical-accent/30 text-xl font-bold">
-        Ψ
-      </div>
-      <div>
-        <h1 class="font-bold text-lg leading-tight tracking-wide text-white">BreveMente</h1>
-        <p class="text-[10px] text-clinical-accent font-medium tracking-wider uppercase">Terapia Breve Estratégica</p>
-      </div>
+  <div class="p-5 border-b border-slate-800 flex items-center justify-center">
+    <div class="flex items-center gap-2 font-sans select-none h-10">
+      <svg viewBox="0 0 100 100" fill="none" class="h-6 w-6 shrink-0">
+        <path d="M50 85C66.5685 85 80 71.5685 80 55C80 40.5 70 30 50 30C30 30 20 40.5 20 55C20 71.5685 33.4315 85 50 85Z" fill="#75AFBC" fill-opacity="0.2"></path>
+        <path d="M50 20C33.4315 20 20 33.4315 20 50C20 62 28 72 38 77" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"></path>
+        <path d="M50 20C66.5685 20 80 33.4315 80 50C80 62 72 72 62 77" stroke="#75AFBC" stroke-width="6" stroke-linecap="round"></path>
+        <circle cx="50" cy="50" r="6" fill="#FFFFFF"></circle>
+      </svg>
+      <span class="font-extrabold text-sm tracking-wide shrink-0" style="color: rgb(255, 255, 255);">
+        Breve<span style="color: rgb(117, 175, 188);">Mente</span>
+      </span>
     </div>
-    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">v1.0</span>
   </div>
 
-  <!-- Navigation -->
-  <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-    <div *ngFor="let section of sections" class="space-y-1">
-      <h2 class="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+  <!-- Navigation Menu -->
+  <div class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+    <div *ngFor="let section of sections" class="space-y-2">
+      <span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest block px-3">
         {{ section.title }}
-      </h2>
-      <ng-container *ngFor="let item of section.items">
-        <a 
-          *ngIf="isItemVisible(item)"
-          [routerLink]="item.path" 
-          routerLinkActive="bg-clinical-darkLight text-white font-semibold border-l-4 border-clinical-accent pl-2.5 shadow-sm"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all text-xs group relative">
-          <span class="text-base group-hover:scale-110 transition-transform">{{ item.icon }}</span>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <span class="truncate">{{ item.label }}</span>
-              <span *ngIf="item.badge" class="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-clinical-accent/20 text-clinical-accent rounded border border-clinical-accent/30">
-                {{ item.badge }}
+      </span>
+      <nav class="space-y-1">
+        <ng-container *ngFor="let item of section.items">
+          <a 
+            *ngIf="isItemVisible(item)"
+            [routerLink]="item.path" 
+            routerLinkActive="active-nav-item"
+            [routerLinkActiveOptions]="{ exact: false }"
+            class="nav-link flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group font-semibold text-xs leading-normal text-slate-400 hover:text-white hover:bg-slate-800">
+            <lucide-icon [img]="item.icon" class="w-4 h-4 shrink-0 mt-0.5" strokeWidth="2"></lucide-icon>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="font-bold truncate">{{ item.label }}</span>
+              <span *ngIf="item.subtitle" class="text-[8px] text-slate-500 font-medium block mt-0.5 group-hover:text-slate-300">
+                {{ item.subtitle }}
               </span>
             </div>
-            <p *ngIf="item.subtitle" class="text-[9px] text-slate-400 truncate">{{ item.subtitle }}</p>
-          </div>
-        </a>
-      </ng-container>
+          </a>
+        </ng-container>
+      </nav>
     </div>
-  </nav>
+  </div>
 
   <!-- User Active Info Footer -->
-  <div class="p-3 border-t border-slate-700/60 bg-slate-900/40">
-    <div class="flex items-center gap-2.5 px-2 py-2">
-      <div class="w-8 h-8 rounded-full bg-clinical-accent/20 border border-clinical-accent/40 flex items-center justify-center text-xs font-bold text-clinical-accent">
-        AS
+  <div class="p-4 border-t border-slate-800 shrink-0">
+    <div class="flex items-center gap-3 px-2 py-1.5 rounded-lg text-slate-300">
+      <div class="w-8 h-8 rounded-full bg-clinical-accent/20 border border-clinical-accent/40 flex items-center justify-center text-xs font-bold text-clinical-accent shrink-0">
+        {{ getUserInitials() }}
       </div>
       <div class="flex-1 min-w-0">
         <p class="text-xs font-bold text-white truncate">{{ roleService.currentUserName }}</p>

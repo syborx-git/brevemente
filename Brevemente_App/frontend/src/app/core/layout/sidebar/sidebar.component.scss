@@ -1,3 +1,51 @@
 :host {
   display: block;
 }
+
+.nav-link {
+  &.active-nav-item {
+    background-color: #75AFBC !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important;
+
+    lucide-icon, svg {
+      color: #FFFFFF !important;
+      stroke: #FFFFFF !important;
+    }
+
+    span {
+      color: #FFFFFF !important;
+    }
+  }
+
+  &:not(.active-nav-item) {
+    color: #94a3b8;
+
+    lucide-icon, svg {
+      color: #94a3b8;
+      stroke: currentColor;
+    }
+
+    &:hover {
+      color: #FFFFFF;
+      background-color: #1e293b;
+
+      lucide-icon, svg {
+        color: #FFFFFF;
+        stroke: currentColor;
+      }
+    }
+  }
+}
+
+lucide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
