@@ -4,10 +4,13 @@ export const environment = {
   features: {
     dashboardBackend: false,
     pacientesBackend: true,
-    expedienteClinicoBackend: false,
+    expedienteClinicoBackend: true,
     agendaBackend: true,
     asistenteLevaBackend: false,
-    supervisionBackend: false,
+    supervisionBackend: true,
+    pagosBackend: true,
+    constanciasBackend: true,
+    auditoriaBackend: true,
     miConsultaBackend: false
   }
 };

@@ -12,7 +12,7 @@ export default defineConfig({
     }
   },
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:4200',
     viewport: { width: 1280, height: 720 },
     screenshot: 'on',
     trace: 'retain-on-failure',

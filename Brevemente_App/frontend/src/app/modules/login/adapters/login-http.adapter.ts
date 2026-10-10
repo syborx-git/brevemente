@@ -30,6 +30,7 @@ const VALID_ROLES: Role[] = [
   'student'
 ];
 
+// PBAC: permisos admitidos en el contrato del frontend (deben incluir PAGOS_*, CONSTANCIAS_*, SUPERVISION_REGISTRAR).
 const VALID_PERMISSIONS: Permission[] = [
   'PACIENTES_LEER',
   'PACIENTES_CREAR',
@@ -43,6 +44,10 @@ const VALID_PERMISSIONS: Permission[] = [
   'MIS_CITAS_LEER',
   'SUPERVISION_LEER',
   'SUPERVISION_EVALUAR',
+  'SUPERVISION_REGISTRAR',
+  'PAGOS_LEER',
+  'PAGOS_GESTIONAR',
+  'CONSTANCIAS_EMITIR',
   'ADMIN_USUARIOS',
   'DASHBOARD_LEER',
   'MI_CONSULTA_LEER',

@@ -8,6 +8,9 @@ export const environment = {
     agendaBackend: true,
     asistenteLevaBackend: true,
     supervisionBackend: true,
+    pagosBackend: true,
+    constanciasBackend: true,
+    auditoriaBackend: true,
     miConsultaBackend: true
   }
 };

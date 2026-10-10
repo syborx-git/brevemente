@@ -13,6 +13,10 @@ export type Permission =
   | 'MIS_CITAS_LEER'
   | 'SUPERVISION_LEER'
   | 'SUPERVISION_EVALUAR'
+  | 'SUPERVISION_REGISTRAR'
+  | 'PAGOS_LEER'
+  | 'PAGOS_GESTIONAR'
+  | 'CONSTANCIAS_EMITIR'
   | 'ADMIN_USUARIOS'
   | 'DASHBOARD_LEER'
   | 'MI_CONSULTA_LEER'
@@ -165,6 +169,19 @@ export interface ClinicalRecord {
   valoracionGlobalInicial?: string;
   objectivePatient?: string;
   objectiveTherapist?: string;
+
+  // DX Psiquiátrico (Fase 2)
+  dxNosologico?: string;
+  dsm5?: string;
+  cie11?: string;
+  comorbilidad?: string;
+  differentialDx?: string;
+  treatmentPlan?: string;
+  prognosis?: 'excelente' | 'bueno' | 'reservado' | 'malo';
+  favorableFactors?: string;
+  unfavorableFactors?: string;
+  drugsUsage?: string;
+  drugsList?: Drug[];
 }
 
 export interface Session {
@@ -189,6 +206,8 @@ export interface Session {
   situation: string;
   audioDuration?: string;
   status: 'borrador' | 'validado';
+  valoracionCambio?: VcEntry;
+  valoracionGlobal?: VgEntry;
 }
 
 export interface RiskAlert {
@@ -233,5 +252,82 @@ export interface LibraryDocument {
   content: string;
   summary: string;
   warnings?: string[];
+}
+
+export interface Drug {
+  id: string;
+  name: string;
+  doseMorning: string;
+  doseAfternoon: string;
+  doseNight: string;
+  eff: string;
+  notes: string;
+}
+
+export interface VcEntry {
+  sessionNum: number;
+  percepcion: string;
+  pensamientos: string;
+  sensaciones: string;
+  reacciones: string;
+  sintomas: string;
+  crisis: string;
+}
+
+export interface VgEntry {
+  sessionNum: number;
+  yo: boolean;
+  demas: boolean;
+  mundo: boolean;
+}
+
+export type AuditLogCategory = 'expediente' | 'sesion' | 'ia' | 'reporte' | 'seguridad' | 'riesgo' | 'pagos';
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+  role: string;
+  action: string;
+  details: string;
+  category: AuditLogCategory;
+}
+
+export interface SupervisionRequest {
+  id: string;
+  patientId: string;
+  patientName: string;
+  therapistId: string;
+  therapistName: string;
+  reason: string;
+  status: 'pendiente' | 'atendida';
+  createdAt: string;
+  attendedBy?: string;
+  attendedAt?: string;
+}
+
+export type PhysicalCertificateType = 'psicoterapeutica' | 'psiquiatrica' | 'asistencia' | 'informe_pericial' | 'justificante';
+
+export interface PhysicalCertificateLog {
+  id: string;
+  patientId: string;
+  patientName: string;
+  physicalFolio: string;
+  issueDate: string;
+  type: PhysicalCertificateType;
+  issuerName: string;
+  issuerLicense: string;
+  recipient: string;
+  purpose: string;
+  periodCovered: string;
+  sessionsCount: number;
+  clinicalSummary: string;
+  digitalScanUrl?: string;
+  scanFileName?: string;
+  deliveredTo: string;
+  status: 'entregada_en_fisico' | 'anulada';
+  registeredBy: string;
+  registeredAt: string;
 }
 
