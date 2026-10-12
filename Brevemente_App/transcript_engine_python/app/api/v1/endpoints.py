@@ -57,7 +57,7 @@ async def transcribe_async(
     request: Request,
     background_tasks: BackgroundTasks,
     file: Optional[UploadFile] = File(None, description="Archivo de audio (MP3, WAV, M4A, OGG)."),
-    file_path: Optional[str] = Form(None, description="Ruta absoluta local en volumen compartido.", examples=["/app/data/audio.mp3"]),
+    file_path: Optional[str] = Form(None, description="Ruta absoluta local en volumen compartido (dejar vacío si se sube archivo)."),
     task_id: Optional[str] = Form(None, description="UUID único de la tarea generado por Spring Boot.", examples=["c1f8a8b2-4d2a-4b91-9e8c-3a1b2c3d4e5f"]),
     callback_url: Optional[str] = Form(None, description="URL del backend donde notificar el resultado vía POST.", examples=["http://localhost:8080/api/v1/internal/transcriptions/callback"]),
     language: Optional[str] = Form("es", description="Idioma del audio ('es', 'en') o 'auto' para autodetección."),
@@ -143,7 +143,7 @@ async def transcribe_async(
 async def transcribe_sync(
     request: Request,
     file: Optional[UploadFile] = File(None, description="Archivo de audio para transcripción inmediata."),
-    file_path: Optional[str] = Form(None, description="Ruta local en el servidor.", examples=["/app/data/sample.mp3"]),
+    file_path: Optional[str] = Form(None, description="Ruta local en el servidor (dejar vacío si se sube archivo)."),
     task_id: Optional[str] = Form(None, description="UUID de la tarea.", examples=["e4d8a1c9-772b-45fc-9a6d-23910b8cf812"]),
     language: Optional[str] = Form("es", description="Idioma ('es', 'en') o 'auto'."),
     _auth: str = Security(verify_api_key),

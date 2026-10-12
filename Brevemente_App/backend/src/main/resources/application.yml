@@ -30,6 +30,13 @@ app:
       max-por-ip: 20
       ventana-minutos: 15
       bloqueo-minutos: 15
+  leva:
+    transcription-service-url: ${LEVA_TRANSCRIPTION_URL:http://localhost:8000}
+    internal-api-key: ${LEVA_INTERNAL_API_KEY:dev-secret-api-key-change-in-prod}
+    callback-url: ${LEVA_CALLBACK_URL:http://localhost:8080/api/v1/internal/transcriptions/callback}
+    ollama-url: ${LEVA_OLLAMA_URL:http://localhost:11434}
+    ollama-model: ${LEVA_OLLAMA_MODEL:llama3.1:8b}
+    ollama-timeout-seconds: 120
 
 server:
   port: 8080

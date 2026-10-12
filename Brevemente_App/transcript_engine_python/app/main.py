@@ -1,6 +1,13 @@
 import logging
+import os
 import sys
 from contextlib import asynccontextmanager
+
+# Sanitize corrupted SSL CA bundle environment variables (e.g. from broken PostgreSQL configs)
+for _ssl_var in ("CURL_CA_BUNDLE", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE"):
+    _val = os.environ.get(_ssl_var)
+    if _val and not os.path.exists(_val):
+        os.environ.pop(_ssl_var, None)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
