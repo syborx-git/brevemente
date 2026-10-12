@@ -7,6 +7,7 @@ import com.syborx.brevemente.leva.domain.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -24,12 +25,20 @@ public class OllamaLlmClient implements LocalLlmPort {
     public OllamaLlmClient(
             @Value("${app.leva.ollama-url:http://localhost:11434}") String ollamaUrl,
             @Value("${app.leva.ollama-model:llama3.1:8b}") String modelName,
+            @Value("${app.leva.ollama-timeout-seconds:180}") int timeoutSeconds,
             ObjectMapper objectMapper
     ) {
         this.ollamaUrl = ollamaUrl;
         this.modelName = modelName;
         this.objectMapper = objectMapper;
-        this.restClient = RestClient.builder().build();
+
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(10000);
+        requestFactory.setReadTimeout(Math.max(timeoutSeconds, 180) * 1000);
+
+        this.restClient = RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     @Override
@@ -68,7 +77,11 @@ public class OllamaLlmClient implements LocalLlmPort {
                     ),
                     "stream", false,
                     "format", "json",
-                    "options", Map.of("temperature", 0.1)
+                    "options", Map.of(
+                            "temperature", 0.1,
+                            "num_predict", 800,
+                            "num_ctx", 4096
+                    )
             );
 
             String responseBody = restClient.post()
@@ -107,9 +120,9 @@ public class OllamaLlmClient implements LocalLlmPort {
 
         String systemPrompt = """
             Eres LEVA, copiloto clínico para Terapia Breve Estratégica.
-            Responde a la consulta del terapeuta o alumno apoyándote EXCLUSIVAMENTE en los protocolos y manuales adjuntos.
-            Si la información no se encuentra en el texto proporcionado, indica con profesionalismo que no está documentada en el corpus clínico cerrado.
-            Cita el código del protocolo al responder.
+            Responde a la consulta del terapeuta o alumno apoyándote EXCLUSIVAMENTE en los protocolos adjuntos.
+            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita el código del protocolo al responder.
+            Si no se encuentra en el texto, indica amablemente que no está documentado en el corpus.
             """;
 
         String userPrompt = "CORPUS CLÍNICO CERRADO:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
@@ -122,7 +135,11 @@ public class OllamaLlmClient implements LocalLlmPort {
                             Map.of("role", "user", "content", userPrompt)
                     ),
                     "stream", false,
-                    "options", Map.of("temperature", 0.2)
+                    "options", Map.of(
+                            "temperature", 0.2,
+                            "num_predict", 250,
+                            "num_ctx", 2048
+                    )
             );
 
             String responseBody = restClient.post()

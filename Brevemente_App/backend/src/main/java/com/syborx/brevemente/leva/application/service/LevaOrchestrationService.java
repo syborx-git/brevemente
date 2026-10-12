@@ -161,9 +161,32 @@ public class LevaOrchestrationService implements
     public ClosedCorpusQueryResult queryCorpus(String query, String protocolFilter) {
         log.info("[LEVA Engine] Ejecutando consulta RAG sobre corpus cerrado: '{}' (Filtro: {})", query, protocolFilter);
 
-        List<ClinicalCorpusDocument> contextDocuments = corpusRepositoryPort.searchByKeywordsOrProtocol(query, protocolFilter);
+        List<ClinicalCorpusDocument> contextDocuments = new ArrayList<>();
+
+        // 1. Si el terapeuta seleccionó un filtro de protocolo, buscar directamente por su código
+        if (protocolFilter != null && !protocolFilter.isBlank()) {
+            corpusRepositoryPort.findByProtocolCode(protocolFilter.trim())
+                    .ifPresent(contextDocuments::add);
+        }
+
+        // 2. Si no se encontró por código o no había filtro, buscar por palabras clave
         if (contextDocuments.isEmpty()) {
-            contextDocuments = corpusRepositoryPort.findAll();
+            contextDocuments = corpusRepositoryPort.searchByKeywordsOrProtocol(query, protocolFilter);
+        }
+
+        // 3. Fallback clínico: Seleccionar el documento más afín en vez de sobrecargar la CPU con todos
+        if (contextDocuments.isEmpty()) {
+            List<ClinicalCorpusDocument> allDocs = corpusRepositoryPort.findAll();
+            if (!allDocs.isEmpty()) {
+                String lowerQuery = (query != null) ? query.toLowerCase() : "";
+                ClinicalCorpusDocument bestDoc = allDocs.stream()
+                        .filter(d -> (lowerQuery.contains("pánico") || lowerQuery.contains("panico") || lowerQuery.contains("fobia")) && d.getProtocolCode().contains("PANICO") ||
+                                     (lowerQuery.contains("toc") || lowerQuery.contains("obsesi")) && d.getProtocolCode().contains("TOC") ||
+                                     (lowerQuery.contains("depres") || lowerQuery.contains("triste")) && d.getProtocolCode().contains("DEPRESION"))
+                        .findFirst()
+                        .orElse(allDocs.get(0));
+                contextDocuments.add(bestDoc);
+            }
         }
 
         String answer = localLlmPort.queryClosedCorpus(query, contextDocuments);
