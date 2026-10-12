@@ -47,6 +47,18 @@ public class SecurityContextIdentidadAdapter implements IdentidadAutenticadaPort
                         || a.equals("ROLE_ADMIN_PLATFORM"));
     }
 
+    @Override
+    public String sub() {
+        UsuarioAutenticado principal = principal();
+        return principal != null ? principal.sub() : null;
+    }
+
+    @Override
+    public boolean tieneRol(String rol) {
+        String authority = "ROLE_" + (rol == null ? "" : rol.toUpperCase());
+        return tieneAutoridad(authority);
+    }
+
     private boolean tieneAutoridad(String authority) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {

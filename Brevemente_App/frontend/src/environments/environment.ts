@@ -2,7 +2,7 @@ export const environment = {
   production: false,
   apiBaseUrl: '/api/v1',
   features: {
-    dashboardBackend: false,
+    dashboardBackend: true,
     pacientesBackend: true,
     expedienteClinicoBackend: true,
     agendaBackend: true,

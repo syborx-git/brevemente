@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,4 +60,25 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             FROM pacientes p WHERE p.id = :pacienteId
             """, nativeQuery = true)
     Optional<String> findPatientName(@Param("pacienteId") String pacienteId);
+
+    long countByFechaHoraInicioBetweenAndEstadoCitaIn(
+            OffsetDateTime inicio, OffsetDateTime fin, Collection<String> estados);
+
+    List<CitaJpaEntity> findAllByFechaHoraInicioBetweenAndEstadoCitaInOrderByFechaHoraInicioAsc(
+            OffsetDateTime inicio, OffsetDateTime fin, Collection<String> estados);
+
+    Optional<CitaJpaEntity> findFirstByFechaHoraInicioBetweenAndEstadoCitaInOrderByFechaHoraInicioAsc(
+            OffsetDateTime inicio, OffsetDateTime fin, Collection<String> estados);
+
+    long countByFechaHoraInicioBetweenAndEstadoCitaInAndTerapeutaIdIn(
+            OffsetDateTime inicio, OffsetDateTime fin, Collection<String> estados,
+            Collection<String> terapeutaIds);
+
+    List<CitaJpaEntity> findAllByFechaHoraInicioBetweenAndEstadoCitaInAndTerapeutaIdInOrderByFechaHoraInicioAsc(
+            OffsetDateTime inicio, OffsetDateTime fin, Collection<String> estados,
+            Collection<String> terapeutaIds);
+
+    Optional<CitaJpaEntity> findFirstByFechaHoraInicioBetweenAndEstadoCitaInAndTerapeutaIdInOrderByFechaHoraInicioAsc(
+            OffsetDateTime inicio, OffsetDateTime fin, Collection<String> estados,
+            Collection<String> terapeutaIds);
 }

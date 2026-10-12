@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { DashboardRepository, DashboardStats, UrgentAlert } from './ports/dashboard.repository';
 import { DashboardLocalStorageAdapter } from './adapters/dashboard-localstorage.adapter';
 import { DashboardHttpAdapter } from './adapters/dashboard-http.adapter';
-import { Appointment, Patient } from '../../core/types/clinical.types';
+import { Appointment, PacienteResumen } from '../../core/types/clinical.types';
 import { formatEstadoConsentimientoLabel } from '../../core/utils/consentimiento.utils';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
@@ -29,10 +29,10 @@ import { environment } from '../../../environments/environment';
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
-  stats: DashboardStats = { totalPacientes: 0, citasHoyCount: 0, alertasPendientes: 0, horasSupervisadas: 0 };
+  stats: DashboardStats = { pacientesActivos: 0, citasHoyCount: 0, alertasConsentimiento: 0, alertasRiesgo: 0, pendientesClinicos: 0 };
   citasHoy: Appointment[] = [];
   alertasUrgentes: UrgentAlert[] = [];
-  pacientesRecientes: Patient[] = [];
+  pacientesRecientes: PacienteResumen[] = [];
 
   constructor(
     private readonly dashboardRepo: DashboardRepository,
