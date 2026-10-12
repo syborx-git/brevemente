@@ -1,0 +1,33 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: brevemente-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  ollama-model-puller:
+    image: curlimages/curl:latest
+    container_name: brevemente-ollama-model-puller
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "Verificando y descargando LLaMA 3.1 8B en Ollama..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "llama3.1:8b"}'
+        echo "LLaMA 3.1 8B listo para LEVA."
+    restart: "no"
+
+volumes:
+  ollama_data:
+    name: brevemente_ollama_data

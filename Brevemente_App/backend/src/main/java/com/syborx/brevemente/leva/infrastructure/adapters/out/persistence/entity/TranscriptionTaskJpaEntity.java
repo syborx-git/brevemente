@@ -40,8 +40,8 @@ public class TranscriptionTaskJpaEntity {
     @Column(name = "audio_file_name", length = 255)
     private String audioFileName;
 
-    @Column(name = "duration_seconds")
-    private Double durationSeconds;
+    @Column(name = "duration_seconds", precision = 10, scale = 2)
+    private java.math.BigDecimal durationSeconds;
 
     @Column(name = "language_detected", length = 10)
     private String languageDetected;
