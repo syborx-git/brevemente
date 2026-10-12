@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { DashboardRepository, DashboardStats, UrgentAlert } from '../ports/dashboard.repository';
-import { Appointment, Patient } from '../../../core/types/clinical.types';
+import { Appointment, PacienteResumen } from '../../../core/types/clinical.types';
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +24,7 @@ export class DashboardHttpAdapter implements DashboardRepository {
     return this.http.get<UrgentAlert[]>(`${this.apiUrl}/alertas`);
   }
 
-  obtenerPacientesRecientes(): Observable<Patient[]> {
-    return this.http.get<Patient[]>(`${this.apiUrl}/pacientes-recientes`);
+  obtenerPacientesRecientes(): Observable<PacienteResumen[]> {
+    return this.http.get<PacienteResumen[]>(`${this.apiUrl}/pacientes-recientes`);
   }
 }

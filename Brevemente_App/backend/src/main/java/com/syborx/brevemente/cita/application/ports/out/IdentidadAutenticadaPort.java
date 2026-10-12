@@ -13,4 +13,14 @@ public interface IdentidadAutenticadaPort {
 
     /** Indica si el principal puede ver la agenda completa (AGENDA_LEER/AGENDA_GESTIONAR), frente al patient. */
     boolean puedeVerAgendaCompleta();
+
+    /** Devuelve el identificador de sujeto del principal (claim {@code sub}). */
+    String sub();
+
+    /**
+     * Indica si las autoridades del principal contienen {@code ROLE_<rol en mayúsculas>}.
+     *
+     * @param rol nombre del rol sin prefijo (p. ej. {@code "therapist"}).
+     */
+    boolean tieneRol(String rol);
 }

@@ -104,6 +104,14 @@ export interface Patient {
   sessionFrequency?: 'semanal' | 'quincenal' | 'mensual';
 }
 
+export interface PacienteResumen {
+  id: string;
+  name: string;
+  curp: string;
+  edadCalculada: number;
+  capacidadConsentimiento?: CapacidadConsentimiento;
+}
+
 export interface Appointment {
   id: string;
   patientId: string;

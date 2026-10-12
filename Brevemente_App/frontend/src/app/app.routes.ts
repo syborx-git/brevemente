@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './core/layout/main-layout/main-layout.component';
 import { authGuard } from './core/guards/auth.guard';
+import { permissionGuard } from './core/guards/permission.guard';
 
 export const routes: Routes = [
   // Login fuera del shell: pantalla de acceso independiente.
@@ -21,6 +22,7 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
+        canActivate: [permissionGuard],
         loadComponent: () => import('./modules/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {

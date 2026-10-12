@@ -8,8 +8,10 @@ import com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.ma
 import com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.repository.SpringDataPacienteRepository;
 import com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.repository.SpringDataTerapeutaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,6 +57,88 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
         PacienteJpaEntity jpaEntity = pacientePersistenceMapper.toJpaEntity(paciente, terapeuta);
         PacienteJpaEntity saved = springDataPacienteRepository.save(jpaEntity);
         return pacientePersistenceMapper.toDomain(saved, resolveTherapistName(saved));
+    }
+
+    @Override
+    public long countByStatus(String status, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return 0;
+        }
+        return terapeutaIds == null
+                ? springDataPacienteRepository.countByStatus(status)
+                : springDataPacienteRepository.countByStatusAndTerapeutaIds(status, terapeutaIds);
+    }
+
+    @Override
+    public long countByRiskLevelIn(Collection<String> niveles, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return 0;
+        }
+        return terapeutaIds == null
+                ? springDataPacienteRepository.countByRiskLevelIn(niveles)
+                : springDataPacienteRepository.countByRiskLevelInAndTerapeutaIds(niveles, terapeutaIds);
+    }
+
+    @Override
+    public List<Paciente> findByRiskLevelIn(Collection<String> niveles, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findByRiskLevelIn(niveles)
+                : springDataPacienteRepository.findByRiskLevelInAndTerapeutaIds(niveles, terapeutaIds);
+        return entities.stream()
+                .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)))
+                .toList();
+    }
+
+    @Override
+    public List<Paciente> findByStatus(String status, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findByStatus(status)
+                : springDataPacienteRepository.findByStatusAndTerapeutaIds(status, terapeutaIds);
+        return entities.stream()
+                .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)))
+                .toList();
+    }
+
+    @Override
+    public List<Paciente> findRecientes(int limit, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit))
+                : springDataPacienteRepository.findRecientesByTerapeutaIds(terapeutaIds, PageRequest.of(0, limit));
+        return entities.stream()
+                .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)))
+                .toList();
+    }
+
+    @Override
+    public long countConConsentimientoPendiente(Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return 0;
+        }
+        return terapeutaIds == null
+                ? springDataPacienteRepository.countConConsentimientoPendiente()
+                : springDataPacienteRepository.countConConsentimientoPendienteByTerapeutaIds(terapeutaIds);
+    }
+
+    @Override
+    public List<Paciente> findConConsentimientoPendiente(Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findConConsentimientoPendiente()
+                : springDataPacienteRepository.findConConsentimientoPendienteByTerapeutaIds(terapeutaIds);
+        return entities.stream()
+                .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)))
+                .toList();
     }
 
     private String resolveTherapistName(PacienteJpaEntity entity) {

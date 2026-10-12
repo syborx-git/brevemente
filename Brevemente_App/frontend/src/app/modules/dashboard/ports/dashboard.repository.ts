@@ -1,16 +1,17 @@
 import { Observable } from 'rxjs';
-import { Appointment, Patient } from '../../../core/types/clinical.types';
+import { Appointment, PacienteResumen } from '../../../core/types/clinical.types';
 
 export interface DashboardStats {
-  totalPacientes: number;
+  pacientesActivos: number;
   citasHoyCount: number;
-  alertasPendientes: number;
-  horasSupervisadas: number;
+  alertasConsentimiento: number;
+  alertasRiesgo: number;
+  pendientesClinicos: number;
 }
 
 export interface UrgentAlert {
   id: string;
-  tipo: 'CONSENTIMIENTO' | 'RIESGO' | 'SUPERVISION';
+  tipo: 'CONSENTIMIENTO' | 'RIESGO' | 'PENDIENTE_CLINICO';
   titulo: string;
   descripcion: string;
   pacienteId: string;
@@ -21,5 +22,5 @@ export abstract class DashboardRepository {
   abstract obtenerStats(): Observable<DashboardStats>;
   abstract obtenerCitasHoy(): Observable<Appointment[]>;
   abstract obtenerAlertasUrgentes(): Observable<UrgentAlert[]>;
-  abstract obtenerPacientesRecientes(): Observable<Patient[]>;
+  abstract obtenerPacientesRecientes(): Observable<PacienteResumen[]>;
 }

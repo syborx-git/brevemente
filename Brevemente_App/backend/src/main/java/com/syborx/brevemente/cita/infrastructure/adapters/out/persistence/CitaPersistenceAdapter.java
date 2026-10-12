@@ -9,7 +9,10 @@ import com.syborx.brevemente.cita.infrastructure.adapters.out.persistence.reposi
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,6 +57,60 @@ public class CitaPersistenceAdapter implements CitaRepositoryPort {
     public boolean existeSolapamiento(String terapeutaId, String pacienteId,
                                       OffsetDateTime inicio, OffsetDateTime fin, String excluirId) {
         return springDataCitaRepository.countOverlap(terapeutaId, pacienteId, inicio, fin, excluirId) > 0;
+    }
+
+    @Override
+    public long countByDia(LocalDate dia, Collection<String> estados, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return 0;
+        }
+        OffsetDateTime[] rango = rangoDia(dia);
+        return terapeutaIds == null
+                ? springDataCitaRepository.countByFechaHoraInicioBetweenAndEstadoCitaIn(rango[0], rango[1], estados)
+                : springDataCitaRepository.countByFechaHoraInicioBetweenAndEstadoCitaInAndTerapeutaIdIn(
+                        rango[0], rango[1], estados, terapeutaIds);
+    }
+
+    @Override
+    public List<Cita> findByDia(LocalDate dia, Collection<String> estados, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        OffsetDateTime[] rango = rangoDia(dia);
+        List<CitaJpaEntity> entities = terapeutaIds == null
+                ? springDataCitaRepository
+                        .findAllByFechaHoraInicioBetweenAndEstadoCitaInOrderByFechaHoraInicioAsc(
+                                rango[0], rango[1], estados)
+                : springDataCitaRepository
+                        .findAllByFechaHoraInicioBetweenAndEstadoCitaInAndTerapeutaIdInOrderByFechaHoraInicioAsc(
+                                rango[0], rango[1], estados, terapeutaIds);
+        return entities.stream()
+                .map(e -> citaPersistenceMapper.toDomain(e, resolvePatientName(e)))
+                .toList();
+    }
+
+    @Override
+    public Optional<Cita> findProximaDeHoy(LocalDate dia, Collection<String> estados,
+                                           Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return Optional.empty();
+        }
+        OffsetDateTime[] rango = rangoDia(dia);
+        Optional<CitaJpaEntity> entity = terapeutaIds == null
+                ? springDataCitaRepository
+                        .findFirstByFechaHoraInicioBetweenAndEstadoCitaInOrderByFechaHoraInicioAsc(
+                                rango[0], rango[1], estados)
+                : springDataCitaRepository
+                        .findFirstByFechaHoraInicioBetweenAndEstadoCitaInAndTerapeutaIdInOrderByFechaHoraInicioAsc(
+                                rango[0], rango[1], estados, terapeutaIds);
+        return entity.map(e -> citaPersistenceMapper.toDomain(e, resolvePatientName(e)));
+    }
+
+    private OffsetDateTime[] rangoDia(LocalDate dia) {
+        ZoneId zona = ZoneId.of("America/Mexico_City");
+        OffsetDateTime inicio = dia.atStartOfDay(zona).toOffsetDateTime();
+        OffsetDateTime fin = dia.plusDays(1).atStartOfDay(zona).toOffsetDateTime();
+        return new OffsetDateTime[]{inicio, fin};
     }
 
     private String resolvePatientName(CitaJpaEntity entity) {

@@ -73,6 +73,28 @@ export class RoleStateService {
     return permissions.every((p) => this.permissions.includes(p));
   }
 
+  /** Helpers de rol basados en el conjunto completo `roles` (no `activeRole`). */
+
+  esTerapeuta(): boolean {
+    return this.hasRole('therapist');
+  }
+
+  esSupervisor(): boolean {
+    return this.hasRole('supervisor');
+  }
+
+  esAsistente(): boolean {
+    return this.hasRole('assistant');
+  }
+
+  esAdmin(): boolean {
+    return this.hasRole('admin_platform') || this.hasRole('admin_clinical');
+  }
+
+  esAsistenteOperativo(): boolean {
+    return this.esAsistente() && !this.esTerapeuta() && !this.esSupervisor() && !this.esAdmin();
+  }
+
   /**
    * Conmuta el rol activo si el usuario posee dicho rol.
    */
