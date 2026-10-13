@@ -22,6 +22,8 @@ from app.schemas.transcription import (
     ConcurrencyStatus,
     PerformanceSettingsStatus,
 )
+from app.services.diarization_service import DiarizationService
+
 
 logger = logging.getLogger("transcription_engine.whisper_service")
 
@@ -40,6 +42,7 @@ class WhisperService:
         self._semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_TRANSCRIPTIONS)
         self._active_tasks = 0
         self._lock = asyncio.Lock()
+        self.diarization_service = DiarizationService(settings)
 
     def is_loaded(self) -> bool:
         return self._model is not None
@@ -53,6 +56,7 @@ class WhisperService:
             cpu_threads=self.settings.WHISPER_CPU_THREADS,
             condition_on_previous_text=self.settings.WHISPER_CONDITION_ON_PREVIOUS_TEXT,
             vad_min_silence_ms=self.settings.WHISPER_VAD_MIN_SILENCE_DURATION_MS,
+            diarization_engine=self.diarization_service.get_engine_name(),
         )
 
     async def load_model(self) -> None:
@@ -60,6 +64,8 @@ class WhisperService:
         Loads the faster-whisper model and initializes BatchedInferencePipeline
         once during application startup inside asyncio.to_thread.
         """
+        self.diarization_service.initialize()
+
         logger.info(
             f"Pre-loading Whisper model: size='{self.settings.WHISPER_MODEL_SIZE}', "
             f"device='{self.settings.WHISPER_DEVICE}', compute_type='{self.settings.WHISPER_COMPUTE_TYPE}', "
@@ -92,6 +98,45 @@ class WhisperService:
         elapsed = time.time() - start_time
         logger.info(f"Whisper model initialized in {elapsed:.2f} seconds.")
 
+    async def switch_model(self, model_name: str, compute_type: Optional[str] = None) -> dict:
+        """
+        Dynamically unloads current Whisper model and loads the requested model into memory.
+        """
+        async with self._lock:
+            old_name = self.settings.WHISPER_MODEL_SIZE
+            old_compute = self.settings.WHISPER_COMPUTE_TYPE
+            target_compute = compute_type or old_compute
+
+            logger.info(
+                f"[Whisper Model Switch] Cambiando modelo de '{old_name}' a '{model_name}' "
+                f"(compute_type='{target_compute}')..."
+            )
+            old_model = self._model
+            old_pipeline = self._batched_pipeline
+
+            self.settings.WHISPER_MODEL_SIZE = model_name
+            self.settings.WHISPER_COMPUTE_TYPE = target_compute
+
+            try:
+                await self.load_model()
+                del old_model
+                del old_pipeline
+                logger.info(f"[Whisper Model Switch] Modelo '{model_name}' activado con éxito en RAM.")
+                return {
+                    "status": "success",
+                    "previous_model": old_name,
+                    "active_model": self.settings.WHISPER_MODEL_SIZE,
+                    "compute_type": self.settings.WHISPER_COMPUTE_TYPE,
+                    "device": self.settings.WHISPER_DEVICE,
+                }
+            except Exception as exc:
+                logger.error(f"[Whisper Model Switch] Error al cargar modelo '{model_name}': {exc}. Restaurando previo '{old_name}'.")
+                self.settings.WHISPER_MODEL_SIZE = old_name
+                self.settings.WHISPER_COMPUTE_TYPE = old_compute
+                self._model = old_model
+                self._batched_pipeline = old_pipeline
+                raise exc
+
     async def get_concurrency_status(self) -> ConcurrencyStatus:
         """Returns the real-time concurrency status."""
         async with self._lock:
@@ -113,6 +158,8 @@ class WhisperService:
 
         target_lang = language if (language and language.lower() != "auto") else None
         vad_params = dict(min_silence_duration_ms=self.settings.WHISPER_VAD_MIN_SILENCE_DURATION_MS)
+        # LEVA: contexto clínico para sesgar el vocabulario (None si está vacío)
+        initial_prompt = (self.settings.WHISPER_INITIAL_PROMPT or "").strip() or None
 
         # Execute via Batched pipeline if available, otherwise standard transcribe
         if self._batched_pipeline is not None:
@@ -124,6 +171,7 @@ class WhisperService:
                 beam_size=self.settings.WHISPER_BEAM_SIZE,
                 vad_filter=True,
                 vad_parameters=vad_params,
+                initial_prompt=initial_prompt,
             )
         else:
             logger.debug(f"Transcribing via standard WhisperModel (beam_size={self.settings.WHISPER_BEAM_SIZE})...")
@@ -134,6 +182,7 @@ class WhisperService:
                 condition_on_previous_text=self.settings.WHISPER_CONDITION_ON_PREVIOUS_TEXT,
                 vad_filter=True,
                 vad_parameters=vad_params,
+                initial_prompt=initial_prompt,
             )
 
         segments: List[TranscriptSegment] = []
@@ -167,6 +216,13 @@ class WhisperService:
         full_text = " ".join(text_parts).strip()
         duration_seconds = round(info.duration, 2) if info.duration else 0.0
         detected_language = info.language
+
+        # Acoustic Speaker Diarization
+        if self.diarization_service.is_enabled():
+            try:
+                segments = self.diarization_service.diarize_segments(audio_path, segments)
+            except Exception as d_err:
+                logger.warning(f"Acoustic diarization encountered an issue: {d_err}. Keeping standard segments.")
 
         return full_text, segments, duration_seconds, detected_language
 

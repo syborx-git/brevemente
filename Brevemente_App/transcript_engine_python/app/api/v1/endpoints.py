@@ -24,6 +24,8 @@ from app.dependencies import get_whisper_service, verify_api_key
 from app.schemas.transcription import (
     AsyncTranscriptionInitResponse,
     HealthResponse,
+    ModelListResponse,
+    ModelSwitchRequest,
     TranscriptionResponse,
     TranscriptionStatus,
 )
@@ -235,3 +237,56 @@ async def health_check(
         concurrency=concurrency_stats,
         performance=performance_stats,
     )
+
+
+@router.get(
+    "/models",
+    response_model=ModelListResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["Monitoring"],
+    summary="List available Whisper model profiles",
+)
+async def list_models(
+    _auth: str = Security(verify_api_key),
+    whisper_service: WhisperService = Depends(get_whisper_service),
+):
+    """
+    Lista los perfiles de modelos disponibles (base, small, large-v3-turbo, large-v3)
+    y señala cuál está actualmente activo en memoria.
+    """
+    profiles = settings.get_supported_model_profiles(settings.WHISPER_MODEL_SIZE)
+    return ModelListResponse(
+        active_model=settings.WHISPER_MODEL_SIZE,
+        device=settings.WHISPER_DEVICE,
+        compute_type=settings.WHISPER_COMPUTE_TYPE,
+        available_models=profiles,
+    )
+
+
+@router.post(
+    "/models/switch",
+    status_code=status.HTTP_200_OK,
+    tags=["Monitoring"],
+    summary="Switch Whisper model dynamically in memory",
+)
+async def switch_model(
+    payload: ModelSwitchRequest,
+    _auth: str = Security(verify_api_key),
+    whisper_service: WhisperService = Depends(get_whisper_service),
+):
+    """
+    Cambia dinámicamente el modelo cargado en memoria RAM (por ejemplo, a 'large-v3-turbo')
+    sin necesidad de reiniciar el microservicio.
+    """
+    try:
+        result = await whisper_service.switch_model(
+            model_name=payload.model_name,
+            compute_type=payload.compute_type,
+        )
+        return result
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"No se pudo cargar el modelo '{payload.model_name}': {str(exc)}",
+        )
+

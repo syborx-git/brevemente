@@ -32,10 +32,32 @@ public class LevaCorpusController {
         return ResponseEntity.ok(CorpusQueryResponse.fromDomain(result));
     }
 
+    @GetMapping(value = "/query/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(
+            summary = "Consultar el corpus clínico vía streaming SSE (Fase 4)",
+            description = "Emite la respuesta token a token en tiempo real mediante Server-Sent Events (SSE) para el frontend de Angular, reduciendo la latencia percibida a menos de 1 segundo."
+    )
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamQueryCorpus(
+            @RequestParam @jakarta.validation.constraints.NotBlank String query,
+            @RequestParam(required = false) String protocolFilter
+    ) {
+        log.info("[LEVA Corpus API] Streaming SSE recibido para: '{}' (Filtro: {})", query, protocolFilter);
+        return queryCorpusUseCase.streamQueryCorpus(query, protocolFilter);
+    }
+
+
     @GetMapping("/protocols")
     @Operation(summary = "Listar protocolos disponibles en el corpus", description = "Lista todos los protocolos TBE y guías cargadas en el corpus cerrado de LEVA")
     public ResponseEntity<List<ClinicalCorpusDocument>> listProtocols() {
         List<ClinicalCorpusDocument> protocols = queryCorpusUseCase.listAvailableProtocols();
         return ResponseEntity.ok(protocols);
+    }
+
+    @PostMapping("/cache/evict")
+    @Operation(summary = "Limpiar caché en memoria del corpus", description = "Invalida la memoria caché de consultas RAG y protocolos para forzar nueva inferencia en Ollama")
+    public ResponseEntity<Void> evictCache() {
+        log.info("[LEVA Corpus API] Solicitud de invalidación de caché recibida.");
+        queryCorpusUseCase.evictCorpusCache();
+        return ResponseEntity.noContent().build();
     }
 }

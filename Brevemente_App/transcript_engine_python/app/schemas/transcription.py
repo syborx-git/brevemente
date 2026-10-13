@@ -49,6 +49,7 @@ class PerformanceSettingsStatus(BaseModel):
     cpu_threads: int = Field(..., description="Threads allocated for CPU inference")
     condition_on_previous_text: bool = Field(..., description="Anti-hallucination condition flag")
     vad_min_silence_ms: int = Field(..., description="Minimum silence duration for VAD filter in ms")
+    diarization_engine: Optional[str] = Field(default=None, description="Active speaker diarization engine")
 
 
 class HealthResponse(BaseModel):
@@ -59,3 +60,24 @@ class HealthResponse(BaseModel):
     compute_type: str = Field(..., description="Quantization / compute type (int8/float16/float32)")
     concurrency: ConcurrencyStatus = Field(..., description="Real-time semaphore availability")
     performance: PerformanceSettingsStatus = Field(..., description="Active long-audio optimization settings")
+
+
+class ModelProfileInfo(BaseModel):
+    name: str = Field(..., description="Nombre del modelo en faster-whisper")
+    description: str = Field(..., description="Propósito y características clínicas")
+    size_mb: int = Field(..., description="Tamaño aproximado en MB")
+    recommended_for: str = Field(..., description="Escenario de uso recomendado")
+    is_active: bool = Field(default=False, description="Indica si es el modelo actualmente en memoria")
+
+
+class ModelListResponse(BaseModel):
+    active_model: str = Field(..., description="Modelo actualmente cargado")
+    device: str = Field(..., description="Dispositivo de ejecución")
+    compute_type: str = Field(..., description="Tipo de cómputo / cuantización")
+    available_models: List[ModelProfileInfo] = Field(..., description="Catálogo de modelos disponibles")
+
+
+class ModelSwitchRequest(BaseModel):
+    model_name: str = Field(..., description="Nombre del modelo a cargar (e.g. 'large-v3-turbo', 'small', 'base')")
+    compute_type: Optional[str] = Field(None, description="Opcional: cambiar tipo de cómputo (e.g. 'int8', 'float16')")
+

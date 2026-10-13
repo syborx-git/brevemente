@@ -12,8 +12,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.syborx.brevemente.config.CacheConfig;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -31,6 +37,8 @@ public class LevaOrchestrationService implements
     private final TranscriptionTaskRepositoryPort taskRepositoryPort;
     private final LevaProposalRepositoryPort proposalRepositoryPort;
     private final ClinicalCorpusRepositoryPort corpusRepositoryPort;
+    private final CacheManager cacheManager;
+
 
     @Value("${app.leva.callback-url:http://localhost:8080/api/v1/internal/transcriptions/callback}")
     private String defaultCallbackUrl;
@@ -158,9 +166,101 @@ public class LevaOrchestrationService implements
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_CORPUS_QUERIES, keyGenerator = "corpusQueryKeyGenerator")
     public ClosedCorpusQueryResult queryCorpus(String query, String protocolFilter) {
-        log.info("[LEVA Engine] Ejecutando consulta RAG sobre corpus cerrado: '{}' (Filtro: {})", query, protocolFilter);
+        log.info("[LEVA Engine - Cache MISS] Ejecutando consulta RAG sobre corpus cerrado: '{}' (Filtro: {})", query, protocolFilter);
 
+        List<ClinicalCorpusDocument> contextDocuments = resolveContextDocuments(query, protocolFilter);
+        String answer = localLlmPort.queryClosedCorpus(query, contextDocuments);
+
+        List<ClosedCorpusQueryResult.CitedSource> citedSources = contextDocuments.stream()
+                .map(doc -> ClosedCorpusQueryResult.CitedSource.builder()
+                        .protocolCode(doc.getProtocolCode())
+                        .title(doc.getTitle())
+                        .category(doc.getCategory())
+                        .reference(doc.getSourceReference())
+                        .build())
+                .toList();
+
+        return ClosedCorpusQueryResult.builder()
+                .query(query)
+                .answer(answer)
+                .citedSources(citedSources)
+                .groundedInCorpus(true)
+                .build();
+    }
+
+    @Override
+    public SseEmitter streamQueryCorpus(String query, String protocolFilter) {
+        SseEmitter emitter = new SseEmitter(120000L);
+
+        String queryNorm = (query != null) ? query.trim().toLowerCase().replaceAll("\\s+", " ") : "";
+        String filterNorm = (protocolFilter != null) ? protocolFilter.trim().toLowerCase() : "none";
+        String cacheKey = "q:" + queryNorm + "|f:" + filterNorm;
+
+        org.springframework.cache.Cache cache = cacheManager.getCache(CacheConfig.CACHE_CORPUS_QUERIES);
+        if (cache != null && cache.get(cacheKey) != null) {
+            ClosedCorpusQueryResult cached = (ClosedCorpusQueryResult) cache.get(cacheKey).get();
+            if (cached != null) {
+                log.info("[LEVA Engine - Stream HIT] Respuesta en caché para '{}'. Transmitiendo en 0ms.", query);
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        emitter.send(SseEmitter.event().name("token").data(cached.getAnswer()));
+                        emitter.send(SseEmitter.event().name("complete").data("[DONE]"));
+                        emitter.complete();
+                    } catch (Exception e) {
+                        emitter.completeWithError(e);
+                    }
+                });
+                return emitter;
+            }
+        }
+
+        List<ClinicalCorpusDocument> contextDocuments = resolveContextDocuments(query, protocolFilter);
+
+        CompletableFuture.runAsync(() -> {
+            StringBuilder accumulatedAnswer = new StringBuilder();
+            try {
+                localLlmPort.streamQueryClosedCorpus(
+                        query,
+                        contextDocuments,
+                        chunk -> {
+                            try {
+                                accumulatedAnswer.append(chunk);
+                                emitter.send(SseEmitter.event().name("token").data(chunk));
+                            } catch (Exception e) {
+                                log.warn("[LEVA Stream] Error transmitiendo token SSE: {}", e.getMessage());
+                            }
+                        },
+                        () -> {
+                            try {
+                                if (cache != null && !accumulatedAnswer.isEmpty()) {
+                                    cache.put(cacheKey, ClosedCorpusQueryResult.builder()
+                                            .query(query)
+                                            .answer(accumulatedAnswer.toString())
+                                            .groundedInCorpus(true)
+                                            .build());
+                                }
+                                emitter.send(SseEmitter.event().name("complete").data("[DONE]"));
+                                emitter.complete();
+                            } catch (Exception e) {
+                                emitter.completeWithError(e);
+                            }
+                        },
+                        error -> {
+                            log.error("[LEVA Stream] Error en stream de LLM: {}", error.getMessage());
+                            emitter.completeWithError(error);
+                        }
+                );
+            } catch (Exception ex) {
+                emitter.completeWithError(ex);
+            }
+        });
+
+        return emitter;
+    }
+
+    private List<ClinicalCorpusDocument> resolveContextDocuments(String query, String protocolFilter) {
         List<ClinicalCorpusDocument> contextDocuments = new ArrayList<>();
 
         // 1. Si el terapeuta seleccionó un filtro de protocolo, buscar directamente por su código
@@ -188,30 +288,21 @@ public class LevaOrchestrationService implements
                 contextDocuments.add(bestDoc);
             }
         }
-
-        String answer = localLlmPort.queryClosedCorpus(query, contextDocuments);
-
-        List<ClosedCorpusQueryResult.CitedSource> citedSources = contextDocuments.stream()
-                .map(doc -> ClosedCorpusQueryResult.CitedSource.builder()
-                        .protocolCode(doc.getProtocolCode())
-                        .title(doc.getTitle())
-                        .category(doc.getCategory())
-                        .reference(doc.getSourceReference())
-                        .build())
-                .toList();
-
-        return ClosedCorpusQueryResult.builder()
-                .query(query)
-                .answer(answer)
-                .citedSources(citedSources)
-                .groundedInCorpus(true)
-                .build();
+        return contextDocuments;
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_CLINICAL_PROTOCOLS)
     public List<ClinicalCorpusDocument> listAvailableProtocols() {
+        log.info("[LEVA Engine - Cache MISS] Consultando base de datos de protocolos clínicos.");
         return corpusRepositoryPort.findAll();
+    }
+
+    @Override
+    @CacheEvict(value = {CacheConfig.CACHE_CORPUS_QUERIES, CacheConfig.CACHE_CLINICAL_PROTOCOLS}, allEntries = true)
+    public void evictCorpusCache() {
+        log.info("[LEVA Engine] Limpiando memoria caché de consultas al corpus clínico y protocolos.");
     }
 
     @Override
