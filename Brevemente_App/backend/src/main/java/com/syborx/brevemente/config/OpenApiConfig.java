@@ -1,9 +1,12 @@
 package com.syborx.brevemente.config;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,7 +27,18 @@ import org.springframework.context.annotation.Configuration;
         ),
         servers = {
                 @Server(url = "/api/v1", description = "Servidor Local / Context Path")
+        },
+        security = {
+                @SecurityRequirement(name = "bearerAuth")
         }
+)
+@SecurityScheme(
+        name = "bearerAuth",
+        type = SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT",
+        description = "Ingresa el token JWT obtenido del endpoint /auth/login (sin el prefijo 'Bearer ')"
 )
 public class OpenApiConfig {
 }
+

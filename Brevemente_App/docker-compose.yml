@@ -1,0 +1,118 @@
+name: brevemente-platform
+
+services:
+  # 1. Base de Datos PostgreSQL 17
+  postgres:
+    image: postgres:17-alpine
+    container_name: brevemente-postgres
+    environment:
+      POSTGRES_DB: brevemente_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d brevemente_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Motor de IA Local: Ollama (LLaMA 3.1 8B Instruct)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: brevemente-ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # 3. Descargador Automático de LLaMA 3.1 (Corre una sola vez)
+  ollama-model-puller:
+    image: curlimages/curl:latest
+    container_name: brevemente-ollama-puller
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "Descargando LLaMA 3.1 8B..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "llama3.1:8b"}'
+        echo "Modelo LLaMA 3.1 8B descargado exitosamente."
+    restart: "no"
+
+  # 4. Microservicio de Transcripción de Audio: Python FastAPI (faster-whisper)
+  transcript-engine:
+    build:
+      context: ./transcript_engine_python
+      dockerfile: Dockerfile
+    container_name: brevemente-transcript-engine
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - WHISPER_MODEL_SIZE=small
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - INTERNAL_API_KEY=dev-secret-api-key-change-in-prod
+      - MAX_CONCURRENT_TASKS=2
+    volumes:
+      - whisper_cache:/app/models_cache
+      - transcript_temp:/tmp/transcriptions
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # 5. Backend de Spring Boot (LEVA Engine + SDOP)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: brevemente-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      transcript-engine:
+        condition: service_started
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/brevemente_db
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=admin
+      - LEVA_TRANSCRIPTION_URL=http://transcript-engine:8000
+      - LEVA_INTERNAL_API_KEY=dev-secret-api-key-change-in-prod
+      - LEVA_CALLBACK_URL=http://backend:8080/api/v1/internal/transcriptions/callback
+      - LEVA_OLLAMA_URL=http://ollama:11434
+      - LEVA_OLLAMA_MODEL=llama3.1:8b
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: brevemente_postgres_data
+  ollama_data:
+    name: brevemente_ollama_data
+  whisper_cache:
+    name: brevemente_whisper_cache
+  transcript_temp:
+    name: brevemente_transcript_temp
