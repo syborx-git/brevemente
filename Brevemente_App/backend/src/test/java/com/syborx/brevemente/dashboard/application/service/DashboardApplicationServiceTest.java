@@ -2,9 +2,11 @@ package com.syborx.brevemente.dashboard.application.service;
 
 import com.syborx.brevemente.cita.application.ports.out.CitaRepositoryPort;
 import com.syborx.brevemente.cita.domain.model.Cita;
+import com.syborx.brevemente.dashboard.application.ports.out.DashboardCatalogosRepositoryPort;
 import com.syborx.brevemente.dashboard.domain.model.AccionDominante;
 import com.syborx.brevemente.dashboard.domain.model.AlcanceDashboard;
 import com.syborx.brevemente.dashboard.domain.model.AlcanceDashboard.TipoAlcance;
+import com.syborx.brevemente.dashboard.domain.model.DashboardFiltros;
 import com.syborx.brevemente.dashboard.domain.model.DashboardStats;
 import com.syborx.brevemente.paciente.application.ports.out.PacienteRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,13 +34,18 @@ class DashboardApplicationServiceTest {
     private CitaRepositoryPort citaRepositoryPort;
 
     @Mock
+    private DashboardCatalogosRepositoryPort dashboardCatalogosRepositoryPort;
+
+    @Mock
     private DashboardScopeResolver dashboardScopeResolver;
 
     private DashboardApplicationService service;
 
     @BeforeEach
     void setUp() {
-        service = new DashboardApplicationService(pacienteRepositoryPort, citaRepositoryPort, dashboardScopeResolver);
+        service = new DashboardApplicationService(
+                pacienteRepositoryPort, citaRepositoryPort, dashboardCatalogosRepositoryPort,
+                dashboardScopeResolver);
     }
 
     @Test
@@ -46,13 +53,13 @@ class DashboardApplicationServiceTest {
     void statsScoped() {
         AlcanceDashboard alcance = new AlcanceDashboard(TipoAlcance.SCOPED, List.of("ter-001", "ter-002"), true);
         when(dashboardScopeResolver.resolver()).thenReturn(alcance);
-        when(pacienteRepositoryPort.countByStatus("activo", alcance.terapeutaIds())).thenReturn(5L);
-        when(citaRepositoryPort.countByDia(any(), any(), eq(alcance.terapeutaIds()))).thenReturn(3L);
-        when(pacienteRepositoryPort.countConConsentimientoPendiente(alcance.terapeutaIds())).thenReturn(2L);
-        when(pacienteRepositoryPort.countByRiskLevelIn(any(), eq(alcance.terapeutaIds()))).thenReturn(4L);
-        when(pacienteRepositoryPort.countByStatus("pendiente", alcance.terapeutaIds())).thenReturn(1L);
+        when(pacienteRepositoryPort.countByStatus(eq("activo"), eq(alcance.terapeutaIds()), isNull(), isNull())).thenReturn(5L);
+        when(citaRepositoryPort.countByDia(any(), any(), eq(alcance.terapeutaIds()), isNull(), isNull(), isNull())).thenReturn(3L);
+        when(pacienteRepositoryPort.countConConsentimientoPendiente(eq(alcance.terapeutaIds()), isNull(), isNull())).thenReturn(2L);
+        when(pacienteRepositoryPort.countByRiskLevelIn(any(), eq(alcance.terapeutaIds()), isNull(), isNull())).thenReturn(4L);
+        when(pacienteRepositoryPort.countByStatus(eq("pendiente"), eq(alcance.terapeutaIds()), isNull(), isNull())).thenReturn(1L);
 
-        DashboardStats stats = service.obtenerStats();
+        DashboardStats stats = service.obtenerStats(DashboardFiltros.of(null, null, null, null, null));
 
         assertEquals(5L, stats.getPacientesActivos());
         assertEquals(3L, stats.getCitasHoyCount());
@@ -67,7 +74,7 @@ class DashboardApplicationServiceTest {
         AlcanceDashboard alcance = new AlcanceDashboard(TipoAlcance.SCOPED, List.of(), true);
         when(dashboardScopeResolver.resolver()).thenReturn(alcance);
 
-        DashboardStats stats = service.obtenerStats();
+        DashboardStats stats = service.obtenerStats(DashboardFiltros.of(null, null, null, null, null));
 
         assertEquals(0L, stats.getPacientesActivos());
         assertEquals(0L, stats.getCitasHoyCount());
@@ -84,7 +91,7 @@ class DashboardApplicationServiceTest {
         AlcanceDashboard alcance = new AlcanceDashboard(TipoAlcance.SCOPED, List.of("ter-001"), false);
         when(dashboardScopeResolver.resolver()).thenReturn(alcance);
 
-        assertTrue(service.listarAlertas().isEmpty());
+        assertTrue(service.listarAlertas(DashboardFiltros.of(null, null, null, null, null)).isEmpty());
         verifyNoInteractions(pacienteRepositoryPort);
         verifyNoInteractions(citaRepositoryPort);
     }
@@ -95,10 +102,10 @@ class DashboardApplicationServiceTest {
         AlcanceDashboard alcance = new AlcanceDashboard(TipoAlcance.SCOPED, List.of("ter-001"), true);
         when(dashboardScopeResolver.resolver()).thenReturn(alcance);
         Cita cita = Cita.builder().id("cit-001").terapeutaId("ter-001").build();
-        when(citaRepositoryPort.findByDia(any(), any(), eq(alcance.terapeutaIds())))
+        when(citaRepositoryPort.findByDia(any(), any(), eq(alcance.terapeutaIds()), isNull(), isNull(), isNull()))
                 .thenReturn(List.of(cita));
 
-        List<Cita> resultado = service.listarCitasHoy();
+        List<Cita> resultado = service.listarCitasHoy(DashboardFiltros.of(null, null, null, null, null));
 
         assertEquals(1, resultado.size());
         assertEquals("cit-001", resultado.get(0).getId());
@@ -118,10 +125,10 @@ class DashboardApplicationServiceTest {
                 .modalidad("PRESENCIAL")
                 .duracionMinutos(30)
                 .build();
-        when(citaRepositoryPort.findProximaDeHoy(any(), any(), eq(alcance.terapeutaIds())))
+        when(citaRepositoryPort.findProximaDeHoy(any(), any(), eq(alcance.terapeutaIds()), isNull(), isNull(), isNull()))
                 .thenReturn(Optional.of(cita));
 
-        Optional<AccionDominante> resultado = service.obtenerAccionDominante();
+        Optional<AccionDominante> resultado = service.obtenerAccionDominante(DashboardFiltros.of(null, null, null, null, null));
 
         assertTrue(resultado.isPresent());
         assertEquals("cit-002", resultado.get().getCitaId());

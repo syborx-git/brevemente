@@ -16,6 +16,7 @@ public class AccionDominante {
     String citaId;
     String pacienteId;
     String pacienteNombre;
+    String terapeutaNombre;
     LocalDate fecha;
     LocalTime hora;
     String tipoCita;
