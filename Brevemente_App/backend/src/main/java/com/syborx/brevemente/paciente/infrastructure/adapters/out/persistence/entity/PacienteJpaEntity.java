@@ -72,6 +72,12 @@ public class PacienteJpaEntity {
     @JoinColumn(name = "terapeuta_id")
     private TerapeutaJpaEntity terapeuta;
 
+    @Column(name = "sede_id", length = 36)
+    private String sedeId;
+
+    @Column(name = "protocolo_id", length = 36)
+    private String protocoloId;
+
     @Column(name = "usuario_id", length = 36)
     private String usuarioId;
 

@@ -8,7 +8,6 @@ import { CommonModule } from '@angular/common';
   template: `
     <div *ngIf="showAlert" class="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between text-xs text-amber-900 select-none">
       <div class="flex items-center gap-2">
-        <span class="text-sm">⚠️</span>
         <span class="font-bold">Aviso Normativo TBE:</span>
         <span>El paciente <strong>Mateo Herrera Santos (17 años)</strong> requiere firma de la persona de apoyo para habilitar agenda y grabaciones LEVA.</span>
       </div>

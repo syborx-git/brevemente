@@ -15,4 +15,6 @@ public class DashboardStats {
     long alertasConsentimiento;
     long alertasRiesgo;
     long pendientesClinicos;
+    int capacidadPct;
+    long confirmadasHoy;
 }
