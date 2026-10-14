@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migración V7: Esquema del Motor de Inteligencia Clínica LEVA (SDOP)
+-- Migración V13: Esquema del Motor de Inteligencia Clínica LEVA (SDOP)
 -- Introducción de Tareas de Transcripción, Propuestas Clínicas Human-in-the-Loop,
 -- Detección de Riesgo y Corpus Clínico Cerrado (TBE / DSM-5TR / CIE-11).
 -- =============================================================================
