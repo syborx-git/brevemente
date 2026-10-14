@@ -17,5 +17,11 @@ public record DashboardStatsResponseDTO(
         long alertasRiesgo,
 
         @Schema(description = "Pacientes con estatus clínico 'pendiente'", example = "1")
-        long pendientesClinicos
+        long pendientesClinicos,
+
+        @Schema(description = "Porcentaje de capacidad de pacientes activos (denominador 10)", example = "50")
+        int capacidadPct,
+
+        @Schema(description = "Citas de hoy en estado 'confirmada'", example = "2")
+        long confirmadasHoy
 ) {}

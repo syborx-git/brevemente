@@ -13,6 +13,9 @@ public record AccionDominanteResponseDTO(
         @Schema(description = "Nombre completo del paciente", example = "Mateo Herrera Santos")
         String pacienteNombre,
 
+        @Schema(description = "Nombre de visualización del terapeuta responsable", example = "Dra. Sofía Ramírez Lozano")
+        String terapeutaNombre,
+
         @Schema(description = "Fecha de la cita (YYYY-MM-DD)", example = "2026-10-12")
         String fecha,
 

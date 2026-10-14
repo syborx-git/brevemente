@@ -31,6 +31,8 @@ public class Paciente {
     private String motivoConsulta;
     private String terapeutaId;
     private String terapeutaNombre;
+    private String sedeId;
+    private String protocoloId;
     private String usuarioId;
     private CapacidadConsentimiento capacidadConsentimiento;
     private RepresentanteLegal representante;
