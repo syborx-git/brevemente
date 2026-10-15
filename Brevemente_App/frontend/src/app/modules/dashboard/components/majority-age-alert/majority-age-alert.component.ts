@@ -51,7 +51,7 @@ import { AlertaMayoriaEdad } from '../../ports/dashboard.repository';
               </div>
 
               <a
-                [routerLink]="['/expediente', p.pacienteId]"
+                [routerLink]="['/expedientes', p.pacienteId]"
                 class="px-3 py-1.5 bg-[#75AFBC] hover:bg-[#6099a5] text-clinical-dark font-bold rounded-lg text-[11px] shrink-0 transition-colors shadow-sm"
               >
                 Ver Expediente

@@ -55,7 +55,7 @@ export class ExpedienteClinicoComponent implements OnInit {
   bitacoras: SupervisionLog[] = [];
   solicitudes: SupervisionRequest[] = [];
 
-  activeTab: 'datos' | 'psiquiatria' | 'tbe' | 'pagos' | 'auditoria' | 'supervision' | 'constancias' = 'datos';
+  activeTab: 'datos' | 'psiquiatria' | 'tbe' | 'pagos' | 'auditoria' | 'supervision' | 'constancias' = 'tbe';
   tbeSubTab: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' = 'dx';
   selectedSession: Session | null = null;
 
@@ -145,8 +145,17 @@ export class ExpedienteClinicoComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
-      this.pacienteId = params.get('id') || 'patient-1';
-      this.cargarDatos();
+      const id = params.get('id');
+      if (id) {
+        this.pacienteId = id;
+        this.cargarDatos();
+        return;
+      }
+      // Ruta /expedientes (sin id): selecciona el primer paciente del caseload.
+      this.expedienteRepo.listarPacientes().subscribe(pacientes => {
+        this.pacienteId = pacientes.length > 0 ? pacientes[0].id : 'patient-1';
+        this.cargarDatos();
+      });
     });
   }
 

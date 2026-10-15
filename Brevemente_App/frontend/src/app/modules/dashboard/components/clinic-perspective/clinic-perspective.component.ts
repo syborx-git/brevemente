@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TerapeutaDTO } from '../../ports/dashboard.repository';
+import { DashboardFiltros, TerapeutaDTO } from '../../ports/dashboard.repository';
 import { SerieMes, DistribucionFase, CasoProtocolo } from '../../../../core/utils/dashboard-metrics';
 
 type Perspectiva = 'citas' | 'fases' | 'protocolos';
@@ -55,6 +55,16 @@ interface BarraDato {
               }
             </select>
           }
+
+          <select
+            class="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-600"
+            [value]="filtros.periodo ?? 'mes'"
+            (change)="onPeriodo($any($event.target).value)"
+          >
+            <option value="hoy">Hoy</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes">Este mes</option>
+          </select>
 
           <select
             class="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-600"
@@ -128,6 +138,7 @@ interface BarraDato {
   styles: [':host { display: block; }']
 })
 export class ClinicPerspectiveComponent {
+  @Input() filtros: DashboardFiltros = {};
   @Input() citasPorMes: SerieMes[] = [];
   @Input() fases: DistribucionFase[] = [];
   @Input() protocolos: CasoProtocolo[] = [];
@@ -135,6 +146,7 @@ export class ClinicPerspectiveComponent {
   @Input() esRolSuperior = false;
 
   @Output() terapeutaCambiado = new EventEmitter<string | undefined>();
+  @Output() filtrosChange = new EventEmitter<DashboardFiltros>();
 
   perspectiva: Perspectiva = 'citas';
   terapeutaSeleccionado = 'all';
@@ -149,6 +161,10 @@ export class ClinicPerspectiveComponent {
 
   onPerspectiva(valor: string): void {
     this.perspectiva = valor as Perspectiva;
+  }
+
+  onPeriodo(valor: string): void {
+    this.filtrosChange.emit({ ...this.filtros, periodo: valor || undefined });
   }
 
   onTerapeuta(valor: string): void {

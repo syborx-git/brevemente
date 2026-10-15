@@ -40,26 +40,30 @@ import { CatalogosDashboard, DashboardFiltros } from '../../ports/dashboard.repo
         }
       </select>
 
-      <select
-        class="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
-        [value]="filtros.periodo ?? 'mes'"
-        (change)="onPeriodo($any($event.target).value)"
-      >
-        <option value="hoy">Hoy</option>
-        <option value="semana">Esta semana</option>
-        <option value="mes">Este mes</option>
-      </select>
+      @if (!ocultarPeriodo) {
+        <select
+          class="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
+          [value]="filtros.periodo ?? 'mes'"
+          (change)="onPeriodo($any($event.target).value)"
+        >
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mes</option>
+        </select>
+      }
 
-      <select
-        class="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
-        [value]="filtros.terapeutaId ?? ''"
-        (change)="onTerapeuta($any($event.target).value)"
-      >
-        <option value="">Todos los Terapeutas</option>
-        @for (t of catalogos.terapeutas; track t.id) {
-          <option [value]="t.id">{{ t.nombre }}</option>
-        }
-      </select>
+      @if (mostrarTerapeuta) {
+        <select
+          class="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
+          [value]="filtros.terapeutaId ?? ''"
+          (change)="onTerapeuta($any($event.target).value)"
+        >
+          <option value="">Todos los Terapeutas</option>
+          @for (t of catalogos.terapeutas; track t.id) {
+            <option [value]="t.id">{{ t.nombre }}</option>
+          }
+        </select>
+      }
 
       <select
         class="px-2 py-1 border border-slate-200 bg-white rounded-lg focus:outline-none"
@@ -88,6 +92,8 @@ import { CatalogosDashboard, DashboardFiltros } from '../../ports/dashboard.repo
 export class DashboardFiltersComponent {
   @Input() catalogos: CatalogosDashboard = { sedes: [], protocolos: [], terapeutas: [], modalidades: [] };
   @Input() filtros: DashboardFiltros = {};
+  @Input() ocultarPeriodo = false;
+  @Input() mostrarTerapeuta = true;
 
   @Output() filtrosChange = new EventEmitter<DashboardFiltros>();
   @Output() limpiar = new EventEmitter<void>();

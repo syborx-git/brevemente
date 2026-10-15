@@ -8,6 +8,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -31,6 +32,21 @@ public class TerapeutaJpaEntity {
 
     @Column(name = "especialidad", length = 100)
     private String especialidad;
+
+    @Column(name = "telefono", length = 20)
+    private String telefono;
+
+    @Column(name = "duracion_sesion_default_min")
+    private Short duracionSesionDefaultMin;
+
+    @Column(name = "costo_primera_sesion")
+    private BigDecimal costoPrimeraSesion;
+
+    @Column(name = "costo_seguimiento")
+    private BigDecimal costoSeguimiento;
+
+    @Column(name = "edad_minima_atencion")
+    private Short edadMinimaAtencion;
 
     @Column(name = "activo")
     @Builder.Default
