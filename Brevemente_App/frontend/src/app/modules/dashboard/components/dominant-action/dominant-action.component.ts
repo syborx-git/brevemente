@@ -55,7 +55,7 @@ import { AccionDominante } from '../../ports/dashboard.repository';
             </div>
             @if (!esAsistente) {
               <a
-                [routerLink]="['/expediente', accion.pacienteId]"
+                [routerLink]="['/expedientes', accion.pacienteId]"
                 class="px-5 py-2.5 bg-[#75AFBC] hover:bg-[#6099a5] text-white rounded-lg font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
               >
                 Preparar Sesión

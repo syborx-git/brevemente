@@ -1,9 +1,6 @@
 <div class="space-y-6 max-w-7xl mx-auto select-none" *ngIf="patient">
-  <!-- Top Navigation & Return -->
-  <div class="flex items-center justify-between">
-    <a routerLink="/pacientes" class="text-xs text-clinical-accent font-bold hover:underline flex items-center gap-1">
-      ← Volver al Directorio de Pacientes
-    </a>
+  <!-- Top Navigation & Actions -->
+  <div class="flex items-center justify-end">
     <div class="flex items-center gap-2">
       <button
         (click)="openSessionModal()"
@@ -28,7 +25,7 @@
       <div class="flex gap-3">
         <button
           *ngFor="let p of pacientes"
-          [routerLink]="['/expediente', p.id]"
+          [routerLink]="['/expedientes', p.id]"
           class="shrink-0 w-44 text-left p-3 rounded-xl border-2 shadow-sm transition-all cursor-pointer"
           [ngClass]="p.id === pacienteId ? 'border-clinical-accent bg-clinical-accent/5' : 'border-slate-200 bg-white hover:border-[#75AFBC]'">
           <div class="flex items-center gap-2">
@@ -135,17 +132,17 @@
 
   <!-- Tabs Principales -->
   <div class="border-b border-slate-200 flex gap-2 overflow-x-auto">
-    <button (click)="setTab('datos')" class="px-4 py-2 border-b-2 font-bold text-xs transition-all whitespace-nowrap cursor-pointer"
-      [ngClass]="activeTab === 'datos' ? 'border-clinical-accent text-clinical-accent' : 'border-transparent text-slate-400 hover:text-slate-600'">
-      Datos de Admisión e Historia Clínica
+    <button (click)="setTab('tbe')" class="px-4 py-2 border-b-2 font-bold text-xs transition-all whitespace-nowrap cursor-pointer"
+      [ngClass]="activeTab === 'tbe' ? 'border-clinical-accent text-clinical-accent' : 'border-transparent text-slate-400 hover:text-slate-600'">
+      Tratamiento Psicoterapéutico TBE
     </button>
     <button (click)="setTab('psiquiatria')" class="px-4 py-2 border-b-2 font-bold text-xs transition-all whitespace-nowrap cursor-pointer"
       [ngClass]="activeTab === 'psiquiatria' ? 'border-clinical-accent text-clinical-accent' : 'border-transparent text-slate-400 hover:text-slate-600'">
       Tratamiento Psiquiátrico
     </button>
-    <button (click)="setTab('tbe')" class="px-4 py-2 border-b-2 font-bold text-xs transition-all whitespace-nowrap cursor-pointer"
-      [ngClass]="activeTab === 'tbe' ? 'border-clinical-accent text-clinical-accent' : 'border-transparent text-slate-400 hover:text-slate-600'">
-      Tratamiento Psicoterapéutico TBE
+    <button (click)="setTab('datos')" class="px-4 py-2 border-b-2 font-bold text-xs transition-all whitespace-nowrap cursor-pointer"
+      [ngClass]="activeTab === 'datos' ? 'border-clinical-accent text-clinical-accent' : 'border-transparent text-slate-400 hover:text-slate-600'">
+      Datos de Admisión e Historia Clínica
     </button>
     <button (click)="setTab('pagos')" class="px-4 py-2 border-b-2 font-bold text-xs transition-all whitespace-nowrap cursor-pointer"
       [ngClass]="activeTab === 'pagos' ? 'border-clinical-accent text-clinical-accent' : 'border-transparent text-slate-400 hover:text-slate-600'">

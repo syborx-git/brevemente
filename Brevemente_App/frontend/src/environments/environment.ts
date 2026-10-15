@@ -11,6 +11,6 @@ export const environment = {
     pagosBackend: true,
     constanciasBackend: true,
     auditoriaBackend: true,
-    miConsultaBackend: false
+    miConsultaBackend: true
   }
 };

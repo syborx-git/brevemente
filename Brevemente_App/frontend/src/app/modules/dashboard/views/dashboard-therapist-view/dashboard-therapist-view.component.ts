@@ -56,9 +56,6 @@ type DrilldownTipo = 'risk' | 'consentimientos' | 'pacientes' | 'citas';
               </svg>
               Centro de Control BreveMente
             </h2>
-            <p class="text-[11px] text-clinical-textMuted mt-0.5">
-              Visión ejecutiva de la operación clínica, las alertas y la efectividad general.
-            </p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 shrink-0">
@@ -92,22 +89,12 @@ type DrilldownTipo = 'risk' | 'consentimientos' | 'pacientes' | 'citas';
         <app-dashboard-filters
           [catalogos]="catalogos"
           [filtros]="filtros"
+          [ocultarPeriodo]="true"
+          [mostrarTerapeuta]="esRolSuperior"
           (filtrosChange)="onFiltros($event)"
           (limpiar)="onLimpiar()"
         ></app-dashboard-filters>
       </div>
-
-      <!-- ZONA 5: Perspectiva Clínica Unificada (oculta para asistente) -->
-      @if (!esAsistente) {
-        <app-clinic-perspective
-          [citasPorMes]="citasPorMes"
-          [fases]="fases"
-          [protocolos]="protocolos"
-          [terapeutas]="catalogos.terapeutas"
-          [esRolSuperior]="esRolSuperior"
-          (terapeutaCambiado)="onTerapeutaGrafica($event)"
-        ></app-clinic-perspective>
-      }
 
       <!-- Alerta de Mayoría de Edad -->
       <app-majority-age-alert [pacientes]="alertasMayoriaEdad"></app-majority-age-alert>
@@ -160,6 +147,20 @@ type DrilldownTipo = 'risk' | 'consentimientos' | 'pacientes' | 'citas';
         <app-agenda-dia [citas]="citasHoy"></app-agenda-dia>
         <app-pendientes-prioritarios [pendientes]="pendientes"></app-pendientes-prioritarios>
       </div>
+
+      <!-- ZONA 5: Perspectiva Clínica Unificada (oculta para asistente) -->
+      @if (!esAsistente) {
+        <app-clinic-perspective
+          [filtros]="filtros"
+          [citasPorMes]="citasPorMes"
+          [fases]="fases"
+          [protocolos]="protocolos"
+          [terapeutas]="catalogos.terapeutas"
+          [esRolSuperior]="esRolSuperior"
+          (filtrosChange)="onFiltros($event)"
+          (terapeutaCambiado)="onTerapeutaGrafica($event)"
+        ></app-clinic-perspective>
+      }
 
       <!-- Drilldown modal -->
       <app-drilldown-modal

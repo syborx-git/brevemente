@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { ConsultaConfig, MiConsultaRepository } from '../ports/mi-consulta.repository';
+import { CambioConfiguracion, ConsultaConfig, MiConsultaRepository, TerapeutaSede } from '../ports/mi-consulta.repository';
 
 const DEFAULT_CONFIG: ConsultaConfig = {
   therapistName: 'Dr. Alejandro Silva',
@@ -11,8 +11,15 @@ const DEFAULT_CONFIG: ConsultaConfig = {
   defaultSessionDuration: 50,
   costoPrimeraSesion: 1200,
   costoSeguimiento: 1000,
-  edadMinimaAtencion: 12
+  edadMinimaAtencion: 12,
+  sedes: []
 };
+
+const CATALOGO_SEDES: TerapeutaSede[] = [
+  { id: 'sede-centro', nombre: 'Sede Centro BreveMente', esPrincipal: false },
+  { id: 'sede-norte', nombre: 'Sede Norte BreveMente', esPrincipal: false },
+  { id: 'sede-sur', nombre: 'Sede Sur BreveMente', esPrincipal: false }
+];
 
 @Injectable({
   providedIn: 'root'
@@ -31,12 +38,27 @@ export class MiConsultaLocalStorageAdapter implements MiConsultaRepository {
     return raw ? JSON.parse(raw) : DEFAULT_CONFIG;
   }
 
-  obtenerConfig(): Observable<ConsultaConfig> {
+  obtenerConfig(terapeutaId?: string): Observable<ConsultaConfig> {
     return of(this.getStored());
   }
 
-  guardarConfig(config: ConsultaConfig): Observable<ConsultaConfig> {
+  guardarConfig(config: ConsultaConfig, terapeutaId?: string): Observable<ConsultaConfig> {
     localStorage.setItem(this.storageKey, JSON.stringify(config));
     return of(config);
+  }
+
+  guardarSedes(sedes: TerapeutaSede[], terapeutaId?: string): Observable<TerapeutaSede[]> {
+    const config = this.getStored();
+    config.sedes = sedes;
+    localStorage.setItem(this.storageKey, JSON.stringify(config));
+    return of(sedes);
+  }
+
+  obtenerSedesCatalog(): Observable<TerapeutaSede[]> {
+    return of(CATALOGO_SEDES);
+  }
+
+  obtenerHistorial(terapeutaId?: string): Observable<CambioConfiguracion[]> {
+    return of([]);
   }
 }

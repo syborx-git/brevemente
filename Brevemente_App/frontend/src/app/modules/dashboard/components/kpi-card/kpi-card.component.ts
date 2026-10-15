@@ -19,7 +19,7 @@ export type KpiVariant = 'numerico' | 'anillo' | 'barra' | 'semaforo';
   imports: [CommonModule, ProgressRingComponent, LinearProgressComponent, RiskSemaphoreComponent],
   template: `
     <div
-      class="bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between transition-all select-none"
+      class="bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between transition-all select-none w-full"
       [class.cursor-pointer]="clickeable"
       [class.hover:border-clinical-teal]="variant !== 'semaforo'"
       [class.hover:border-red-500]="variant === 'semaforo' && clickeable"
@@ -74,7 +74,7 @@ export type KpiVariant = 'numerico' | 'anillo' | 'barra' | 'semaforo';
       }
     </div>
   `,
-  styles: [':host { display: block; }']
+  styles: [':host { display: flex; }']
 })
 export class KpiCardComponent {
   @Input() variant: KpiVariant = 'numerico';

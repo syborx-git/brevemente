@@ -31,12 +31,15 @@ export const routes: Routes = [
       },
       {
         path: 'expedientes',
-        redirectTo: 'pacientes',
-        pathMatch: 'full'
+        loadComponent: () => import('./modules/expediente-clinico/expediente-clinico.component').then(m => m.ExpedienteClinicoComponent)
+      },
+      {
+        path: 'expedientes/:id',
+        loadComponent: () => import('./modules/expediente-clinico/expediente-clinico.component').then(m => m.ExpedienteClinicoComponent)
       },
       {
         path: 'expediente/:id',
-        loadComponent: () => import('./modules/expediente-clinico/expediente-clinico.component').then(m => m.ExpedienteClinicoComponent)
+        redirectTo: 'expedientes/:id'
       },
       {
         path: 'agenda',
