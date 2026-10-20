@@ -6,16 +6,16 @@ services:
     image: postgres:17-alpine
     container_name: brevemente-postgres
     environment:
-      POSTGRES_DB: brevemente_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: ${POSTGRES_DB:-brevemente_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d brevemente_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-brevemente_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -38,7 +38,7 @@ services:
       retries: 5
       start_period: 5s
 
-  # 3. Descargador Automático de LLaMA 3.1 (Corre una sola vez)
+  # 3. Descargador Automático de Modelo LLaMA (Corre una sola vez)
   ollama-model-puller:
     image: curlimages/curl:latest
     container_name: brevemente-ollama-puller
@@ -48,9 +48,9 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - |
-        echo "Descargando LLaMA 3.1 8B..."
-        curl -X POST http://ollama:11434/api/pull -d '{"name": "llama3.1:8b"}'
-        echo "Modelo LLaMA 3.1 8B descargado exitosamente."
+        echo "Verificando y descargando modelo ${LEVA_OLLAMA_MODEL:-llama3.1:8b} en Ollama..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "${LEVA_OLLAMA_MODEL:-llama3.1:8b}"}'
+        echo "Modelo ${LEVA_OLLAMA_MODEL:-llama3.1:8b} descargado y listo."
     restart: "no"
 
   # 4. Microservicio de Transcripción de Audio: Python FastAPI (faster-whisper)
@@ -64,10 +64,10 @@ services:
     environment:
       - PORT=8000
       - HOST=0.0.0.0
-      - WHISPER_MODEL_SIZE=small
+      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-small}
       - WHISPER_DEVICE=cpu
       - WHISPER_COMPUTE_TYPE=int8
-      - INTERNAL_API_KEY=dev-secret-api-key-change-in-prod
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-dev-secret-api-key-change-in-prod}
       - MAX_CONCURRENT_TASKS=2
     volumes:
       - whisper_cache:/app/models_cache
@@ -97,14 +97,28 @@ services:
         condition: service_started
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - DATABASE_URL=jdbc:postgresql://postgres:5432/brevemente_db
-      - DATABASE_USERNAME=postgres
-      - DATABASE_PASSWORD=admin
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-brevemente_db}
+      - DATABASE_USERNAME=${POSTGRES_USER:-postgres}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-admin}
+      - JWT_SECRET=${JWT_SECRET:-dev-only-secret-brevemente-demo-2026-syborx-clinical-engineering-change-me}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:3000,http://188.245.203.48,https://188.245.203.48}
       - LEVA_TRANSCRIPTION_URL=http://transcript-engine:8000
-      - LEVA_INTERNAL_API_KEY=dev-secret-api-key-change-in-prod
+      - LEVA_INTERNAL_API_KEY=${INTERNAL_API_KEY:-dev-secret-api-key-change-in-prod}
       - LEVA_CALLBACK_URL=http://backend:8080/api/v1/internal/transcriptions/callback
       - LEVA_OLLAMA_URL=http://ollama:11434
-      - LEVA_OLLAMA_MODEL=llama3.1:8b
+      - LEVA_OLLAMA_MODEL=${LEVA_OLLAMA_MODEL:-llama3.1:8b}
+    restart: unless-stopped
+
+  # 6. Frontend Angular 18 (Nginx Reverse Proxy & Single Page App)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: brevemente-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
     restart: unless-stopped
 
 volumes:
