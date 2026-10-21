@@ -1,0 +1,51 @@
+<header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 select-none relative z-30 shadow-xs">
+  <!-- Sensitive Clinical Data Badge -->
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
+      <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+      Dato Clínico Sensible. Acceso Auditado TBE.
+    </div>
+  </div>
+
+  <!-- Acciones y Perfil de Usuario Autenticado -->
+  <div class="flex items-center gap-4">
+    <!-- LEVA Toggle Header Shortcut -->
+    <button 
+      (click)="roleService.toggleLeva()"
+      class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-clinical-accent/15 text-clinical-textDark border border-clinical-accent/30 hover:bg-clinical-accent/25 transition-all">
+      <span>LEVA IA</span>
+    </button>
+
+    <!-- Roles del usuario autenticado (con selector visual si es multi-rol) -->
+    <div class="flex items-center gap-1.5">
+      <span class="text-slate-500 text-xs font-semibold">Rol:</span>
+      <span
+        *ngFor="let r of roles"
+        (click)="selectRole(r)"
+        [title]="roles.length > 1 ? 'Alternar a vista ' + getRoleLabel(r) : ''"
+        class="px-2 py-0.5 rounded text-[11px] font-bold transition-all select-none"
+        [ngClass]="[getRoleColor(r), r === activeRole ? 'ring-2 ring-clinical-accent ring-offset-1 cursor-default' : (roles.length > 1 ? 'opacity-60 hover:opacity-100 cursor-pointer' : '')]">
+        {{ getRoleLabel(r) }}
+      </span>
+    </div>
+
+    <!-- User Profile Header Summary -->
+    <div class="flex items-center gap-2 pl-3 border-l border-slate-200">
+      <div class="w-8 h-8 rounded-full bg-clinical-dark text-white flex items-center justify-center text-xs font-bold shadow-xs">
+        {{ initials }}
+      </div>
+      <div class="hidden md:block text-left">
+        <p class="text-xs font-bold text-clinical-textDark leading-tight">{{ roleService.currentUserName }}</p>
+        <p class="text-[10px] text-slate-500">Sesión Segura</p>
+      </div>
+    </div>
+
+    <!-- Cerrar Sesión -->
+    <button
+      (click)="logout()"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all cursor-pointer">
+      <span class="text-sm">↪</span>
+      <span>Cerrar sesión</span>
+    </button>
+  </div>
+</header>

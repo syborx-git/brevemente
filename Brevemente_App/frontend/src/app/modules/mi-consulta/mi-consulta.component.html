@@ -1,0 +1,162 @@
+<div class="max-w-4xl mx-auto space-y-6 select-none">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-clinical-textDark tracking-tight">Mi Consulta — Configuración Operativa</h1>
+      <p class="text-xs text-clinical-textMuted mt-0.5">
+        Gestión de perfil profesional, honorarios por sesión y reglas de admisión
+      </p>
+    </div>
+    <div *ngIf="savedNotification" class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold animate-in fade-in">
+      ✓ Cambios guardados{{ esBackend ? '' : ' en LocalStorage' }}
+    </div>
+  </div>
+
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="px-4 py-3 bg-red-100 text-red-800 rounded-xl text-xs font-semibold border border-red-200">
+    ⚠ {{ errorMessage }}
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+    <!-- Perfil Profesional -->
+    <div>
+      <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Datos del Profesional Tratante</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nombre Completo</label>
+          <input type="text" [(ngModel)]="config.therapistName" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Cédula Profesional</label>
+          <input type="text" [(ngModel)]="config.license" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Especialidad Clínica</label>
+          <input type="text" [(ngModel)]="config.specialty" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Correo de Contacto</label>
+          <input type="email" [(ngModel)]="config.email" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Teléfono de Consulta</label>
+          <input type="tel" [(ngModel)]="config.phone" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Parámetros Clínicos y Honorarios -->
+    <div class="border-t border-slate-100 pt-6">
+      <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Parámetros de Sesión y Honorarios</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Duración Habitual (Minutos)</label>
+          <input type="number" [(ngModel)]="config.defaultSessionDuration" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Costo Primera Sesión ($ MXN)</label>
+          <input type="number" [(ngModel)]="config.costoPrimeraSesion" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Costo Seguimiento ($ MXN)</label>
+          <input type="number" [(ngModel)]="config.costoSeguimiento" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Reglas de Admisión -->
+    <div class="border-t border-slate-100 pt-6">
+      <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Reglas de Admisión TBE</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Edad Mínima de Atención (Años)</label>
+          <input type="number" [(ngModel)]="config.edadMinimaAtencion" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+          <p class="text-[10px] text-slate-400 mt-1">Los pacientes menores a esta edad no podrán ser admitidos sin autorización de la dirección médica.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sedes de Atención -->
+    <div class="border-t border-slate-100 pt-6">
+      <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Sedes de Atención</h2>
+      <div class="space-y-3">
+        <div *ngIf="config.sedes.length === 0" class="text-[11px] text-slate-400">
+          Sin sedes asignadas. Agrega al menos una sede de atención.
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <div *ngFor="let sede of config.sedes"
+               class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs"
+               [class.bg-emerald-50]="sede.esPrincipal"
+               [class.border-emerald-200]="sede.esPrincipal"
+               [class.bg-slate-50]="!sede.esPrincipal"
+               [class.border-slate-200]="!sede.esPrincipal">
+            <span class="font-semibold text-slate-700">{{ sede.nombre }}</span>
+            <span *ngIf="sede.esPrincipal" class="text-[10px] font-bold text-emerald-700">PRINCIPAL</span>
+            <button *ngIf="!sede.esPrincipal" (click)="marcarPrincipal(sede.id)"
+                    class="text-[10px] font-semibold text-clinical-accent hover:underline cursor-pointer">
+              Marcar principal
+            </button>
+            <button (click)="quitarSede(sede.id)"
+                    class="text-[10px] font-semibold text-red-500 hover:underline cursor-pointer">
+              Quitar
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-end gap-3 pt-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Agregar sede</label>
+            <select [(ngModel)]="nuevaSedeId" class="px-3 py-2 border border-slate-200 rounded-lg text-xs">
+              <option value="">Selecciona…</option>
+              <option *ngFor="let s of sedesDisponibles" [value]="s.id">{{ s.nombre }}</option>
+            </select>
+          </div>
+          <button (click)="agregarSede()" [disabled]="!nuevaSedeId"
+                  class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            Agregar
+          </button>
+          <button (click)="guardarSedes()" [disabled]="savingSedes"
+                  class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            {{ savingSedes ? 'Guardando…' : 'Guardar Sedes' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial de cambios -->
+    <div class="border-t border-slate-100 pt-6">
+      <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Historial de Cambios</h2>
+      <div *ngIf="cargandoHistorial" class="text-[11px] text-slate-400">Cargando historial…</div>
+      <div *ngIf="!cargandoHistorial && historial.length === 0" class="text-[11px] text-slate-400">
+        Aún no hay cambios registrados.
+      </div>
+      <ul *ngIf="historial.length > 0" class="space-y-2">
+        <li *ngFor="let h of historial" class="flex items-start justify-between gap-3 text-xs border-b border-slate-100 pb-2">
+          <div class="min-w-0">
+            <div class="font-semibold text-slate-700">{{ etiquetaCampo(h.campo) }}</div>
+            <div class="text-[11px] text-slate-500">
+              <span class="line-through text-red-400">{{ h.valorAnterior ?? '—' }}</span>
+              <span class="mx-1">→</span>
+              <span class="font-semibold text-emerald-600">{{ h.valorNuevo ?? '—' }}</span>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-[11px] font-semibold text-slate-600">{{ h.usuarioNombre || 'Sistema' }}</div>
+            <div class="text-[10px] text-slate-400">{{ h.fecha | date:'dd/MM/yyyy HH:mm' }}</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Save Button -->
+    <div class="flex justify-end pt-4 border-t border-slate-100">
+      <button 
+        (click)="guardar()"
+        [disabled]="saving"
+        class="px-6 py-2.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+        {{ saving ? 'Guardando…' : 'Guardar Configuración' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,27 @@
+@switch (vista) {
+  @case ('patient') {
+    <app-dashboard-patient-view [userName]="userName"></app-dashboard-patient-view>
+  }
+  @case ('student') {
+    <app-dashboard-student-view [userName]="userName"></app-dashboard-student-view>
+  }
+  @default {
+    <app-dashboard-therapist-view
+      [catalogos]="catalogos"
+      [filtros]="filtros"
+      [stats]="stats"
+      [citasHoy]="citasHoy"
+      [alertasUrgentes]="alertasUrgentes"
+      [pacientesRecientes]="pacientesRecientes"
+      [accion]="accion"
+      [citasPorMes]="citasPorMes"
+      [fases]="fases"
+      [protocolos]="protocolos"
+      [alertasMayoriaEdad]="alertasMayoriaEdad"
+      [pendientes]="pendientes"
+      (filtrosChange)="onFiltros($event)"
+      (limpiar)="onLimpiar()"
+      (terapeutaGrafica)="onTerapeutaGrafica($event)"
+    ></app-dashboard-therapist-view>
+  }
+}

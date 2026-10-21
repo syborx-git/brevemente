@@ -1,0 +1,69 @@
+<div class="min-h-screen flex items-center justify-center px-4 login-backdrop">
+  <div class="w-full max-w-md">
+
+    <!-- Marca -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-white tracking-tight">BreveMente</h1>
+      <p class="text-sm text-white/70 mt-1">
+        Plataforma Clínica TBE · Acceso exclusivo de personal autorizado
+      </p>
+    </div>
+
+    <!-- Tarjeta de acceso -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl p-8">
+      <h2 class="text-xl font-bold text-clinical-textDark">Iniciar sesión</h2>
+      <p class="text-xs text-clinical-textMuted mt-1 mb-6">Ingresa tus credenciales para continuar</p>
+
+      <form (ngSubmit)="onSubmit()" class="space-y-4">
+        <div>
+          <label for="email" class="block text-xs font-semibold text-clinical-textDark mb-1">
+            Correo electrónico
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            [(ngModel)]="email"
+            required
+            placeholder="correo@brevemente.org"
+            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-clinical-accent bg-slate-50/50" />
+        </div>
+
+        <div>
+          <label for="password" class="block text-xs font-semibold text-clinical-textDark mb-1">
+            Contraseña
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            [(ngModel)]="password"
+            required
+            placeholder="••••••••"
+            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-clinical-accent bg-slate-50/50" />
+        </div>
+
+        <div
+          *ngIf="errorMessage"
+          class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2.5">
+          {{ errorMessage }}
+        </div>
+
+        <button
+          type="submit"
+          [disabled]="isLoading"
+          class="w-full py-2.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-sm rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ isLoading ? 'Verificando…' : 'Ingresar' }}
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-100 text-center">
+        <p class="text-[11px] text-clinical-textMuted">
+          Demo: <span class="font-semibold">alejandro.mendoza&#64;brevemente.org</span> ·
+          <span class="font-semibold">demo123</span>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
