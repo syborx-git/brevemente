@@ -5,7 +5,8 @@ import { RoleStateService } from '../services/role-state.service';
 /**
  * Guard funcional de permisos para el dashboard (SDD-004, Fase B).
  * - Con `DASHBOARD_LEER` → permite la navegación.
- * - Sin el permiso: patient → `/mi-consulta`; resto (student / sin rol clínico) → `/` (fallback).
+ * - Sin el permiso: patient → `/mi-historial` (portal del paciente);
+ *   resto (student / sin rol clínico) → `/` (fallback).
  */
 export const permissionGuard: CanActivateFn = () => {
   const roleService = inject(RoleStateService);
@@ -16,7 +17,7 @@ export const permissionGuard: CanActivateFn = () => {
   }
 
   if (roleService.hasRole('patient')) {
-    return router.createUrlTree(['/mi-consulta']);
+    return router.createUrlTree(['/mi-historial']);
   }
 
   return router.createUrlTree(['/']);
