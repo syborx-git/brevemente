@@ -79,6 +79,17 @@ public class SupervisionRestController {
                 .map(supervisionRestMapper::toResponse).toList());
     }
 
+    @GetMapping("/solicitudes/pendientes")
+    @PreAuthorize("hasAuthority('SUPERVISION_LEER')")
+    @Operation(summary = "Listar solicitudes de supervisión pendientes (agregado por evaluador/terapeuta)")
+    public ResponseEntity<List<SupervisionSolicitudResponseDTO>> listarSolicitudesPendientes(
+            @AuthenticationPrincipal UsuarioAutenticado principal) {
+        List<String> terapeutaIds = principal != null ? principal.terapeutaIds() : List.of();
+        String solicitanteId = principal != null ? principal.sub() : null;
+        return ResponseEntity.ok(solicitudUseCases.listarPendientes(terapeutaIds, solicitanteId, esEvaluador(principal)).stream()
+                .map(supervisionRestMapper::toResponse).toList());
+    }
+
     @PostMapping("/solicitudes")
     @PreAuthorize("hasAuthority('EXPEDIENTE_ESCRIBIR')")
     @Operation(summary = "Crear una solicitud de supervisión")

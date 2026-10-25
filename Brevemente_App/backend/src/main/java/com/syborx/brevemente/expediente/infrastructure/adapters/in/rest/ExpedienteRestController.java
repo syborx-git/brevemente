@@ -73,6 +73,17 @@ public class ExpedienteRestController {
         return ResponseEntity.ok(body);
     }
 
+    @GetMapping("/sesiones/borradores")
+    @PreAuthorize("hasAuthority('EXPEDIENTE_LEER')")
+    @Operation(summary = "Listar borradores de sesión del terapeuta autenticado")
+    public ResponseEntity<List<SesionResponseDTO>> borradores(
+            @AuthenticationPrincipal UsuarioAutenticado principal) {
+        List<String> terapeutaIds = principal != null ? principal.terapeutaIds() : List.of();
+        return ResponseEntity.ok(listarSesionesUseCase.listarBorradores(terapeutaIds).stream()
+                .map(sesionRestMapper::toResponse)
+                .toList());
+    }
+
     @PostMapping("/paciente/{pacienteId}/sesiones")
     @PreAuthorize("hasAuthority('EXPEDIENTE_ESCRIBIR')")
     @Operation(summary = "Registrar una nueva sesión clínica TBE")

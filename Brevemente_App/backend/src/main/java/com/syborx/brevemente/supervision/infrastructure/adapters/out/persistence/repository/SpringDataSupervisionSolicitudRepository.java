@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface SpringDataSupervisionSolicitudRepository extends JpaRepository<SupervisionSolicitudJpaEntity, String> {
     List<SupervisionSolicitudJpaEntity> findByPacienteIdOrderByCreatedAtDesc(String pacienteId);
+
+    List<SupervisionSolicitudJpaEntity> findByEstadoOrderByCreatedAtDesc(String estado);
 }

@@ -2,6 +2,8 @@ package com.syborx.brevemente.dashboard.application.service;
 
 import com.syborx.brevemente.cita.application.ports.out.CitaRepositoryPort;
 import com.syborx.brevemente.cita.domain.model.Cita;
+import com.syborx.brevemente.expediente.application.ports.out.SesionRepositoryPort;
+import com.syborx.brevemente.expediente.domain.model.Sesion;
 import com.syborx.brevemente.dashboard.application.ports.in.ListarAlertasDashboardUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ListarAlertasMayoriaEdadUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ListarCasosPorProtocoloUseCase;
@@ -75,6 +77,7 @@ public class DashboardApplicationService implements
     private final CitaRepositoryPort citaRepositoryPort;
     private final DashboardCatalogosRepositoryPort dashboardCatalogosRepositoryPort;
     private final DashboardScopeResolver dashboardScopeResolver;
+    private final SesionRepositoryPort sesionRepositoryPort;
 
     @Override
     public DashboardStats obtenerStats(DashboardFiltros filtros) {
@@ -309,7 +312,24 @@ public class DashboardApplicationService implements
                 .intakeListo(paciente != null && !"pendiente".equalsIgnoreCase(paciente.getStatus()))
                 .consentimientoFirmado(consentimientoFirmado(paciente))
                 .grabacionLeva(paciente != null && "ia".equalsIgnoreCase(paciente.getRegistryMode()))
+                .motivoConsulta(paciente != null ? paciente.getMotivoConsulta() : null)
+                .numeroSesion(numeroSesion(cita))
                 .build();
+    }
+
+    private Integer numeroSesion(Cita cita) {
+        if (cita.getId() != null) {
+            Optional<Sesion> vinculada = sesionRepositoryPort.findByCitaId(cita.getId());
+            if (vinculada.isPresent() && vinculada.get().getNumero() != null) {
+                return vinculada.get().getNumero();
+            }
+        }
+        if (cita.getExpedienteId() == null) {
+            return null;
+        }
+        return sesionRepositoryPort.ultimoNumero(cita.getExpedienteId())
+                .map(n -> n + 1)
+                .orElse(1);
     }
 
     private boolean consentimientoFirmado(Paciente paciente) {

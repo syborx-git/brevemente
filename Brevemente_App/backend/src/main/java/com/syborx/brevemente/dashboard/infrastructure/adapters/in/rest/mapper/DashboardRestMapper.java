@@ -80,7 +80,9 @@ public class DashboardRestMapper {
                 accion.getProtocolo(),
                 accion.getIntakeListo(),
                 accion.getConsentimientoFirmado(),
-                accion.getGrabacionLeva()
+                accion.getGrabacionLeva(),
+                accion.getMotivoConsulta(),
+                accion.getNumeroSesion()
         );
     }
 
@@ -106,7 +108,9 @@ public class DashboardRestMapper {
                 accion.getProtocolo(),
                 null,
                 null,
-                accion.getGrabacionLeva()
+                accion.getGrabacionLeva(),
+                accion.getMotivoConsulta(),
+                accion.getNumeroSesion()
         );
     }
 

@@ -44,5 +44,11 @@ public record AccionDominanteResponseDTO(
         Boolean consentimientoFirmado,
 
         @Schema(description = "Indica si la grabación LEVA está disponible (sin datos en esta fase)", example = "false")
-        Boolean grabacionLeva
+        Boolean grabacionLeva,
+
+        @Schema(description = "Motivo de consulta del paciente", example = "Crisis de pánico con agorafobia incipiente")
+        String motivoConsulta,
+
+        @Schema(description = "Número de la próxima sesión (vinculada a la cita o siguiente consecutivo)", example = "3")
+        Integer numeroSesion
 ) {}

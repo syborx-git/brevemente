@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface ListarSesionesUseCase {
     List<Sesion> listarPorPaciente(String pacienteId);
+
+    List<Sesion> listarBorradores(List<String> terapeutaIds);
 }
