@@ -56,21 +56,22 @@ test.describe('Módulo de Dashboard — Validación E2E de Oráculo y Regresión
     await page.waitForLoadState('networkidle');
 
     // Título del Centro de Control e identidad real del terapeuta autenticado
-    await expect(page.getByRole('heading', { name: 'Panel Principal' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Centro de Control BreveMente' })).toBeVisible();
     await expect(page.getByText('Dra. Sofía Ramírez Lozano').first()).toBeVisible();
 
-    // Los 3 KPIs del panel (la card "Horas Supervisión" fue retirada — GAP-DASH-09)
+    // KPIs del panel (la card "Horas Supervisión" fue retirada — GAP-DASH-09)
     await expect(page.getByText('Pacientes Activos').first()).toBeVisible();
     await expect(page.getByText('Citas Programadas').first()).toBeVisible();
-    await expect(page.getByText('Alertas Normativas').first()).toBeVisible();
+    await expect(page.getByText('Alertas de Riesgo').first()).toBeVisible();
     await expect(page.getByText('Horas Supervisión')).not.toBeVisible();
 
-    // Alerta normativa real: pac-001 (menor) sin firma del representante
-    await expect(page.getByText('Consentimiento informado pendiente').first()).toBeVisible();
+    // Aviso normativo real: pac-001 (menor) sin firma de la persona de apoyo
+    await expect(page.getByText('Aviso Normativo TBE')).toBeVisible();
+    await expect(page.getByText(/Mateo Herrera Santos.*17 años/)).toBeVisible();
 
-    // Pacientes recientes servidos por la API real del dashboard
-    await expect(page.getByText('Pacientes con Actividad Reciente').first()).toBeVisible();
-    await expect(page.getByText('Mateo Herrera Santos').first()).toBeVisible();
+    // Secciones operativas servidas por la API real del dashboard
+    await expect(page.getByText('AGENDA DEL DÍA').first()).toBeVisible();
+    await expect(page.getByText('PENDIENTES PRIORITARIOS').first()).toBeVisible();
   });
 
   test('TC-DASH-02: Regresión Visual del Panel Principal con Oráculo Real', async ({ page }) => {

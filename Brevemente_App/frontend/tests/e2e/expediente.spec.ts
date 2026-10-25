@@ -57,8 +57,12 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
     // Tab de Datos de Admisión e Historia Clínica visible (port de la demo)
     await expect(page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ })).toBeVisible();
 
-    // Datos del expediente servidos por el oráculo (GET /expedientes/paciente/{id})
-    await expect(page.getByText('Fobia de rendimiento / Ansiedad de ejecución').first()).toBeVisible();
+    // Datos del expediente servidos por el oráculo (GET /expedientes/paciente/{id}):
+    // pac-001 es menor de edad → régimen legal y representante deben venir de la BD.
+    await expect(page.getByText('MENOR DE EDAD').first()).toBeVisible();
+    await expect(page.getByText('Claudia Santos')).toBeVisible();
+    await expect(page.getByText('Pendiente de Formalización').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sesiones \(/ })).toBeVisible();
   });
 
   test('TC-EXP-02: Sesiones del expediente cargadas desde la BD', async ({ page }) => {
