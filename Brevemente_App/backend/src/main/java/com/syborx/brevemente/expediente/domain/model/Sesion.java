@@ -38,6 +38,7 @@ public class Sesion {
     private String duracionAudio;
     private String status;
     private String creadoPorId;
+    private String citaId;
     private VcEntry valoracionCambio;
     private VgEntry valoracionGlobal;
 }

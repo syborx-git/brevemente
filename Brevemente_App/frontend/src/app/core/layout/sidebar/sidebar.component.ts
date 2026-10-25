@@ -9,7 +9,12 @@ import {
   Calendar, 
   FolderHeart, 
   MessageSquareCode, 
-  Eye 
+  Eye, 
+  BookOpen, 
+  GraduationCap, 
+  BarChart3, 
+  Settings, 
+  ShieldAlert 
 } from 'lucide-angular';
 import { RoleStateService } from '../../services/role-state.service';
 import { Role } from '../../types/clinical.types';
@@ -55,13 +60,23 @@ export class SidebarComponent {
         { path: '/pacientes', label: 'Pacientes', icon: Users, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'] },
         { path: '/agenda', label: 'Agenda', icon: Calendar, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor', 'patient'] },
         { path: '/expedientes', label: 'Expedientes', icon: FolderHeart, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor'] },
+        { path: '/biblioteca', label: 'Biblioteca Clínica', icon: BookOpen, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] },
         { path: '/asistente-leva', label: 'LEVA', subtitle: 'Inteligencia asistiva', icon: MessageSquareCode, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] }
       ]
     },
     {
       title: 'FORMACIÓN Y DESARROLLO',
       items: [
+        { path: '/campus', label: 'Campus BreveMente', icon: GraduationCap, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] },
+        { path: '/desempeno', label: 'Mi Desarrollo Profesional', icon: BarChart3, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] },
         { path: '/supervision', label: 'Supervisión Clínica', icon: Eye, roles: ['admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student'] }
+      ]
+    },
+    {
+      title: 'ADMINISTRACIÓN',
+      items: [
+        { path: '/configuracion', label: 'Configuración', icon: Settings, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'] },
+        { path: '/auditoria', label: 'Auditoría y Seguridad', icon: ShieldAlert, roles: ['admin_platform', 'admin_clinical', 'supervisor'] }
       ]
     }
   ];

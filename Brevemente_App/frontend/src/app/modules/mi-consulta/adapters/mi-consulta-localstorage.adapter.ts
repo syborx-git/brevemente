@@ -1,64 +1,100 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { CambioConfiguracion, ConsultaConfig, MiConsultaRepository, TerapeutaSede } from '../ports/mi-consulta.repository';
+import {
+  AccionDominante,
+  AlertaStaff,
+  BorradorSesion,
+  CitaHoy,
+  MiConsultaRepository,
+  SolicitudPendiente
+} from '../ports/mi-consulta.repository';
 
-const DEFAULT_CONFIG: ConsultaConfig = {
-  therapistName: 'Dr. Alejandro Silva',
-  license: 'CED-782190-PSIC',
-  specialty: 'Terapia Breve Estratégica (Modelo Nardone)',
-  email: 'alejandro.silva@brevemente.org',
-  phone: '+52 55 5555 4321',
-  defaultSessionDuration: 50,
-  costoPrimeraSesion: 1200,
-  costoSeguimiento: 1000,
-  edadMinimaAtencion: 12,
-  sedes: []
+const ACCION_DEMO: AccionDominante = {
+  citaId: 'cit-demo-1',
+  pacienteId: 'patient-1',
+  pacienteNombre: 'Sofía Martínez',
+  terapeutaNombre: 'Dr. Alejandro Silva',
+  fecha: '2026-10-21',
+  hora: '09:00',
+  tipoCita: 'seguimiento',
+  modalidad: 'PRESENCIAL',
+  duracionMinutos: 50,
+  consultorio: 'A',
+  protocolo: 'Ataque de Pánico',
+  intakeListo: true,
+  consentimientoFirmado: true,
+  grabacionLeva: true,
+  motivoConsulta: 'Ataque de Pánico (TBE-P-01)',
+  numeroSesion: 3
 };
 
-const CATALOGO_SEDES: TerapeutaSede[] = [
-  { id: 'sede-centro', nombre: 'Sede Centro BreveMente', esPrincipal: false },
-  { id: 'sede-norte', nombre: 'Sede Norte BreveMente', esPrincipal: false },
-  { id: 'sede-sur', nombre: 'Sede Sur BreveMente', esPrincipal: false }
+const CITAS_DEMO: CitaHoy[] = [
+  { id: 'cit-demo-1', pacienteId: 'patient-1', pacienteNombre: 'Sofía Martínez', hora: '09:00', tipo: 'seguimiento', modalidad: 'PRESENCIAL', duracionMinutos: 50, estado: 'confirmada' },
+  { id: 'cit-demo-2', pacienteId: 'patient-2', pacienteNombre: 'Carlos Mendoza', hora: '11:00', tipo: 'primera', modalidad: 'ONLINE', duracionMinutos: 30, estado: 'pendiente' },
+  { id: 'cit-demo-3', pacienteId: 'patient-3', pacienteNombre: 'Valeria Gómez', hora: '13:00', tipo: 'cierre', modalidad: 'PRESENCIAL', duracionMinutos: 45, estado: 'confirmada' }
 ];
 
-@Injectable({
-  providedIn: 'root'
-})
+const ALERTAS_DEMO: AlertaStaff[] = [
+  {
+    id: 'alerta-demo-1',
+    pacienteId: 'patient-1',
+    pacienteNombre: 'Sofía Martínez',
+    tipo: 'crisis',
+    estado: 'activa',
+    mensaje: 'ALERTA ROJA: El paciente activó el Botón de Crisis de emergencia desde su portal.',
+    createdAt: '2026-10-21T08:00:00-06:00',
+    resueltaPor: null,
+    resueltaEn: null
+  }
+];
+
+const SOLICITUDES_DEMO: SolicitudPendiente[] = [
+  {
+    id: 'sup-req-demo-1',
+    pacienteId: 'patient-2',
+    pacienteNombre: 'Carlos Mendoza',
+    terapeutaNombre: 'Dr. Alejandro Silva',
+    motivo: 'Duda sobre maniobra de reestructuración en sesión 4',
+    estado: 'pendiente',
+    createdAt: '2026-10-20T16:00:00-06:00'
+  }
+];
+
+const BORRADORES_DEMO: BorradorSesion[] = [
+  {
+    id: 'ses-demo-1',
+    pacienteId: 'patient-1',
+    numero: 3,
+    fecha: '2026-10-21',
+    notas: 'Prescribir la maniobra de la peor fantasía de 30 minutos a las 18:00...',
+    status: 'borrador'
+  }
+];
+
+@Injectable({ providedIn: 'root' })
 export class MiConsultaLocalStorageAdapter implements MiConsultaRepository {
-  private readonly storageKey = 'brevemente_consulta_config';
-
-  constructor() {
-    if (!localStorage.getItem(this.storageKey)) {
-      localStorage.setItem(this.storageKey, JSON.stringify(DEFAULT_CONFIG));
-    }
+  obtenerAccionDominante(): Observable<AccionDominante | null> {
+    return of(ACCION_DEMO);
   }
 
-  private getStored(): ConsultaConfig {
-    const raw = localStorage.getItem(this.storageKey);
-    return raw ? JSON.parse(raw) : DEFAULT_CONFIG;
+  listarCitasHoy(): Observable<CitaHoy[]> {
+    return of(CITAS_DEMO);
   }
 
-  obtenerConfig(terapeutaId?: string): Observable<ConsultaConfig> {
-    return of(this.getStored());
+  listarAlertasActivas(): Observable<AlertaStaff[]> {
+    return of(ALERTAS_DEMO);
   }
 
-  guardarConfig(config: ConsultaConfig, terapeutaId?: string): Observable<ConsultaConfig> {
-    localStorage.setItem(this.storageKey, JSON.stringify(config));
-    return of(config);
+  resolverAlerta(id: string): Observable<AlertaStaff> {
+    const alerta = ALERTAS_DEMO.find((a) => a.id === id);
+    return of({ ...(alerta ?? ALERTAS_DEMO[0]), estado: 'resuelta', resueltaPor: 'staff', resueltaEn: new Date().toISOString() });
   }
 
-  guardarSedes(sedes: TerapeutaSede[], terapeutaId?: string): Observable<TerapeutaSede[]> {
-    const config = this.getStored();
-    config.sedes = sedes;
-    localStorage.setItem(this.storageKey, JSON.stringify(config));
-    return of(sedes);
+  listarSolicitudesPendientes(): Observable<SolicitudPendiente[]> {
+    return of(SOLICITUDES_DEMO);
   }
 
-  obtenerSedesCatalog(): Observable<TerapeutaSede[]> {
-    return of(CATALOGO_SEDES);
-  }
-
-  obtenerHistorial(terapeutaId?: string): Observable<CambioConfiguracion[]> {
-    return of([]);
+  listarBorradores(): Observable<BorradorSesion[]> {
+    return of(BORRADORES_DEMO);
   }
 }

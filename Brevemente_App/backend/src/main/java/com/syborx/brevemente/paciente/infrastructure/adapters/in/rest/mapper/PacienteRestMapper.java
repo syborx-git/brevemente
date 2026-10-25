@@ -1,5 +1,6 @@
 package com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.mapper;
 
+import com.syborx.brevemente.paciente.domain.CurpParser;
 import com.syborx.brevemente.paciente.domain.model.CapacidadConsentimiento;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
 import com.syborx.brevemente.paciente.domain.model.RepresentanteLegal;
@@ -76,6 +77,10 @@ public class PacienteRestMapper {
 
         String[] parts = splitName(request.name());
         LocalDate fechaNac = parseDate(request.fechaNacimiento() != null ? request.fechaNacimiento() : request.birthDate());
+        // Paridad con la demo: si no se capturó fecha de nacimiento, se deriva de la CURP.
+        if (fechaNac == null) {
+            fechaNac = CurpParser.extraerFechaNacimiento(request.curp()).orElse(null);
+        }
         int edad = request.edadCalculada() != null 
                 ? request.edadCalculada() 
                 : (fechaNac != null ? Period.between(fechaNac, LocalDate.now()).getYears() : 25);

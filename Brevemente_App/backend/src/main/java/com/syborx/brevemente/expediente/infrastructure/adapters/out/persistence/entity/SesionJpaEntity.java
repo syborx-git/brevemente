@@ -96,6 +96,9 @@ public class SesionJpaEntity {
     @Column(name = "creado_por_id", length = 36)
     private String creadoPorId;
 
+    @Column(name = "cita_id", length = 36)
+    private String citaId;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "valoracion_cambio", columnDefinition = "jsonb")
     private Map<String, Object> valoracionCambio;

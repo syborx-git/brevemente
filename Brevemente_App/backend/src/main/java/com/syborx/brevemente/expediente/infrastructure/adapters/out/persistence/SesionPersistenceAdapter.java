@@ -36,4 +36,19 @@ public class SesionPersistenceAdapter implements SesionRepositoryPort {
         return sesionRepository.findTopByExpedienteIdOrderByNumeroDesc(expedienteId)
                 .map(SesionJpaEntity::getNumero);
     }
+
+    @Override
+    public Optional<Sesion> findByCitaId(String citaId) {
+        return sesionRepository.findByCitaId(citaId).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Sesion> findBorradoresPorTerapeuta(List<String> terapeutaIds) {
+        if (terapeutaIds == null || terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        return sesionRepository.findBorradoresPorTerapeuta(terapeutaIds).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
 }

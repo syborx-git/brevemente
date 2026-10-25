@@ -27,4 +27,6 @@ public class AccionDominante {
     Boolean intakeListo;
     Boolean consentimientoFirmado;
     Boolean grabacionLeva;
+    String motivoConsulta;
+    Integer numeroSesion;
 }

@@ -42,6 +42,7 @@ public class SesionPersistenceMapper {
                 .duracionAudio(e.getDuracionAudio())
                 .status(e.getStatus())
                 .creadoPorId(e.getCreadoPorId())
+                .citaId(e.getCitaId())
                 .valoracionCambio(mapToVc(e.getValoracionCambio()))
                 .valoracionGlobal(mapToVg(e.getValoracionGlobal()))
                 .build();
@@ -72,6 +73,7 @@ public class SesionPersistenceMapper {
                 .duracionAudio(d.getDuracionAudio())
                 .status(d.getStatus())
                 .creadoPorId(d.getCreadoPorId())
+                .citaId(d.getCitaId())
                 .valoracionCambio(vcToMap(d.getValoracionCambio()))
                 .valoracionGlobal(vgToMap(d.getValoracionGlobal()))
                 .build();

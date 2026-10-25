@@ -51,10 +51,10 @@ test.describe('Módulo de Dashboard — Scoping por Rol (Validación E2E de Orá
 
     // KPIs visibles
     await expect(page.getByText('Pacientes Activos').first()).toBeVisible();
-    await expect(page.getByText('Alertas Normativas').first()).toBeVisible();
+    await expect(page.getByText('Alertas de Riesgo').first()).toBeVisible();
 
-    // Alerta de consentimiento de su paciente pac-001 (en su scope)
-    await expect(page.getByText('Consentimiento informado pendiente').first()).toBeVisible();
+    // Aviso normativo de su paciente pac-001 (en su scope)
+    await expect(page.getByText('Aviso Normativo TBE')).toBeVisible();
 
     // Pacientes recientes: SOLO los suyos (ter-001 → Mateo y Valeria)
     await expect(page.getByText('Mateo Herrera Santos').first()).toBeVisible();
@@ -71,8 +71,10 @@ test.describe('Módulo de Dashboard — Scoping por Rol (Validación E2E de Orá
     await expect(page.getByText('Pacientes Activos').first()).toBeVisible();
     await expect(page.getByText('Citas Programadas').first()).toBeVisible();
 
-    // Sin card ni banner de alertas clínicas
-    await expect(page.getByText('Alertas Normativas')).not.toBeVisible();
+    // El KPI clínico existe pero NO expone el conteo: muestra "—" y "NO AUTORIZADO"
+    const riesgo = page.locator('app-kpi-card', { hasText: 'Alertas de Riesgo' });
+    await expect(riesgo).toBeVisible();
+    await expect(riesgo.getByText('NO AUTORIZADO')).toBeVisible();
     await expect(page.getByText('Consentimiento informado pendiente')).not.toBeVisible();
   });
 
@@ -83,11 +85,15 @@ test.describe('Módulo de Dashboard — Scoping por Rol (Validación E2E de Orá
 
     // KPIs + alertas (el supervisor sí ve clínica)
     await expect(page.getByText('Pacientes Activos').first()).toBeVisible();
-    await expect(page.getByText('Alertas Normativas').first()).toBeVisible();
+    await expect(page.getByText('Alertas de Riesgo').first()).toBeVisible();
 
-    // Supervisa ter-001 y ter-002 → ve pacientes de ambos (Mateo y Roberto)
+    // Supervisa ter-001 y ter-002: el filtro por terapeuta (solo para roles superiores)
+    // lista ambos profesionales, evidencia del alcance cross-terapeuta.
+    const terapeutaSelect = page.locator('select').filter({ hasText: 'Todos los Terapeutas' }).first();
+    await expect(terapeutaSelect).toBeVisible();
+    await expect(terapeutaSelect.locator('option', { hasText: 'Sofía Ramírez' })).toHaveCount(1);
+    await expect(terapeutaSelect.locator('option', { hasText: 'Alejandro Mendoza' })).toHaveCount(1);
     await expect(page.getByText('Mateo Herrera Santos').first()).toBeVisible();
-    await expect(page.getByText('Roberto Valdés Garza').first()).toBeVisible();
   });
 
   test('TC-ROLE-04: Regresión Visual del estado Asistente (sin alertas, grid reducida)', async ({ page }) => {

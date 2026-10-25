@@ -32,6 +32,12 @@ public class SesionApplicationService implements ListarSesionesUseCase, AgregarS
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Sesion> listarBorradores(List<String> terapeutaIds) {
+        return sesionRepositoryPort.findBorradoresPorTerapeuta(terapeutaIds);
+    }
+
+    @Override
     @Transactional
     public Sesion agregar(String pacienteId, Sesion sesion, String usuarioId) {
         String expedienteId = resolverExpediente(pacienteId);
@@ -59,8 +65,10 @@ public class SesionApplicationService implements ListarSesionesUseCase, AgregarS
         }
 
         Sesion saved = sesionRepositoryPort.save(sesion);
+        // El mapeo de persistencia no conserva pacienteId (la tabla expone expediente_id),
+        // por lo que se usa el parámetro de entrada para la traza de auditoría.
         auditoriaExpedientePort.registrar(
-                saved.getPacienteId(), usuarioId,
+                pacienteId, usuarioId,
                 "Registro de sesión TBE",
                 "Se registró la Sesión " + saved.getNumero() + " del expediente.", "sesion");
         return saved;

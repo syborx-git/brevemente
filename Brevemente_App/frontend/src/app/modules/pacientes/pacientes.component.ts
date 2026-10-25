@@ -8,6 +8,7 @@ import { PacienteLocalStorageAdapter } from './adapters/paciente-localstorage.ad
 import { PacienteHttpAdapter } from './adapters/paciente-http.adapter';
 import { Patient } from '../../core/types/clinical.types';
 import { formatEstadoConsentimientoLabel } from '../../core/utils/consentimiento.utils';
+import { evaluateCurpDateMismatch, parseCurpBirthDate } from '../../core/utils/curp.utils';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -47,6 +48,7 @@ export class PacientesComponent implements OnInit {
 
   calculatedAge: number | null = null;
   isMinor: boolean = false;
+  curpMismatchWarning: string | null = null;
 
   constructor(private readonly pacienteRepo: PacienteRepository) {}
 
@@ -77,9 +79,10 @@ export class PacientesComponent implements OnInit {
     if (!this.newFechaNacimiento) {
       this.calculatedAge = null;
       this.isMinor = false;
+      this.curpMismatchWarning = null;
       return;
     }
-    const birth = new Date(this.newFechaNacimiento);
+    const birth = new Date(this.newFechaNacimiento + 'T00:00:00');
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
     const m = today.getMonth() - birth.getMonth();
@@ -88,6 +91,31 @@ export class PacientesComponent implements OnInit {
     }
     this.calculatedAge = age;
     this.isMinor = age < 18;
+
+    if (this.newCurp.length === 18) {
+      this.curpMismatchWarning = evaluateCurpDateMismatch(this.newCurp, this.newFechaNacimiento);
+    } else {
+      this.curpMismatchWarning = null;
+    }
+  }
+
+  /** Paridad con la demo: autocompleta la fecha de nacimiento desde la CURP. */
+  onCurpChange(): void {
+    this.newCurp = (this.newCurp || '').toUpperCase();
+
+    const parsed = parseCurpBirthDate(this.newCurp);
+    if (this.newCurp.length === 18 && parsed.isValid && parsed.birthDate) {
+      this.newFechaNacimiento = parsed.birthDate;
+      this.onFechaNacimientoChange();
+      this.curpMismatchWarning = null;
+      return;
+    }
+
+    if (this.newCurp.length === 18 && this.newFechaNacimiento) {
+      this.curpMismatchWarning = evaluateCurpDateMismatch(this.newCurp, this.newFechaNacimiento);
+    } else if (this.newCurp.length < 18) {
+      this.curpMismatchWarning = null;
+    }
   }
 
   openCreateModal(): void {
@@ -102,6 +130,7 @@ export class PacientesComponent implements OnInit {
     this.newPersonaApoyoTelefono = '';
     this.calculatedAge = null;
     this.isMinor = false;
+    this.curpMismatchWarning = null;
   }
 
   closeCreateModal(): void {
