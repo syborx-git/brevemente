@@ -59,7 +59,7 @@ const TIPO: Record<string, string> = {
         <div class="ml-auto flex items-center gap-2">
           @if (hasPrescripciones()) {
             <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-clinical-accent/10 text-clinical-accent rounded-full text-[10px] font-bold">
-              💊 {{ totalPrescripciones }} {{ totalPrescripciones > 1 ? 'prescripciones' : 'prescripción' }}
+              {{ totalPrescripciones }} {{ totalPrescripciones > 1 ? 'prescripciones' : 'prescripción' }}
             </span>
             <span class="text-slate-400 text-xs">{{ expanded() ? '▲' : '▼' }}</span>
           }

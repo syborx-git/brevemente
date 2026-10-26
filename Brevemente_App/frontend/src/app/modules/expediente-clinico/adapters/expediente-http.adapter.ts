@@ -2,10 +2,12 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo } from '../ports/expediente.repository';
+import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from '../ports/expediente.repository';
 import {
   AuditLog,
   ClinicalRecord,
+  CriterioClinico,
+  OpcionConductual,
   Patient,
   Payment,
   PaymentStatus,
@@ -112,6 +114,24 @@ export class ExpedienteHttpAdapter implements ExpedienteRepository {
 
   agregarSesion(pacienteId: string, sesion: Omit<Session, 'id' | 'patientId' | 'status'>): Observable<Session> {
     return this.http.post<Session>(`${this.base}/expedientes/paciente/${pacienteId}/sesiones`, sesion);
+  }
+
+  actualizarSesion(sesionId: string, datos: SesionParcial): Observable<Session> {
+    return this.http.patch<Session>(`${this.base}/expedientes/sesiones/${sesionId}`, datos);
+  }
+
+  listarCriteriosSesion(sesionId: string): Observable<CriterioClinico[]> {
+    return this.http.get<CriterioClinico[]>(`${this.base}/expedientes/sesiones/${sesionId}/criterios`)
+      .pipe(catchError(() => of([])));
+  }
+
+  guardarCriteriosSesion(sesionId: string, criterios: CriterioClinico[]): Observable<CriterioClinico[]> {
+    return this.http.put<CriterioClinico[]>(`${this.base}/expedientes/sesiones/${sesionId}/criterios`, criterios);
+  }
+
+  listarOpcionesConductuales(): Observable<OpcionConductual[]> {
+    return this.http.get<OpcionConductual[]>(`${this.base}/expedientes/catalogos/opciones-conductuales`)
+      .pipe(catchError(() => of([])));
   }
 
   firmarConsentimiento(pacienteId: string): Observable<boolean> {

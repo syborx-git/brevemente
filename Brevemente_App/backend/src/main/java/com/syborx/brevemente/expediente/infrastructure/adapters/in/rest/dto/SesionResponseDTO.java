@@ -15,6 +15,8 @@ public record SesionResponseDTO(
         @Schema(example = "Definición del problema") String phase,
         @Schema(example = "Fobia de rendimiento") String protocol,
         @Schema(example = "SPR Fóbico") String dxOp,
+        @Schema(example = "Miedo al conflicto") String significado,
+        @Schema(example = "SPR Obsesivo-Compulsivo") String spr,
         String trastorno,
         List<String> px,
         String f1,

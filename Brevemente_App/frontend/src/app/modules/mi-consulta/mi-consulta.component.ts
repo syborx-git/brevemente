@@ -112,7 +112,7 @@ type EstadoSesion = 'por_iniciar' | 'en_curso' | 'finalizada' | 'nota_pendiente'
                 }
                 @if (sessionState() === 'en_curso') {
                   <button type="button" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow text-xs transition-colors">
-                    Detener Grabación y Procesar con LEVA ✨
+                    Detener Grabación y Procesar con LEVA
                   </button>
                 }
                 @if (sessionState() === 'finalizada') {
@@ -122,7 +122,7 @@ type EstadoSesion = 'por_iniciar' | 'en_curso' | 'finalizada' | 'nota_pendiente'
                 }
                 @if (sessionState() === 'nota_pendiente') {
                   <button type="button" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow text-xs transition-colors">
-                    Redactar Nota de Sesión Urgente 📄
+                    Redactar Nota de Sesión Urgente
                   </button>
                 }
               </div>

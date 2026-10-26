@@ -22,7 +22,7 @@
         [(ngModel)]="searchTerm"
         placeholder="Buscar por nombre de paciente o CURP..."
         class="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:border-clinical-accent bg-slate-50/50" />
-      <span class="absolute left-3 top-2.5 text-xs text-slate-400">🔍</span>
+      <span class="absolute left-3 top-2.5 text-xs text-slate-400"></span>
     </div>
 
     <!-- Filtros de Estado y Consentimiento -->
@@ -146,7 +146,7 @@
         </div>
 
         <p *ngIf="curpMismatchWarning" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-          ⚠️ {{ curpMismatchWarning }}
+          {{ curpMismatchWarning }}
         </p>
 
         <!-- Alerta de Minoría de Edad Automática -->
