@@ -50,6 +50,12 @@ public class SesionJpaEntity {
     @Column(name = "dx_operativo", columnDefinition = "TEXT")
     private String dxOperativo;
 
+    @Column(name = "significado", columnDefinition = "TEXT")
+    private String significado;
+
+    @Column(name = "spr", columnDefinition = "TEXT")
+    private String spr;
+
     @Column(name = "trastorno", columnDefinition = "TEXT")
     private String trastorno;
 

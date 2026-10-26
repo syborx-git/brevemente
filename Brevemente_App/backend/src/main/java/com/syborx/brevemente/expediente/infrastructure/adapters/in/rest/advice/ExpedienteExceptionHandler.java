@@ -3,6 +3,8 @@ package com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.advice;
 import com.syborx.brevemente.expediente.domain.exception.ConsentimientoYaFirmadoException;
 import com.syborx.brevemente.expediente.domain.exception.ExpedienteNotFoundException;
 import com.syborx.brevemente.expediente.domain.exception.SesionInvalidaException;
+import com.syborx.brevemente.expediente.domain.exception.SesionNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -27,6 +29,16 @@ public class ExpedienteExceptionHandler {
     @ExceptionHandler(SesionInvalidaException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(SesionInvalidaException ex) {
         return body(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(SesionNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleSesionNotFound(SesionNotFoundException ex) {
+        return body(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return body(HttpStatus.CONFLICT, "Violación de integridad de datos.");
     }
 
     private ResponseEntity<Map<String, Object>> body(HttpStatus status, String message) {

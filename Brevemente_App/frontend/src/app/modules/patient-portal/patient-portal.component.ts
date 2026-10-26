@@ -80,12 +80,12 @@ const TIPO: Record<string, string> = {
             [ngClass]="crisisEnviada()
               ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
               : 'bg-red-600 hover:bg-red-700 text-white'">
-            {{ crisisEnviada() ? 'Aviso enviado al equipo' : '⚠️ Botón de Crisis' }}
+            {{ crisisEnviada() ? 'Aviso enviado al equipo' : 'Botón de Crisis' }}
           </button>
           <button
             (click)="contactarAsistente()"
             class="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-xs font-bold shadow-sm transition-all">
-            💬 Contactar asistente
+            Contactar asistente
           </button>
         </div>
       </div>

@@ -36,7 +36,7 @@ interface DocBiblioteca {
         </div>
 
         <div class="relative w-full md:w-72">
-          <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
+          <span class="absolute left-3 top-2.5 text-slate-400"></span>
           <input type="text" placeholder="Buscar por título, código o contenido..." disabled
             class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50 text-slate-400 cursor-not-allowed" />
         </div>
@@ -47,7 +47,7 @@ interface DocBiblioteca {
         <div *ngFor="let doc of documentos" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
           <div class="space-y-3">
             <div class="flex items-start justify-between gap-3">
-              <div class="bg-blue-50 p-2.5 rounded-lg text-clinical-accent shrink-0">📄</div>
+              <div class="bg-blue-50 p-2.5 rounded-lg text-clinical-accent shrink-0"></div>
               <span class="text-[9px] px-2 py-0.5 border rounded-full font-bold uppercase bg-slate-50 border-slate-200 text-slate-500">{{ doc.codigo }}</span>
             </div>
             <div>

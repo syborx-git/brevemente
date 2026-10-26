@@ -10,7 +10,7 @@
       <button
         (click)="roleService.toggleLeva()"
         class="px-3.5 py-2 bg-clinical-accent/20 hover:bg-clinical-accent/30 text-clinical-textDark font-bold text-xs rounded-xl border border-clinical-accent/40 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
-        <span>🧠</span> Consultar con LEVA
+        Consultar con LEVA
       </button>
     </div>
   </div>
@@ -124,7 +124,7 @@
           *ngIf="!patient.consentimientoRepresentanteFirmado && patient.representante"
           (click)="firmarConsentimiento()"
           class="mt-2 px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-[11px] font-bold shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer">
-          <span>📄</span> Formalizar Consentimiento
+          Formalizar Consentimiento
         </button>
       </div>
     </div>
@@ -174,7 +174,7 @@
   <div *ngIf="activeTab === 'datos'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
       <h3 class="text-sm font-bold text-clinical-dark flex items-center gap-2">
-        <span>🩺</span> Diagnóstico Clínico Estratégico
+        Diagnóstico Clínico Estratégico
       </h3>
       <div class="grid grid-cols-1 gap-3 text-xs">
         <div>
@@ -204,7 +204,7 @@
 
     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
       <h3 class="text-sm font-bold text-clinical-dark flex items-center gap-2">
-        <span>🎯</span> Objetivos y SPR
+        Objetivos y SPR
       </h3>
       <div class="grid grid-cols-1 gap-3 text-xs">
         <div>
@@ -255,6 +255,10 @@
         [ngClass]="tbeSubTab === 'rst' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">
         Reestructuraciones (RST)
       </button>
+      <button (click)="setTbeSubTab('criterios')" class="px-3 py-1.5 rounded-md transition-all cursor-pointer"
+        [ngClass]="tbeSubTab === 'criterios' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+        Criterios Clínicos
+      </button>
     </div>
 
     <!-- DX ESTRATÉGICO -->
@@ -297,7 +301,7 @@
       </div>
       <div class="flex justify-end border-t border-slate-100 pt-4">
         <button (click)="guardarDx()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 cursor-pointer">
-          <span>💾</span> Guardar DX Estratégico
+          Guardar DX Estratégico
         </button>
       </div>
     </div>
@@ -340,10 +344,71 @@
             </div>
             <span class="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">{{ selectedSession.status }}</span>
           </div>
+          <!-- Edición inline de sesión (#102/#103/#104) -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 border-b border-slate-100 pb-3 mb-3 text-xs">
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Fase</span>
+              <ng-container *ngIf="editingField !== 'fase'; else editFase">
+                <button type="button" data-testid="editar-fase" (click)="iniciarEdicion('fase')" role="button" tabindex="0"
+                  class="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 cursor-pointer hover:border-clinical-accent">
+                  {{ selectedSession.phase || '—' }}
+                </button>
+              </ng-container>
+              <ng-template #editFase>
+                <select data-testid="select-fase" [(ngModel)]="selectedSession!.phase" class="w-full px-2 py-1 border border-slate-200 rounded-md"
+                  (change)="guardarEdicion()" (keydown.escape)="cancelarEdicion()">
+                  <option *ngFor="let f of catalogoFases" [value]="f">{{ f }}</option>
+                </select>
+              </ng-template>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Significado</span>
+              <ng-container *ngIf="editingField !== 'significado'; else editSignificado">
+                <button type="button" data-testid="editar-significado" (click)="iniciarEdicion('significado')" role="button" tabindex="0"
+                  class="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 cursor-pointer hover:border-clinical-accent">
+                  {{ selectedSession.significado || '—' }}
+                </button>
+              </ng-container>
+              <ng-template #editSignificado>
+                <input type="text" data-testid="input-significado" [(ngModel)]="selectedSession!.significado"
+                  class="w-full px-2 py-1 border border-slate-200 rounded-md"
+                  (blur)="guardarEdicion()" (keydown.escape)="cancelarEdicion()" (keyup.enter)="guardarEdicion()" />
+              </ng-template>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">DX operativo</span>
+              <ng-container *ngIf="editingField !== 'dxOp'; else editDxOp">
+                <button type="button" data-testid="editar-dx" (click)="iniciarEdicion('dxOp')" role="button" tabindex="0"
+                  class="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 cursor-pointer hover:border-clinical-accent">
+                  {{ selectedSession.dxOp || '—' }}
+                </button>
+              </ng-container>
+              <ng-template #editDxOp>
+                <input type="text" data-testid="input-dx" [(ngModel)]="selectedSession!.dxOp"
+                  class="w-full px-2 py-1 border border-slate-200 rounded-md"
+                  (blur)="guardarEdicion()" (keydown.escape)="cancelarEdicion()" (keyup.enter)="guardarEdicion()" />
+              </ng-template>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">SPR</span>
+              <ng-container *ngIf="editingField !== 'spr'; else editSpr">
+                <button type="button" data-testid="editar-spr" (click)="iniciarEdicion('spr')" role="button" tabindex="0"
+                  class="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 cursor-pointer hover:border-clinical-accent">
+                  {{ selectedSession.spr || '—' }}
+                </button>
+              </ng-container>
+              <ng-template #editSpr>
+                <select data-testid="select-spr" [(ngModel)]="selectedSession!.spr" class="w-full px-2 py-1 border border-slate-200 rounded-md"
+                  (change)="guardarEdicion()" (keydown.escape)="cancelarEdicion()">
+                  <option *ngFor="let s of catalogoSpr" [value]="s">{{ s }}</option>
+                </select>
+              </ng-template>
+            </div>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div>
               <p class="font-bold text-clinical-textDark mb-1">Prescripciones Estratégicas:</p>
-              <div *ngFor="let px of selectedSession.px" class="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-lg text-amber-900 mb-1.5 font-medium">💡 {{ px }}</div>
+              <div *ngFor="let px of selectedSession.px" class="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-lg text-amber-900 mb-1.5 font-medium">{{ px }}</div>
             </div>
             <div>
               <p class="font-bold text-clinical-textDark mb-1">Observaciones del Terapeuta:</p>
@@ -370,7 +435,7 @@
             <button (click)="toggleRecording()"
               class="px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs"
               [ngClass]="isRecording ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' : 'bg-clinical-teal hover:bg-clinical-tealHover text-white'">
-              <span>{{ isRecording ? '⏹ Detener Grabación' : '🎙️ Iniciar Grabación Simulada' }}</span>
+              <span>{{ isRecording ? 'Detener Grabación' : 'Iniciar Grabación Simulada' }}</span>
               <span *ngIf="isRecording" class="font-mono text-xs">({{ recordingSeconds }}s)</span>
             </button>
           </div>
@@ -389,7 +454,6 @@
             </div>
             <div *ngIf="levaAdvice" class="p-4 bg-clinical-accent/10 border border-clinical-accent/30 rounded-xl">
               <div class="flex items-center gap-2 mb-1.5">
-                <span class="text-base">🧠</span>
                 <p class="text-xs font-bold text-clinical-textDark">Análisis Clínico Estratégico (LEVA):</p>
               </div>
               <p class="text-xs text-clinical-dark leading-relaxed font-medium">{{ levaAdvice }}</p>
@@ -426,12 +490,30 @@
           <tbody class="divide-y divide-slate-100 font-medium text-slate-600">
             <tr *ngFor="let s of sessions" class="hover:bg-slate-50">
               <td class="p-3 font-bold text-clinical-dark">Sesión {{ s.number }}</td>
-              <td class="p-3">{{ s.valoracionCambio?.percepcion || '—' }}</td>
-              <td class="p-3">{{ s.valoracionCambio?.pensamientos || '—' }}</td>
-              <td class="p-3">{{ s.valoracionCambio?.sensaciones || '—' }}</td>
-              <td class="p-3">{{ s.valoracionCambio?.reacciones || '—' }}</td>
-              <td class="p-3">{{ s.valoracionCambio?.sintomas || '—' }}</td>
-              <td class="p-3">{{ s.valoracionCambio?.crisis || '—' }}</td>
+              <td class="p-3">
+                <span *ngIf="vcMeta(s.valoracionCambio?.percepcion) as m" class="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" [style.background]="m.color + '22'" [style.color]="m.color">{{ m.etiqueta }}</span>
+                <span *ngIf="!vcMeta(s.valoracionCambio?.percepcion)">—</span>
+              </td>
+              <td class="p-3">
+                <span *ngIf="vcMeta(s.valoracionCambio?.pensamientos) as m" class="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" [style.background]="m.color + '22'" [style.color]="m.color">{{ m.etiqueta }}</span>
+                <span *ngIf="!vcMeta(s.valoracionCambio?.pensamientos)">—</span>
+              </td>
+              <td class="p-3">
+                <span *ngIf="vcMeta(s.valoracionCambio?.sensaciones) as m" class="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" [style.background]="m.color + '22'" [style.color]="m.color">{{ m.etiqueta }}</span>
+                <span *ngIf="!vcMeta(s.valoracionCambio?.sensaciones)">—</span>
+              </td>
+              <td class="p-3">
+                <span *ngIf="vcMeta(s.valoracionCambio?.reacciones) as m" class="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" [style.background]="m.color + '22'" [style.color]="m.color">{{ m.etiqueta }}</span>
+                <span *ngIf="!vcMeta(s.valoracionCambio?.reacciones)">—</span>
+              </td>
+              <td class="p-3">
+                <span *ngIf="vcMeta(s.valoracionCambio?.sintomas) as m" class="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" [style.background]="m.color + '22'" [style.color]="m.color">{{ m.etiqueta }}</span>
+                <span *ngIf="!vcMeta(s.valoracionCambio?.sintomas)">—</span>
+              </td>
+              <td class="p-3">
+                <span *ngIf="vcMeta(s.valoracionCambio?.crisis) as m" class="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" [style.background]="m.color + '22'" [style.color]="m.color">{{ m.etiqueta }}</span>
+                <span *ngIf="!vcMeta(s.valoracionCambio?.crisis)">—</span>
+              </td>
             </tr>
             <tr *ngIf="sessions.length === 0"><td colspan="7" class="p-6 text-center text-slate-400">Sin sesiones registradas.</td></tr>
           </tbody>
@@ -487,6 +569,41 @@
           <div class="bg-slate-50 p-3 rounded border border-slate-100">
             <span class="font-bold text-clinical-dark block">Efecto Terapéutico (Reestructuración):</span>
             <p class="italic text-slate-700 mt-1">“{{ s.f2 || '—' }}”</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTRO DE CRITERIOS CLÍNICOS (#106/#107/#108) -->
+    <div *ngIf="tbeSubTab === 'criterios'" class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden text-xs">
+      <div class="p-4 border-b border-slate-100 bg-slate-50 font-bold text-clinical-dark uppercase flex items-center justify-between">
+        <span>Registro de Criterios Clínicos por Sesión</span>
+        <button *ngIf="roleService.hasPermission('EXPEDIENTE_ESCRIBIR')" (click)="guardarCriterios()"
+          class="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-[11px] font-bold shadow cursor-pointer">
+          Guardar criterios
+        </button>
+      </div>
+      <div *ngIf="!selectedSession" class="p-6 text-center text-slate-400">Selecciona una sesión para registrar criterios.</div>
+      <div *ngIf="selectedSession" class="divide-y divide-slate-100">
+        <div *ngFor="let cat of categoriasCriterio" class="p-4">
+          <button type="button" [attr.data-testid]="'criterio-' + cat" (click)="toggleCriterio(cat)" role="button" tabindex="0"
+            [attr.aria-expanded]="criteriosAbiertos.has(cat)" [attr.aria-controls]="'crit-' + cat"
+            class="w-full flex items-center justify-between font-bold text-clinical-dark text-left cursor-pointer">
+            <span class="capitalize">{{ cat.replaceAll('_', ' ') }}</span>
+            <span class="text-clinical-accent">{{ criteriosAbiertos.has(cat) ? '−' : '+' }}</span>
+          </button>
+          <div *ngIf="criteriosAbiertos.has(cat)" [id]="'crit-' + cat" class="mt-2">
+            <ng-container *ngIf="cat === 'conductual'; else criterioLibre">
+              <select data-testid="select-conductual" [ngModel]="valorCriterio(cat)" (ngModelChange)="setCriterioValor('conductual', $event)"
+                class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg text-xs">
+                <option value="">— Seleccionar —</option>
+                <option *ngFor="let o of opcionesConductuales" [value]="o.codigo">{{ o.etiqueta }}</option>
+              </select>
+            </ng-container>
+            <ng-template #criterioLibre>
+              <input type="text" [ngModel]="valorCriterio(cat)" (ngModelChange)="setCriterioValor(cat, $event)"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" placeholder="Escribe o selecciona el valor..." />
+            </ng-template>
           </div>
         </div>
       </div>
@@ -548,7 +665,7 @@
 
     <div class="flex justify-end border-t border-slate-100 pt-4">
       <button (click)="guardarPsiquiatria()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 cursor-pointer">
-        <span>💾</span> Guardar Expediente Psiquiátrico
+        Guardar Expediente Psiquiátrico
       </button>
     </div>
   </div>
@@ -632,7 +749,6 @@
                   (click)="enviarRecordatorioPago(pay)"
                   class="flex items-center gap-1 px-2 py-1 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-full text-[9px] font-bold shadow-sm transition-all cursor-pointer"
                   title="Enviar recordatorio de pago por WhatsApp">
-                  <span>💬</span>
                   <span>Recordatorio</span>
                 </button>
               </div>
@@ -654,7 +770,7 @@
                   (click)="eliminarPago(pay)"
                   class="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded transition-colors cursor-pointer"
                   title="Eliminar pago">
-                  🗑️
+                  Eliminar
                 </button>
               </div>
             </td>
@@ -691,7 +807,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-clinical-dark shrink-0">
-          <span class="text-base">📖</span>
+          <span class="text-base"></span>
         </div>
         <div>
           <h3 class="text-sm font-bold text-clinical-dark flex items-center gap-2">
@@ -719,7 +835,6 @@
           type="button"
           (click)="solicitarSupervision()"
           class="flex items-center gap-1.5 px-3.5 py-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer">
-          <span>📋</span>
           <span>Solicitar Supervisión</span>
         </button>
       </div>
@@ -728,7 +843,6 @@
     <!-- Lista de bitácoras -->
     <div class="space-y-4">
       <div *ngIf="bitacoras.length === 0" class="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
-        <span class="text-3xl block">📖</span>
         <p class="text-slate-500 font-medium">No se han registrado bitácoras de supervisión para este paciente.</p>
         <button
           *ngIf="roleService.hasAnyPermission(['SUPERVISION_REGISTRAR', 'SUPERVISION_EVALUAR'])"
@@ -763,7 +877,7 @@
               (click)="eliminarBitacora(log)"
               class="p-1.5 text-slate-300 hover:text-red-600 transition-colors cursor-pointer"
               title="Eliminar bitácora">
-              🗑️
+              Eliminar
             </button>
           </div>
         </div>
@@ -854,7 +968,6 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-clinical-dark shrink-0">
-          <span class="text-base">📄</span>
         </div>
         <div>
           <h3 class="text-sm font-bold text-clinical-dark flex items-center gap-2">
@@ -881,7 +994,7 @@
 
     <!-- Banner informativo legal NOM-004 -->
     <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-xs leading-relaxed text-slate-600">
-      <span class="text-base text-clinical-accent shrink-0 mt-0.5">🛡️</span>
+      <span class="text-base text-clinical-accent shrink-0 mt-0.5"></span>
       <div>
         <span class="font-bold text-clinical-dark block text-xs mb-0.5">
           Normativa de Expedición Documental y Cédula Profesional (NOM-004-SSA3-2012)
@@ -899,7 +1012,7 @@
       </span>
 
       <div *ngIf="constancias.length === 0" class="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
-        <span class="text-3xl block">📄</span>
+        <span class="text-3xl block"></span>
         <p class="text-slate-500 font-medium">No se han registrado constancias físicas emitidas para este paciente.</p>
         <button
           *ngIf="roleService.hasPermission('CONSTANCIAS_EMITIR')"
@@ -927,7 +1040,7 @@
                 ✓ Entregada en físico
               </span>
               <span *ngIf="cert.scanFileName" class="text-[9px] bg-teal-50 text-clinical-teal border border-teal-200 px-2 py-0.5 rounded font-bold flex items-center gap-1">
-                📎 Escaneo adjunto
+                Escaneo adjunto
               </span>
             </div>
 
@@ -961,7 +1074,7 @@
               (click)="anularConstancia(cert)"
               class="p-2 text-slate-300 hover:text-red-600 transition-colors cursor-pointer"
               title="Anular constancia">
-              🗑️
+              Anular
             </button>
           </div>
         </div>
@@ -999,64 +1112,32 @@
         <!-- PANEL DE CAPTURA VALORACIÓN DEL CAMBIO (VC) -->
         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
           <span class="font-bold text-clinical-dark flex items-center gap-1.5 text-xs">
-            <span>📈</span>
             <span>Valoración del Cambio para esta Sesión</span>
           </span>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-slate-500 font-semibold mb-0.5 text-[11px]">Percepción:</label>
-              <select [(ngModel)]="newVcPercepcion" class="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-xs">
-                <option value="Sin cambios">Sin cambios</option>
-                <option value="Mejoría leve">Mejoría leve</option>
-                <option value="Mejoría significativa">Mejoría significativa</option>
-                <option value="Nuevo patrón">Nuevo patrón</option>
-                <option value="Empeoramiento">Empeoramiento</option>
-              </select>
+              <app-vc-semaphore [estado]="estadoVc(newVcPercepcion)" (seleccion)="setEstadoVc('percepcion', $event)"></app-vc-semaphore>
             </div>
             <div>
               <label class="block text-slate-500 font-semibold mb-0.5 text-[11px]">Pensamientos:</label>
-              <select [(ngModel)]="newVcPensamientos" class="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-xs">
-                <option value="Sin cambios">Sin cambios</option>
-                <option value="Mejoría leve">Mejoría leve</option>
-                <option value="Mejoría significativa">Mejoría significativa</option>
-                <option value="Empeoramiento">Empeoramiento</option>
-              </select>
+              <app-vc-semaphore [estado]="estadoVc(newVcPensamientos)" (seleccion)="setEstadoVc('pensamientos', $event)"></app-vc-semaphore>
             </div>
             <div>
               <label class="block text-slate-500 font-semibold mb-0.5 text-[11px]">Sensaciones:</label>
-              <select [(ngModel)]="newVcSensaciones" class="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-xs">
-                <option value="Sin cambios">Sin cambios</option>
-                <option value="Mejoría leve">Mejoría leve</option>
-                <option value="Mejoría significativa">Mejoría significativa</option>
-                <option value="Empeoramiento">Empeoramiento</option>
-              </select>
+              <app-vc-semaphore [estado]="estadoVc(newVcSensaciones)" (seleccion)="setEstadoVc('sensaciones', $event)"></app-vc-semaphore>
             </div>
             <div>
               <label class="block text-slate-500 font-semibold mb-0.5 text-[11px]">Reacciones:</label>
-              <select [(ngModel)]="newVcReacciones" class="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-xs">
-                <option value="Sin cambios">Sin cambios</option>
-                <option value="Mejoría leve">Mejoría leve</option>
-                <option value="Mejoría significativa">Mejoría significativa</option>
-                <option value="Empeoramiento">Empeoramiento</option>
-              </select>
+              <app-vc-semaphore [estado]="estadoVc(newVcReacciones)" (seleccion)="setEstadoVc('reacciones', $event)"></app-vc-semaphore>
             </div>
             <div>
               <label class="block text-slate-500 font-semibold mb-0.5 text-[11px]">Síntomas:</label>
-              <select [(ngModel)]="newVcSintomas" class="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-xs">
-                <option value="Sin cambios">Sin cambios</option>
-                <option value="Mejoría leve">Mejoría leve</option>
-                <option value="Mejoría significativa">Mejoría significativa</option>
-                <option value="Empeoramiento">Empeoramiento</option>
-              </select>
+              <app-vc-semaphore [estado]="estadoVc(newVcSintomas)" (seleccion)="setEstadoVc('sintomas', $event)"></app-vc-semaphore>
             </div>
             <div>
               <label class="block text-slate-500 font-semibold mb-0.5 text-[11px]">Crisis:</label>
-              <select [(ngModel)]="newVcCrisis" class="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none text-xs">
-                <option value="Sin cambios">Sin cambios</option>
-                <option value="Mejoría leve">Mejoría leve</option>
-                <option value="Mejoría significativa">Mejoría significativa</option>
-                <option value="Empeoramiento">Empeoramiento</option>
-              </select>
+              <app-vc-semaphore [estado]="estadoVc(newVcCrisis)" (seleccion)="setEstadoVc('crisis', $event)"></app-vc-semaphore>
             </div>
           </div>
         </div>
@@ -1064,7 +1145,6 @@
         <!-- PANEL DE CAPTURA VALORACIÓN GLOBAL (VG) -->
         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
           <span class="font-bold text-clinical-dark flex items-center gap-1.5 text-xs">
-            <span>❤️</span>
             <span>Valoración Global (Señalar esferas resueltas)</span>
           </span>
           <div class="grid grid-cols-3 gap-3">
@@ -1208,7 +1288,6 @@
       <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 shrink-0 flex items-start justify-between">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-clinical-teal/20 border border-clinical-teal/30 flex items-center justify-center shrink-0">
-            <span class="text-base">📄</span>
           </div>
           <div>
             <span class="text-[10px] uppercase font-bold tracking-wider text-clinical-teal">
@@ -1231,7 +1310,7 @@
       <form (submit)="registrarConstancia()" class="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-700">
         <!-- Aviso legal -->
         <div class="bg-blue-50/60 border border-blue-200 rounded-xl p-3.5 flex items-start gap-2.5 text-[11px] text-blue-900 leading-relaxed">
-          <span class="text-base text-blue-600 shrink-0 mt-0.5">🛡️</span>
+          <span class="text-base text-blue-600 shrink-0 mt-0.5"></span>
           <div>
             <span class="font-bold block">Bitácora de Control y Archivo Médico</span>
             Este formulario registra en el expediente oficial la entrega física de constancias o justificantes elaborados y firmados en papel por los especialistas. No sustituye el documento físico original.
@@ -1399,7 +1478,6 @@
             </label>
             <div class="flex items-center gap-2">
               <label class="flex-1 cursor-pointer flex items-center justify-center gap-1.5 p-2 bg-white border border-dashed border-slate-300 hover:border-clinical-teal rounded-lg text-[11px] font-semibold text-slate-600 transition-colors truncate">
-                <span>📎</span>
                 <span class="truncate">{{ newConstancia.scanFileName || 'Seleccionar archivo escaneado...' }}</span>
                 <input
                   type="file"
@@ -1461,7 +1539,6 @@
       <div class="bg-slate-900 text-white p-5 shrink-0 flex items-start justify-between">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-clinical-teal/20 border border-clinical-teal/40 flex items-center justify-center shrink-0">
-            <span class="text-base">📄</span>
           </div>
           <div>
             <div class="flex items-center gap-2">
@@ -1547,7 +1624,7 @@
         <!-- Archivo escaneado si existe -->
         <div *ngIf="selectedConstancia.scanFileName" class="bg-teal-50/50 border border-teal-200 rounded-xl p-3.5 flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
-            <span class="text-base text-clinical-teal">📎</span>
+            <span class="text-base text-clinical-teal"></span>
             <div>
               <span class="font-bold text-clinical-dark text-xs block">
                 Copia Digitalizada del Documento Firmado
@@ -1561,7 +1638,6 @@
             type="button"
             (click)="simularDescargarEscaneo(selectedConstancia.scanFileName)"
             class="flex items-center gap-1.5 px-3 py-1.5 bg-clinical-teal hover:bg-[#258280] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
-            <span>📥</span>
             <span>Descargar Escaneo</span>
           </button>
         </div>
@@ -1596,7 +1672,7 @@
       <div class="bg-clinical-dark text-white p-5 shrink-0 flex items-start justify-between">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
-            <span class="text-base">📖</span>
+            <span class="text-base"></span>
           </div>
           <div>
             <span class="text-[10px] uppercase font-bold tracking-wider text-clinical-teal">

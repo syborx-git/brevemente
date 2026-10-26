@@ -4,12 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo } from './ports/expediente.repository';
+import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from './ports/expediente.repository';
 import { ExpedienteLocalStorageAdapter } from './adapters/expediente-localstorage.adapter';
 import { ExpedienteHttpAdapter } from './adapters/expediente-http.adapter';
 import {
   AuditLog,
   ClinicalRecord,
+  CriterioCategoria,
+  CriterioClinico,
+  OpcionConductual,
   Patient,
   Payment,
   PaymentMethod,
@@ -22,13 +25,15 @@ import {
   VcEntry,
   VgEntry
 } from '../../core/types/clinical.types';
+import { VcEstado, vcEstadoDeTexto, VC_ESTADO_A_TEXTO, VC_ESCALA } from '../../core/constants/vc-escala';
+import { VcSemaphoreComponent } from './components/vc-semaphore/vc-semaphore.component';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-expediente-clinico',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus],
+  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus, VcSemaphoreComponent],
   providers: [
     {
       provide: ExpedienteRepository,
@@ -56,8 +61,22 @@ export class ExpedienteClinicoComponent implements OnInit {
   solicitudes: SupervisionRequest[] = [];
 
   activeTab: 'datos' | 'psiquiatria' | 'tbe' | 'pagos' | 'auditoria' | 'supervision' | 'constancias' = 'tbe';
-  tbeSubTab: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' = 'dx';
+  tbeSubTab: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' | 'criterios' = 'dx';
   selectedSession: Session | null = null;
+
+  // Edición inline de sesión (#102/#103/#104)
+  editingField: 'fase' | 'significado' | 'dxOp' | 'spr' | null = null;
+  isSavingField = false;
+
+  // Criterios clínicos por sesión (#106/#107/#108)
+  criterios: CriterioClinico[] = [];
+  opcionesConductuales: OpcionConductual[] = [];
+  criteriosAbiertos: Set<string> = new Set(['conductual']);
+  categoriasCriterio: CriterioCategoria[] = [
+    'conductual', 'racionalizaciones_intelectualizaciones', 'comparaciones', 'imagenes_intrusivas', 'otro'
+  ];
+  catalogoFases = ['Definición del problema', 'Desbloqueo', 'Consolidación', 'Cierre'];
+  catalogoSpr = ['SPR Fóbico', 'SPR Obsesivo-Compulsivo', 'SPR Paranoide', 'SPR Depresivo', 'SPR Dismórfico', 'SPR Hipocondríaco'];
 
   // Modal Nueva Sesión
   showSessionModal = false;
@@ -261,8 +280,91 @@ export class ExpedienteClinicoComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  setTbeSubTab(sub: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'): void {
+  setTbeSubTab(sub: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' | 'criterios'): void {
     this.tbeSubTab = sub;
+    if (sub === 'criterios') {
+      this.cargarCriterios();
+    }
+  }
+
+  // --- Edición inline de sesión (#102, #103, #104) ---
+  iniciarEdicion(campo: 'fase' | 'significado' | 'dxOp' | 'spr'): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    this.editingField = campo;
+  }
+
+  cancelarEdicion(): void {
+    this.editingField = null;
+    this.isSavingField = false;
+  }
+
+  guardarEdicion(): void {
+    if (!this.selectedSession || !this.editingField) return;
+    const parcial: SesionParcial = {};
+    switch (this.editingField) {
+      case 'fase': parcial.phase = this.selectedSession.phase; break;
+      case 'significado': parcial.significado = this.selectedSession.significado; break;
+      case 'dxOp': parcial.dxOp = this.selectedSession.dxOp; break;
+      case 'spr': parcial.spr = this.selectedSession.spr; break;
+    }
+    this.isSavingField = true;
+    this.expedienteRepo.actualizarSesion(this.selectedSession.id, parcial).subscribe({
+      next: (sesion) => {
+        this.selectedSession = { ...this.selectedSession, ...sesion };
+        const i = this.sessions.findIndex(x => x.id === sesion.id);
+        if (i >= 0) this.sessions[i] = sesion;
+        this.cancelarEdicion();
+      },
+      error: () => this.cancelarEdicion()
+    });
+  }
+
+  // --- Criterios clínicos (#106, #107, #108) ---
+  cargarCriterios(): void {
+    if (!this.selectedSession) return;
+    this.expedienteRepo.listarCriteriosSesion(this.selectedSession.id).subscribe(c => this.criterios = c);
+    this.expedienteRepo.listarOpcionesConductuales().subscribe(o => this.opcionesConductuales = o);
+  }
+
+  toggleCriterio(categoria: string): void {
+    if (this.criteriosAbiertos.has(categoria)) this.criteriosAbiertos.delete(categoria);
+    else this.criteriosAbiertos.add(categoria);
+  }
+
+  valorCriterio(categoria: string): string {
+    return this.criterios.find(c => c.categoria === categoria)?.valor ?? '';
+  }
+
+  setCriterioValor(categoria: CriterioCategoria, valor: string): void {
+    const existente = this.criterios.find(c => c.categoria === categoria);
+    if (existente) existente.valor = valor;
+    else this.criterios.push({ categoria, valor });
+  }
+
+  guardarCriterios(): void {
+    if (!this.selectedSession) return;
+    this.expedienteRepo.guardarCriteriosSesion(this.selectedSession.id, this.criterios).subscribe(c => this.criterios = c);
+  }
+
+  estadoVc(texto: string | null | undefined): VcEstado | null {
+    return vcEstadoDeTexto(texto);
+  }
+
+  vcMeta(texto: string | null | undefined): { etiqueta: string; color: string } | null {
+    const e = vcEstadoDeTexto(texto);
+    if (!e) return null;
+    const m = VC_ESCALA[e];
+    return { etiqueta: m.etiqueta, color: m.color };
+  }
+
+  setEstadoVc(campo: 'percepcion' | 'pensamientos' | 'sensaciones' | 'reacciones' | 'sintomas' | 'crisis', estado: VcEstado): void {
+    const texto = VC_ESTADO_A_TEXTO[estado];
+    if (campo === 'percepcion') this.newVcPercepcion = texto;
+    else if (campo === 'pensamientos') this.newVcPensamientos = texto;
+    else if (campo === 'sensaciones') this.newVcSensaciones = texto;
+    else if (campo === 'reacciones') this.newVcReacciones = texto;
+    else if (campo === 'sintomas') this.newVcSintomas = texto;
+    else this.newVcCrisis = texto;
   }
 
   @HostListener('document:keydown.escape')
@@ -591,7 +693,7 @@ export class ExpedienteClinicoComponent implements OnInit {
   }
 
   simularDescargarEscaneo(scanFileName?: string): void {
-    alert(`📥 Descargando respaldo escaneado: "${scanFileName || 'constancia_escaneada.pdf'}"`);
+    alert(`Descargando respaldo escaneado: "${scanFileName || 'constancia_escaneada.pdf'}"`);
   }
 
   // --- MÉTODOS DE BITÁCORAS DE SUPERVISIÓN ---

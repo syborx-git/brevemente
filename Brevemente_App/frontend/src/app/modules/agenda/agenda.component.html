@@ -22,7 +22,7 @@
 
   <!-- Banner Normativo -->
   <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
-    <span class="text-base">⚖️</span>
+    <span class="text-base"></span>
     <span>
       <strong>Control Normativo:</strong> Los pacientes menores de edad sin consentimiento formalizado de la persona de apoyo mantienen sus sesiones en estado <em>Bloqueada / Pendiente</em>.
     </span>
@@ -67,7 +67,7 @@
                 <div *ngFor="let app of citasDeHora(day.date, hour)" (click)="selectApp(app)" class="p-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex flex-col gap-1 mb-1" [ngClass]="freqClass(app.patientId)">
                   <div class="flex items-center justify-between font-bold text-clinical-textDark">
                     <span class="truncate">{{ app.patientName }}</span>
-                    <span *ngIf="isPatientBlocked(app.patientId)" class="text-[9px] font-bold text-amber-600 shrink-0">⚖️</span>
+                    <span *ngIf="isPatientBlocked(app.patientId)" class="text-[9px] font-bold text-amber-600 shrink-0"></span>
                   </div>
                   <div class="flex justify-between items-center text-[8px] text-slate-400">
                     <span class="font-semibold uppercase">{{ app.type }}</span>
@@ -85,7 +85,7 @@
       <div *ngIf="viewLevel === 'dia'" class="divide-y divide-slate-100 p-4 space-y-2">
         <div class="text-xs font-bold text-clinical-textDark uppercase border-b border-slate-100 pb-2">{{ dayName(anchorDate) }}, {{ anchorDate }}</div>
         <div *ngIf="getHoliday(anchorDate)" class="text-[10px] font-bold px-3 py-2 rounded-lg border" [ngClass]="getHoliday(anchorDate)!.tipo === 'personal' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-slate-100 text-red-700 border-red-300'">
-          {{ getHoliday(anchorDate)!.tipo === 'personal' ? '🟣' : '🔴' }} {{ getHoliday(anchorDate)!.nombre }} — día no laborable
+          {{ getHoliday(anchorDate)!.nombre }} — día no laborable
         </div>
         <div *ngFor="let hour of hours" class="py-3 flex items-start gap-4 hover:bg-slate-50/50">
           <span class="w-16 font-bold text-slate-400 text-xs shrink-0">{{ hour }}</span>
@@ -95,7 +95,7 @@
                 <div>
                   <span class="font-bold text-clinical-textDark block">{{ app.patientName }}</span>
                   <span class="text-[10px] text-slate-400 uppercase">{{ app.type }} • {{ app.duration ?? 50 }} min</span>
-                  <span *ngIf="isPatientBlocked(app.patientId)" class="text-[9px] font-bold text-amber-600 flex items-center gap-1 mt-0.5">⚖️ Bloqueada por Normativa</span>
+                  <span *ngIf="isPatientBlocked(app.patientId)" class="text-[9px] font-bold text-amber-600 flex items-center gap-1 mt-0.5">Bloqueada por Normativa</span>
                 </div>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase shrink-0" [ngClass]="statusColor(app.status)">{{ statusLabel(app.status) }}</span>
               </div>
@@ -166,7 +166,7 @@
         </div>
 
         <div *ngIf="isPatientBlocked(selectedPatientId)" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
-          <strong>⚠️ Aviso:</strong> Este paciente es menor de edad y su representante aún no firma el consentimiento. La cita quedará registrada como <em>Bloqueada</em>.
+          <strong>Aviso:</strong> Este paciente es menor de edad y su representante aún no firma el consentimiento. La cita quedará registrada como <em>Bloqueada</em>.
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -280,7 +280,7 @@
       </div>
 
       <div *ngIf="isPatientBlocked(selectedApp.patientId)" class="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[10px]">
-        <span class="font-bold block">⚠️ Acción Bloqueada:</span>
+        <span class="font-bold block">Acción Bloqueada:</span>
         <span>Se requiere firma del representante en el expediente para confirmar la sesión.</span>
       </div>
 
@@ -290,7 +290,7 @@
       </div>
 
       <button *ngIf="selectedApp.status === 'cancelada'" (click)="abrirWhatsAppCancelacion(selectedApp)" class="w-full px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] flex items-center justify-center gap-2">
-        📱 Notificar cancelación por WhatsApp
+        Notificar cancelación por WhatsApp
       </button>
     </div>
   </div>

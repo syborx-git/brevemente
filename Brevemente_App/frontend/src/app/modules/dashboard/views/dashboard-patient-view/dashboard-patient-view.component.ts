@@ -49,7 +49,7 @@ interface Leyenda {
               <line x1="12" y1="9" x2="12" y2="13"></line>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
-            ⚠️ BOTÓN DE CRISIS
+            BOTÓN DE CRISIS
           </button>
         </div>
       </div>
@@ -198,14 +198,14 @@ interface Leyenda {
               <h3 class="font-extrabold text-sm uppercase tracking-wider text-red-600">Atención de Crisis Inmediata</h3>
             </div>
             <p class="font-bold text-slate-700 text-xs leading-relaxed">
-              ⚠️ Se ha notificado inmediatamente al <b>Dr. Alejandro Silva</b> y al <b>Supervisor de Guardia</b> sobre tu estado de crisis. Un profesional se comunicará contigo de forma prioritaria.
+              Se ha notificado inmediatamente al <b>Dr. Alejandro Silva</b> y al <b>Supervisor de Guardia</b> sobre tu estado de crisis. Un profesional se comunicará contigo de forma prioritaria.
             </p>
 
             <div class="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
               <span class="font-bold text-red-800 text-[11px] block uppercase">Recursos de Apoyo Inmediatos (Gratuitos 24/7):</span>
               <div class="space-y-1.5 font-extrabold text-xs text-red-950">
-                <div>📞 Línea de la Vida (Nacional): <span class="underline">800 911 2000</span></div>
-                <div>📞 Teléfono de Guardia BreveMente: <span class="underline">+52 55 9000 8000</span></div>
+                <div>Línea de la Vida (Nacional): <span class="underline">800 911 2000</span></div>
+                <div>Teléfono de Guardia BreveMente: <span class="underline">+52 55 9000 8000</span></div>
               </div>
             </div>
 

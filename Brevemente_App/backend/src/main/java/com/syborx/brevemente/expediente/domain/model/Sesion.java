@@ -23,6 +23,8 @@ public class Sesion {
     private String fase;
     private String protocolo;
     private String dxOperativo;
+    private String significado;
+    private String spr;
     private String trastorno;
     private List<String> px;
     private String f1;

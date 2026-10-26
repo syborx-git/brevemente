@@ -201,6 +201,8 @@ export interface Session {
   phase: string;
   protocol: string;
   dxOp: string;
+  spr?: string;
+  significado?: string;
   trastorno?: string;
   px: string[];
   f1: string;
@@ -288,6 +290,25 @@ export interface VgEntry {
   yo: boolean;
   demas: boolean;
   mundo: boolean;
+}
+
+export type CriterioCategoria =
+  | 'conductual'
+  | 'racionalizaciones_intelectualizaciones'
+  | 'comparaciones'
+  | 'imagenes_intrusivas'
+  | 'otro';
+
+export interface CriterioClinico {
+  id?: string;
+  categoria: CriterioCategoria;
+  valor: string;
+}
+
+export interface OpcionConductual {
+  codigo: string;
+  etiqueta: string;
+  orden: number;
 }
 
 export type AuditLogCategory = 'expediente' | 'sesion' | 'ia' | 'reporte' | 'seguridad' | 'riesgo' | 'pagos';
