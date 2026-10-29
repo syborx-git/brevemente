@@ -1,9 +1,11 @@
 package com.syborx.brevemente.paciente.application.service;
 
 import com.syborx.brevemente.paciente.application.ports.in.*;
+import com.syborx.brevemente.paciente.application.ports.out.IdentidadTerapeutaPort;
 import com.syborx.brevemente.paciente.application.ports.out.PacienteRepositoryPort;
 import com.syborx.brevemente.paciente.domain.exception.PacienteConflictException;
 import com.syborx.brevemente.paciente.domain.exception.PacienteNotFoundException;
+import com.syborx.brevemente.paciente.domain.exception.TerapeutaVinculoException;
 import com.syborx.brevemente.paciente.domain.model.CapacidadConsentimiento;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class PacienteApplicationService implements
         ActualizarPacienteUseCase {
 
     private final PacienteRepositoryPort pacienteRepositoryPort;
+    private final IdentidadTerapeutaPort identidadTerapeutaPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,6 +49,14 @@ public class PacienteApplicationService implements
                 throw new PacienteConflictException("Ya existe un paciente con el CURP: " + nuevoPaciente.getCurp());
             }
         }
+
+        if (nuevoPaciente.getRfc() != null && !nuevoPaciente.getRfc().isBlank()) {
+            if (pacienteRepositoryPort.existsByRfc(nuevoPaciente.getRfc())) {
+                throw new PacienteConflictException("Ya existe un paciente con el RFC: " + nuevoPaciente.getRfc());
+            }
+        }
+
+        resolverTerapeuta(nuevoPaciente);
 
         // Generación de ID de dominio si no viene provisto
         if (nuevoPaciente.getId() == null || nuevoPaciente.getId().isBlank()) {
@@ -80,6 +91,25 @@ public class PacienteApplicationService implements
         return pacienteRepositoryPort.save(nuevoPaciente);
     }
 
+    /**
+     * Resuelve el terapeuta asignado al alta:
+     * - Un terapeuta autenticado con un único vínculo se asigna a sí mismo.
+     * - El resto (admin/assistant) debe indicar un {@code therapistId} válido.
+     */
+    private void resolverTerapeuta(Paciente paciente) {
+        boolean esTerapeuta = identidadTerapeutaPort.tieneRol("therapist");
+        java.util.List<String> ids = identidadTerapeutaPort.terapeutaIds();
+        if (esTerapeuta && ids.size() == 1) {
+            paciente.setTerapeutaId(ids.get(0));
+            return;
+        }
+        String terapeutaId = paciente.getTerapeutaId();
+        if (terapeutaId != null && !terapeutaId.isBlank()
+                && !pacienteRepositoryPort.existsTerapeuta(terapeutaId)) {
+            throw new TerapeutaVinculoException("El terapeuta asignado no existe: " + terapeutaId);
+        }
+    }
+
     @Override
     @Transactional
     public Paciente actualizar(String id, Paciente cambios) {
@@ -99,6 +129,15 @@ public class PacienteApplicationService implements
         if (cambios.getConsentimientoRepresentanteFirmado() != null) {
             existente.setConsentimientoRepresentanteFirmado(cambios.getConsentimientoRepresentanteFirmado());
         }
+        if (cambios.getRfc() != null) existente.setRfc(cambios.getRfc());
+        if (cambios.getSexo() != null) existente.setSexo(cambios.getSexo());
+        if (cambios.getLugarNacimiento() != null) existente.setLugarNacimiento(cambios.getLugarNacimiento());
+        if (cambios.getEstadoCivil() != null) existente.setEstadoCivil(cambios.getEstadoCivil());
+        if (cambios.getEscolaridad() != null) existente.setEscolaridad(cambios.getEscolaridad());
+        if (cambios.getOcupacion() != null) existente.setOcupacion(cambios.getOcupacion());
+        if (cambios.getReligion() != null) existente.setReligion(cambios.getReligion());
+        if (cambios.getDomicilio() != null) existente.setDomicilio(cambios.getDomicilio());
+        if (cambios.getContactoEmergencia() != null) existente.setContactoEmergencia(cambios.getContactoEmergencia());
 
         return pacienteRepositoryPort.save(existente);
     }

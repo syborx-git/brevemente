@@ -1,0 +1,10 @@
+package com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Solicitud de alta de un tratamiento previo")
+public record TratamientoPrevioRequest(
+        @Schema(example = "Psicoanálisis") String enfoque,
+        @Schema(example = "2 años") String duracion,
+        @Schema(description = "Resultado", allowableValues = {"resuelto", "mejorado", "invariable", "drop_out", "otro"}) String resultado
+) {}

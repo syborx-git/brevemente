@@ -35,4 +35,13 @@ public class SedeJpaEntity {
     @Column(name = "activo", nullable = false)
     @Builder.Default
     private Boolean activo = true;
+
+    @Column(name = "clues", length = 15)
+    private String clues;
+
+    @Column(name = "licencia_sanitaria", length = 50)
+    private String licenciaSanitaria;
+
+    @Column(name = "tipo_establecimiento", length = 10)
+    private String tipoEstablecimiento;
 }

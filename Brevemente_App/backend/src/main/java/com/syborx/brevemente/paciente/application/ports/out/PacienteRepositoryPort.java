@@ -15,6 +15,8 @@ public interface PacienteRepositoryPort {
     Optional<Paciente> findById(String id);
     Optional<Paciente> findByCurp(String curp);
     boolean existsByCurp(String curp);
+    boolean existsByRfc(String rfc);
+    boolean existsTerapeuta(String terapeutaId);
     Paciente save(Paciente paciente);
 
     long countByStatus(String status, Collection<String> terapeutaIds, String sedeId, String protocoloId);

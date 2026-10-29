@@ -171,63 +171,431 @@
   </div>
 
   <!-- PESTAÑA: Datos de Admisión e Historia Clínica -->
-  <div *ngIf="activeTab === 'datos'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-      <h3 class="text-sm font-bold text-clinical-dark flex items-center gap-2">
-        Diagnóstico Clínico Estratégico
-      </h3>
-      <div class="grid grid-cols-1 gap-3 text-xs">
-        <div>
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Motivo de Consulta (Textual):</span>
-          <p class="text-slate-700 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.motif || 'Sin registro.' }}</p>
-        </div>
-        <div>
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Descripción de la Conducta Sintomática:</span>
-          <p class="text-slate-700 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.description || 'Sin registro.' }}</p>
-        </div>
-        <div>
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Trastorno Estratégico Clasificado:</span>
-          <p class="text-clinical-teal font-bold mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.trastornoEstrategico || 'Sin clasificar.' }}</p>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
+  <div *ngIf="activeTab === 'datos'" class="space-y-5">
+    <!-- Sub-pestañas -->
+    <div class="flex gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold w-fit">
+      <button (click)="setDatosSubTab('generales')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="datosSubTab === 'generales' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Datos Generales</button>
+      <button (click)="setDatosSubTab('historia')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="datosSubTab === 'historia' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Historia clínica</button>
+      <button (click)="setDatosSubTab('ficha')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="datosSubTab === 'ficha' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Ficha de identificación</button>
+    </div>
+
+    <!-- SUB: Datos Generales -->
+    <div *ngIf="datosSubTab === 'generales' && patient" class="space-y-4">
+      <!-- Establecimiento -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+        <h3 class="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Establecimiento</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600">
+          <div><span class="text-slate-400 block text-[10px] uppercase font-bold">Establecimiento</span>{{ establecimiento?.nombre || '—' }}</div>
+          <div><span class="text-slate-400 block text-[10px] uppercase font-bold">Clave CLUES</span>{{ establecimiento?.clues || '—' }}</div>
+          <div><span class="text-slate-400 block text-[10px] uppercase font-bold">Licencia Sanitaria</span>{{ establecimiento?.licenciaSanitaria || '—' }}</div>
           <div>
-            <span class="text-slate-400 block text-[10px] uppercase font-bold">Evolución Temporal:</span>
-            <p class="text-slate-700 mt-0.5 capitalize">{{ record?.evolutionType || 'progresivo' }}</p>
+            <span class="text-slate-400 block text-[10px] uppercase font-bold">Tipo de Establecimiento</span>
+            <span class="inline-flex flex-wrap gap-3 mt-1 text-slate-700">
+              <label class="flex items-center gap-1"><input type="radio" disabled [checked]="establecimiento?.tipoEstablecimiento === 'publico'" class="accent-clinical-accent" /> Público</label>
+              <label class="flex items-center gap-1"><input type="radio" disabled [checked]="establecimiento?.tipoEstablecimiento === 'privado'" class="accent-clinical-accent" /> Privado</label>
+              <label class="flex items-center gap-1"><input type="radio" disabled [checked]="establecimiento?.tipoEstablecimiento === 'social'" class="accent-clinical-accent" /> Social</label>
+            </span>
           </div>
-          <div>
-            <span class="text-slate-400 block text-[10px] uppercase font-bold">Primera Aparición:</span>
-            <p class="text-slate-700 mt-0.5">{{ record?.firstAppearance || 'Sin registro.' }}</p>
+        </div>
+      </div>
+
+      <!-- Datos del Expediente -->
+      <div *ngIf="record" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+        <h3 class="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Datos del Expediente</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div><label class="text-slate-500 block mb-1">Número de Expediente</label><input type="text" [value]="record.folio" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+          <div><label class="text-slate-500 block mb-1">Fecha de Apertura</label><input type="date" [(ngModel)]="record.fechaApertura" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Tipo de Expediente</label>
+            <select [(ngModel)]="record.tipoExpediente" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"><option [ngValue]="null">—</option><option value="fisico">Físico</option><option value="electronico">Electrónico</option><option value="mixto">Mixto</option></select>
           </div>
+        </div>
+      </div>
+
+      <!-- Datos del Paciente -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+        <h3 class="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Datos del Paciente</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div><label class="text-slate-500 block mb-1">Nombre Completo</label><input type="text" [value]="patient.name" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+          <div><label class="text-slate-500 block mb-1">CURP</label><input type="text" [value]="patient.curp" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+          <div><label class="text-slate-500 block mb-1">RFC</label><input type="text" [(ngModel)]="patient.rfc" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Fecha de Nacimiento</label><input type="text" [value]="patient.fechaNacimiento" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+          <div><label class="text-slate-500 block mb-1">Edad</label><input type="text" [value]="patient.edadCalculada" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+          <div><label class="text-slate-500 block mb-1">Sexo</label>
+            <select [(ngModel)]="patient.sexo" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"><option [ngValue]="null">—</option><option>M</option><option>F</option><option>LGTB+</option></select>
+          </div>
+          <div><label class="text-slate-500 block mb-1">Lugar de Nacimiento</label><input type="text" [(ngModel)]="patient.lugarNacimiento" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Estado Civil</label><input type="text" [(ngModel)]="patient.estadoCivil" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Escolaridad</label><input type="text" [(ngModel)]="patient.escolaridad" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Ocupación</label><input type="text" [(ngModel)]="patient.ocupacion" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Religión</label><input type="text" [(ngModel)]="patient.religion" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        </div>
+
+        <h4 class="text-xs font-bold text-clinical-dark pt-1">Domicilio</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="md:col-span-2"><label class="text-slate-500 block mb-1">Calle y Número</label><input type="text" [(ngModel)]="patient.domicilio!.calleNumero" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Colonia</label><input type="text" [(ngModel)]="patient.domicilio!.colonia" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">C.P.</label><input type="text" [(ngModel)]="patient.domicilio!.codigoPostal" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Municipio/Delegación</label><input type="text" [(ngModel)]="patient.domicilio!.municipio" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Estado</label><input type="text" [(ngModel)]="patient.domicilio!.estadoDomicilio" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Tel. Casa</label><input type="text" [(ngModel)]="patient.domicilio!.telefonoCasa" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Tel. Celular</label><input type="text" [(ngModel)]="patient.domicilio!.telefonoCelular" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Tel. Trabajo</label><input type="text" [(ngModel)]="patient.domicilio!.telefonoTrabajo" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div class="md:col-span-2"><label class="text-slate-500 block mb-1">Correo Electrónico</label><input type="text" [(ngModel)]="patient.email" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        </div>
+
+        <h4 class="text-xs font-bold text-clinical-dark pt-1">Contacto de Emergencia</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div><label class="text-slate-500 block mb-1">Nombre</label><input type="text" [(ngModel)]="patient.contactoEmergencia!.nombre" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Parentesco</label><input type="text" [(ngModel)]="patient.contactoEmergencia!.parentesco" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="text-slate-500 block mb-1">Teléfono</label><input type="text" [(ngModel)]="patient.contactoEmergencia!.telefono" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <button (click)="guardarDatosGenerales()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow">Guardar Datos Generales</button>
+        </div>
+      </div>
+
+      <!-- Responsable Legal (si aplica) -->
+      <div *ngIf="patient.representante" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+        <h3 class="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Responsable Legal</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+          <div><span class="text-slate-400 block text-[10px] uppercase font-bold">Nombre</span>{{ patient.representante.nombreCompleto }}</div>
+          <div><span class="text-slate-400 block text-[10px] uppercase font-bold">Parentesco/Relación</span>{{ patient.representante.parentesco }}</div>
+          <div><span class="text-slate-400 block text-[10px] uppercase font-bold">Teléfono</span>{{ patient.representante.telefono }}</div>
         </div>
       </div>
     </div>
 
-    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-      <h3 class="text-sm font-bold text-clinical-dark flex items-center gap-2">
-        Objetivos y SPR
-      </h3>
-      <div class="grid grid-cols-1 gap-3 text-xs">
-        <div>
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Objetivos del Paciente:</span>
-          <p class="text-slate-700 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.objectivePatient || 'Sin registro.' }}</p>
+    <!-- SUB: Historia clínica (SDD-HC-3) -->
+    <div *ngIf="datosSubTab === 'historia' && record" class="space-y-4 text-xs">
+
+      <!-- Card 1: Antecedentes Personales Patológicos -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+          <h3 class="text-sm font-bold text-clinical-dark">Antecedentes Personales Patológicos</h3>
+          <button *ngIf="!editandoPatologicos" (click)="editarAntecedentes('patologicos')" aria-label="Editar antecedentes personales patológicos" class="px-3 py-1.5 border border-clinical-accent text-clinical-accent rounded-lg text-xs font-semibold hover:bg-clinical-accent hover:text-white transition-colors cursor-pointer">Editar</button>
         </div>
-        <div>
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Objetivos del Terapeuta:</span>
-          <p class="text-slate-700 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.objectiveTherapist || 'Sin registro.' }}</p>
+
+        <ng-container *ngIf="!editandoPatologicos; else editarPatologicos">
+          <ng-container *ngIf="hasPatologicosData(); else sinPatologicos">
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-slate-600">
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Médicos</dt><dd class="text-right">{{ antPat('médicos') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Quirúrgicos</dt><dd class="text-right">{{ antPat('quirúrgicos') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Traumáticos</dt><dd class="text-right">{{ antPat('traumáticos') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Alérgicos</dt><dd class="text-right">{{ antPat('alérgicos') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Transfusionales</dt><dd class="text-right">{{ antPat('transfusionales') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Hospitalizaciones</dt><dd class="text-right">{{ antPat('hospitalizaciones') || '—' }}</dd></div>
+            </dl>
+          </ng-container>
+          <ng-template #sinPatologicos><p class="text-slate-400 italic">Sin datos</p></ng-template>
+        </ng-container>
+
+        <ng-template #editarPatologicos>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label class="text-slate-500 block mb-1">Médicos</label><textarea [ngModel]="draftAntPat('médicos')" (ngModelChange)="setAntPat('médicos', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Quirúrgicos</label><textarea [ngModel]="draftAntPat('quirúrgicos')" (ngModelChange)="setAntPat('quirúrgicos', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Traumáticos</label><textarea [ngModel]="draftAntPat('traumáticos')" (ngModelChange)="setAntPat('traumáticos', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Alérgicos</label><textarea [ngModel]="draftAntPat('alérgicos')" (ngModelChange)="setAntPat('alérgicos', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Transfusionales</label><textarea [ngModel]="draftAntPat('transfusionales')" (ngModelChange)="setAntPat('transfusionales', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Hospitalizaciones</label><textarea [ngModel]="draftAntPat('hospitalizaciones')" (ngModelChange)="setAntPat('hospitalizaciones', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+              <button (click)="cancelarAntecedentes()" class="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+              <button (click)="guardarAntecedentes()" class="px-4 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-semibold">Guardar</button>
+            </div>
+          </div>
+        </ng-template>
+      </section>
+
+      <!-- Card 2: Antecedentes Personales No Patológicos -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+          <h3 class="text-sm font-bold text-clinical-dark">Antecedentes Personales No Patológicos</h3>
+          <button *ngIf="!editandoNoPatologicos" (click)="editarAntecedentes('noPatologicos')" aria-label="Editar antecedentes personales no patológicos" class="px-3 py-1.5 border border-clinical-accent text-clinical-accent rounded-lg text-xs font-semibold hover:bg-clinical-accent hover:text-white transition-colors cursor-pointer">Editar</button>
         </div>
-        <div>
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Diagnóstico Operativo Inicial:</span>
-          <p class="text-slate-700 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.dxOpInicial || 'Sin registro.' }}</p>
+
+        <ng-container *ngIf="!editandoNoPatologicos; else editarNoPatologicos">
+          <ng-container *ngIf="hasNoPatologicosData(); else sinNoPatologicos">
+            <dl class="space-y-2 text-slate-600">
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Tabaquismo</dt><dd class="text-right">{{ habitoResumen(habitoActual('tabaquismo')) }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Alcoholismo</dt><dd class="text-right">{{ habitoResumen(habitoActual('alcoholismo')) }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Toxicomanías</dt><dd class="text-right">{{ habitoResumen(habitoActual('toxicomanías')) }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Actividad física</dt><dd class="text-right">{{ antNoPat('actividadFísica') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Alimentación</dt><dd class="text-right">{{ antNoPat('alimentación') || '—' }}</dd></div>
+            </dl>
+          </ng-container>
+          <ng-template #sinNoPatologicos><p class="text-slate-400 italic">Sin datos</p></ng-template>
+        </ng-container>
+
+        <ng-template #editarNoPatologicos>
+          <div class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 border-b border-slate-50 pb-3">
+              <div>
+                <span class="text-slate-500 block mb-1 font-semibold">Tabaquismo</span>
+                <div role="radiogroup" aria-label="Tabaquismo" class="flex gap-4">
+                  <label class="flex items-center gap-1"><input type="radio" name="hc-tabaquismo" [value]="false" [(ngModel)]="draftNoPatologicos.tabaquismo.presente" /> No</label>
+                  <label class="flex items-center gap-1"><input type="radio" name="hc-tabaquismo" [value]="true" [(ngModel)]="draftNoPatologicos.tabaquismo.presente" /> Sí</label>
+                </div>
+                <ng-container *ngIf="draftNoPatologicos.tabaquismo.presente">
+                  <label class="text-slate-400 block mt-1">Cantidad</label>
+                  <input type="text" [(ngModel)]="draftNoPatologicos.tabaquismo.cantidad" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" />
+                  <label class="text-slate-400 block mt-1">Tiempo</label>
+                  <input type="text" [(ngModel)]="draftNoPatologicos.tabaquismo.tiempo" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" />
+                </ng-container>
+              </div>
+              <div>
+                <span class="text-slate-500 block mb-1 font-semibold">Alcoholismo</span>
+                <div role="radiogroup" aria-label="Alcoholismo" class="flex gap-4">
+                  <label class="flex items-center gap-1"><input type="radio" name="hc-alcoholismo" [value]="false" [(ngModel)]="draftNoPatologicos.alcoholismo.presente" /> No</label>
+                  <label class="flex items-center gap-1"><input type="radio" name="hc-alcoholismo" [value]="true" [(ngModel)]="draftNoPatologicos.alcoholismo.presente" /> Sí</label>
+                </div>
+                <ng-container *ngIf="draftNoPatologicos.alcoholismo.presente">
+                  <label class="text-slate-400 block mt-1">Cantidad</label>
+                  <input type="text" [(ngModel)]="draftNoPatologicos.alcoholismo.cantidad" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" />
+                  <label class="text-slate-400 block mt-1">Frecuencia</label>
+                  <input type="text" [(ngModel)]="draftNoPatologicos.alcoholismo.frecuencia" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" />
+                </ng-container>
+              </div>
+              <div>
+                <span class="text-slate-500 block mb-1 font-semibold">Toxicomanías</span>
+                <div role="radiogroup" aria-label="Toxicomanías" class="flex gap-4">
+                  <label class="flex items-center gap-1"><input type="radio" name="hc-toxicomanias" [value]="false" [(ngModel)]="draftHabito('toxicomanías').presente" /> No</label>
+                  <label class="flex items-center gap-1"><input type="radio" name="hc-toxicomanias" [value]="true" [(ngModel)]="draftHabito('toxicomanías').presente" /> Sí</label>
+                </div>
+                <ng-container *ngIf="draftHabito('toxicomanías').presente">
+                  <label class="text-slate-400 block mt-1">Tipo</label>
+                  <input type="text" [(ngModel)]="draftHabito('toxicomanías').tipo" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" />
+                  <label class="text-slate-400 block mt-1">Tiempo</label>
+                  <input type="text" [(ngModel)]="draftHabito('toxicomanías').tiempo" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" />
+                </ng-container>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div><label class="text-slate-500 block mb-1">Actividad física</label><textarea [ngModel]="draftAntNoPat('actividadFísica')" (ngModelChange)="setAntNoPat('actividadFísica', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+              <div><label class="text-slate-500 block mb-1">Alimentación</label><textarea [ngModel]="draftAntNoPat('alimentación')" (ngModelChange)="setAntNoPat('alimentación', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button (click)="cancelarAntecedentes()" class="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+              <button (click)="guardarAntecedentes()" class="px-4 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-semibold">Guardar</button>
+            </div>
+          </div>
+        </ng-template>
+      </section>
+
+      <!-- Card 3: Antecedentes Heredo Familiares -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+          <h3 class="text-sm font-bold text-clinical-dark">Antecedentes Heredo Familiares</h3>
+          <button *ngIf="!editandoHeredoFamiliares" (click)="editarAntecedentes('heredoFamiliares')" aria-label="Editar antecedentes heredo familiares" class="px-3 py-1.5 border border-clinical-accent text-clinical-accent rounded-lg text-xs font-semibold hover:bg-clinical-accent hover:text-white transition-colors cursor-pointer">Editar</button>
         </div>
-        <div>
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Sistema Perceptivo-Reactivo (SPR):</span>
-          <p class="text-slate-700 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.sprInicial || 'Sin registro.' }}</p>
+
+        <ng-container *ngIf="!editandoHeredoFamiliares; else editarHeredoFamiliares">
+          <ng-container *ngIf="hasHeredoFamiliaresData(); else sinHeredoFamiliares">
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-slate-600">
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Enfermedades mentales</dt><dd class="text-right">{{ antHer('enfermedadesMentales') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Enfermedades crónicas</dt><dd class="text-right">{{ antHer('enfermedadesCrónicas') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Suicidios o intentos</dt><dd class="text-right">{{ antHer('suicidiosIntentos') || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Adicciones</dt><dd class="text-right">{{ antHer('adicciones') || '—' }}</dd></div>
+            </dl>
+          </ng-container>
+          <ng-template #sinHeredoFamiliares><p class="text-slate-400 italic">Sin datos</p></ng-template>
+        </ng-container>
+
+        <ng-template #editarHeredoFamiliares>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label class="text-slate-500 block mb-1">Enfermedades mentales</label><textarea [ngModel]="draftAntHer('enfermedadesMentales')" (ngModelChange)="setAntHer('enfermedadesMentales', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Enfermedades crónicas</label><textarea [ngModel]="draftAntHer('enfermedadesCrónicas')" (ngModelChange)="setAntHer('enfermedadesCrónicas', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Suicidios o intentos</label><textarea [ngModel]="draftAntHer('suicidiosIntentos')" (ngModelChange)="setAntHer('suicidiosIntentos', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div><label class="text-slate-500 block mb-1">Adicciones</label><textarea [ngModel]="draftAntHer('adicciones')" (ngModelChange)="setAntHer('adicciones', $event)" rows="1" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+              <button (click)="cancelarAntecedentes()" class="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+              <button (click)="guardarAntecedentes()" class="px-4 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-semibold">Guardar</button>
+            </div>
+          </div>
+        </ng-template>
+      </section>
+
+      <!-- Card 4: Evaluación del Estado Mental (Examen Mental) -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+          <h3 class="text-sm font-bold text-clinical-dark">Evaluación del Estado Mental (Examen Mental)</h3>
+          <div class="flex gap-2">
+            <button (click)="abrirExamen()" class="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-xs font-semibold cursor-pointer">Realizar examen</button>
+            <button (click)="verResultados()" [disabled]="!hasExamenMentalData()" [ngClass]="hasExamenMentalData() ? 'border-clinical-accent text-clinical-accent hover:bg-clinical-accent hover:text-white' : 'border-slate-200 text-slate-300 cursor-not-allowed'" class="px-3 py-1.5 border rounded-lg text-xs font-semibold transition-colors">Ver resultados</button>
+          </div>
         </div>
-        <div *ngIf="record?.precipitatingFactors">
-          <span class="text-slate-400 block text-[10px] uppercase font-bold">Factores Precipitantes:</span>
-          <p class="text-slate-700 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{{ record?.precipitatingFactors }}</p>
+
+        <ng-container *ngIf="hasExamenMentalData(); else sinExamen">
+          <p *ngIf="examenFechaTexto" class="text-slate-400 mb-1">Fecha de aplicación: {{ examenFechaTexto }}</p>
+          <p *ngIf="examenImpresionDiagnostica" class="text-slate-600">Impresión diagnóstica: <span class="font-semibold text-clinical-dark">{{ examenImpresionDiagnostica }}</span></p>
+        </ng-container>
+        <ng-template #sinExamen>
+          <p class="text-slate-400 italic">Sin datos — Realice el examen para registrar la evaluación del estado mental.</p>
+        </ng-template>
+      </section>
+
+      <!-- Card 5: Evaluación de Riesgo -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+          <h3 class="text-sm font-bold text-clinical-dark">Evaluación de Riesgo</h3>
+          <button *ngIf="!editandoRiesgo" (click)="editarRiesgo()" aria-label="Editar evaluación de riesgo" class="px-3 py-1.5 border border-clinical-accent text-clinical-accent rounded-lg text-xs font-semibold hover:bg-clinical-accent hover:text-white transition-colors cursor-pointer">Editar</button>
+        </div>
+
+        <ng-container *ngIf="!editandoRiesgo; else editarRiesgoTpl">
+          <ng-container *ngIf="hasRiesgoData(); else sinRiesgo">
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-slate-600">
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Riesgo suicida</dt><dd class="text-right">{{ record.riesgoSuicida || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Riesgo heteroagresivo</dt><dd class="text-right">{{ record.riesgoHeteroagresivo || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Especificar (suicida)</dt><dd class="text-right">{{ record.riesgoSuicidaEspecificar || '—' }}</dd></div>
+              <div class="flex justify-between gap-2"><dt class="text-slate-400">Especificar (heteroagresivo)</dt><dd class="text-right">{{ record.riesgoHeteroagresivoEspecificar || '—' }}</dd></div>
+              <div class="md:col-span-2"><dt class="text-slate-400">Otros riesgos</dt><dd class="mt-1">{{ record.otrosRiesgos || '—' }}</dd></div>
+            </dl>
+          </ng-container>
+          <ng-template #sinRiesgo><p class="text-slate-400 italic">Sin datos</p></ng-template>
+        </ng-container>
+
+        <ng-template #editarRiesgoTpl>
+          <div class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div><label class="text-slate-500 block mb-1">Riesgo Suicida</label>
+                <select [(ngModel)]="riesgoDraft.riesgoSuicida" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"><option [ngValue]="null">—</option><option value="ausente">Ausente</option><option value="bajo">Bajo</option><option value="moderado">Moderado</option><option value="alto">Alto</option><option value="inminente">Inminente</option></select>
+              </div>
+              <div><label class="text-slate-500 block mb-1">Riesgo Heteroagresivo</label>
+                <select [(ngModel)]="riesgoDraft.riesgoHeteroagresivo" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"><option [ngValue]="null">—</option><option value="ausente">Ausente</option><option value="bajo">Bajo</option><option value="moderado">Moderado</option><option value="alto">Alto</option></select>
+              </div>
+              <div><label class="text-slate-500 block mb-1">Especificar (suicida)</label><textarea [(ngModel)]="riesgoDraft.riesgoSuicidaEspecificar" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+              <div><label class="text-slate-500 block mb-1">Especificar (heteroagresivo)</label><textarea [(ngModel)]="riesgoDraft.riesgoHeteroagresivoEspecificar" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+              <div class="md:col-span-2"><label class="text-slate-500 block mb-1">Otros Riesgos</label><textarea [(ngModel)]="riesgoDraft.otrosRiesgos" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea></div>
+            </div>
+            <div class="flex justify-end gap-2">
+              <button (click)="cancelarRiesgo()" class="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+              <button (click)="guardarRiesgo()" class="px-4 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-semibold">Guardar</button>
+            </div>
+          </div>
+        </ng-template>
+      </section>
+    </div>
+
+    <!-- Modal: Realizar Examen Mental -->
+    <div *ngIf="showExamenModal" role="dialog" aria-modal="true" cdkTrapFocus cdkTrapFocusAutoCapture class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-4 text-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-clinical-textDark">Examen Mental</h2>
+            <p class="text-[11px] text-slate-500">Evaluación del estado mental de {{ patient?.name || 'el paciente' }} — Formato de Examen Mental</p>
+          </div>
+          <button (click)="cerrarExamen()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
+        </div>
+
+        <div *ngFor="let sec of examenSecciones" class="border border-slate-100 rounded-xl p-4 space-y-2">
+          <h3 class="text-sm font-bold text-clinical-dark uppercase tracking-wide">{{ sec.titulo }}</h3>
+          <div *ngFor="let p of sec.parametros" class="border-b border-slate-50 py-2 last:border-0">
+            <div class="font-semibold text-slate-700">{{ p.etiqueta }}</div>
+            <div class="text-[11px] text-slate-400">Qué evaluar: {{ p.queEvaluar }}</div>
+            <div class="text-[11px] text-slate-400 mb-1">Descriptores: <span class="text-slate-500">{{ p.descriptores }}</span></div>
+            <textarea [ngModel]="hallazgoTexto(sec.clave, p.clave)" (ngModelChange)="setHallazgoTexto(sec.clave, p.clave, $event)" [attr.name]="'examen-' + sec.clave + '-' + p.clave" rows="1" placeholder="Hallazgo" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea>
+          </div>
+        </div>
+
+        <div class="border border-slate-100 rounded-xl p-4 space-y-3">
+          <h3 class="text-sm font-bold text-clinical-dark uppercase tracking-wide">Evaluación de riesgo</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div *ngFor="let r of examenRiesgoItems" class="space-y-1">
+              <label class="text-slate-500 block">{{ r.etiqueta }}</label>
+              <select [ngModel]="riesgoNivel(r.clave)" (ngModelChange)="setRiesgoNivel(r.clave, $event)" [attr.name]="'riesgo-' + r.clave + '-nivel'" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white">
+                <option value="">— Nivel —</option><option value="bajo">Bajo</option><option value="moderado">Moderado</option><option value="alto">Alto</option>
+              </select>
+              <textarea [ngModel]="riesgoHallazgo(r.clave)" (ngModelChange)="setRiesgoHallazgo(r.clave, $event)" [attr.name]="'riesgo-' + r.clave + '-hallazgo'" rows="1" placeholder="Hallazgo" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-slate-100 rounded-xl p-4 space-y-3">
+          <h3 class="text-sm font-bold text-clinical-dark uppercase tracking-wide">Síntesis</h3>
+          <div *ngFor="let s of examenSintesisItems">
+            <label class="text-slate-500 block mb-1">{{ s.etiqueta }}</label>
+            <textarea [ngModel]="sintesisTexto(s.clave)" (ngModelChange)="setSintesisTexto(s.clave, $event)" [attr.name]="'sintesis-' + s.clave" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg"></textarea>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <button (click)="cerrarExamen()" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+          <button (click)="guardarExamen()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold">Guardar examen</button>
         </div>
       </div>
+    </div>
+
+    <!-- Modal: Ver Resultados del Examen Mental -->
+    <div *ngIf="showResultadosModal" role="dialog" aria-modal="true" cdkTrapFocus cdkTrapFocusAutoCapture class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-4 text-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-clinical-textDark">Resultados del Examen Mental</h2>
+            <p class="text-[11px] text-slate-500">{{ patient?.name || 'Paciente' }}<ng-container *ngIf="examenFechaTexto"> — {{ examenFechaTexto }}</ng-container></p>
+          </div>
+          <button (click)="cerrarResultados()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
+        </div>
+
+        <ng-container *ngFor="let sec of examenSecciones">
+          <table class="w-full border-collapse">
+            <caption class="sr-only">{{ sec.titulo }}</caption>
+            <thead>
+              <tr class="bg-slate-50 text-left">
+                <th class="px-3 py-2 border border-slate-100 font-bold text-clinical-dark" colspan="2">{{ sec.titulo }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of sec.parametros" class="border-b border-slate-50">
+                <td class="px-3 py-2 border border-slate-100 text-slate-500 w-1/3 align-top">{{ p.etiqueta }}</td>
+                <td class="px-3 py-2 border border-slate-100 text-slate-700 align-top">{{ hallazgoTexto(sec.clave, p.clave) || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </ng-container>
+
+        <table class="w-full border-collapse">
+          <caption class="sr-only">Evaluación de riesgo del examen mental</caption>
+          <thead>
+            <tr class="bg-slate-50 text-left">
+              <th class="px-3 py-2 border border-slate-100 font-bold text-clinical-dark" colspan="3">Evaluación de riesgo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of examenRiesgoItems" class="border-b border-slate-50">
+              <td class="px-3 py-2 border border-slate-100 text-slate-500 w-1/3 align-top">{{ r.etiqueta }}</td>
+              <td class="px-3 py-2 border border-slate-100 text-slate-700 w-1/4 align-top">{{ riesgoNivel(r.clave) || '—' }}</td>
+              <td class="px-3 py-2 border border-slate-100 text-slate-700 align-top">{{ riesgoHallazgo(r.clave) || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="w-full border-collapse">
+          <caption class="sr-only">Síntesis del examen mental</caption>
+          <thead>
+            <tr class="bg-slate-50 text-left">
+              <th class="px-3 py-2 border border-slate-100 font-bold text-clinical-dark" colspan="2">Síntesis</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of examenSintesisItems" class="border-b border-slate-50">
+              <td class="px-3 py-2 border border-slate-100 text-slate-500 w-1/3 align-top">{{ s.etiqueta }}</td>
+              <td class="px-3 py-2 border border-slate-100 text-slate-700 align-top">{{ sintesisTexto(s.clave) || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="flex justify-end border-t border-slate-100 pt-3">
+          <button (click)="cerrarResultados()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUB: Ficha de identificación -->
+    <div *ngIf="datosSubTab === 'ficha' && patient" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs text-xs space-y-2">
+      <h3 class="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Ficha de Identificación</h3>
+      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">Nombre</span>{{ patient.name }}</p>
+      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">CURP</span>{{ patient.curp || '—' }}</p>
+      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">Fecha de Nacimiento</span>{{ patient.fechaNacimiento }} · Edad {{ patient.edadCalculada }}</p>
+      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">Representante Legal</span>{{ patient.representante?.nombreCompleto || '—' }} ({{ patient.representante?.parentesco || '—' }})</p>
     </div>
   </div>
 
@@ -611,62 +979,79 @@
   </div>
 
   <!-- PESTAÑA: Psiquiatría -->
-  <div *ngIf="activeTab === 'psiquiatria' && record" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4 text-xs">
-    <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-      <h3 class="text-sm font-bold text-clinical-dark">Expediente Médico Psiquiátrico</h3>
+  <div *ngIf="activeTab === 'psiquiatria' && record" class="space-y-5">
+    <!-- Sub-pestañas -->
+    <div class="flex gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold w-fit">
+      <button (click)="setPsiquiatriaSubTab('expediente')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="psiquiatriaSubTab === 'expediente' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Expediente Médico Psiquiátrico</button>
+      <button (click)="setPsiquiatriaSubTab('esquema')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="psiquiatriaSubTab === 'esquema' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Esquema Psico-Farmacológico</button>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div>
-        <label class="block text-slate-500 font-semibold mb-1">Diagnóstico Nosológico Clínico:</label>
-        <input type="text" [(ngModel)]="record!.dxNosologico" class="w-full px-3 py-2 border border-slate-200 rounded-lg" />
+
+    <!-- SUB: Expediente Médico Psiquiátrico -->
+    <div *ngIf="psiquiatriaSubTab === 'expediente'" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4 text-xs">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-clinical-dark">Expediente Médico Psiquiátrico</h3>
       </div>
-      <div>
-        <label class="block text-slate-500 font-semibold mb-1">Criterio DSM-5TR:</label>
-        <input type="text" [(ngModel)]="record!.dsm5" class="w-full px-3 py-2 border border-slate-200 rounded-lg" />
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-3"><label class="block text-slate-500 font-semibold mb-1">Motivo de Consulta (Textual):</label>
+          <textarea [(ngModel)]="record!.motif" class="w-full px-3 py-2 border border-slate-200 rounded-lg" rows="2"></textarea>
+        </div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Diagnóstico Nosológico Clínico:</label><input type="text" [(ngModel)]="record!.dxNosologico" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Criterio DSM-5TR:</label><input type="text" [(ngModel)]="record!.dsm5" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Criterio CIE-11:</label><input type="text" [(ngModel)]="record!.cie11" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Primera Aparición:</label><input type="text" [(ngModel)]="record!.firstAppearance" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Factores Precipitantes:</label><input type="text" [(ngModel)]="record!.precipitatingFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Evolución Temporal:</label>
+          <select [(ngModel)]="record!.evolutionType" class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg"><option value="progresivo">Progresivo</option><option value="agudo">Agudo</option><option value="crónico">Crónico</option><option value="episódico">Episódico</option></select>
+        </div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Comorbilidad:</label><input type="text" [(ngModel)]="record!.comorbilidad" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Diagnóstico Diferencial:</label><input type="text" [(ngModel)]="record!.differentialDx" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Pronóstico de Evolución:</label>
+          <select [(ngModel)]="record!.prognosis" class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg font-semibold text-clinical-dark"><option value="excelente">Excelente</option><option value="bueno">Bueno</option><option value="reservado">Reservado</option><option value="malo">Malo</option></select>
+        </div>
+        <div class="md:col-span-2"><label class="block text-slate-500 font-semibold mb-1">Plan de Tratamiento Farmacológico:</label><input type="text" [(ngModel)]="record!.treatmentPlan" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Uso de Fármacos:</label><input type="text" [(ngModel)]="record!.drugsUsage" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Factores Favorables:</label><input type="text" [(ngModel)]="record!.favorableFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        <div><label class="block text-slate-500 font-semibold mb-1">Factores Desfavorables:</label><input type="text" [(ngModel)]="record!.unfavorableFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
       </div>
-      <div>
-        <label class="block text-slate-500 font-semibold mb-1">Criterio CIE-11:</label>
-        <input type="text" [(ngModel)]="record!.cie11" class="w-full px-3 py-2 border border-slate-200 rounded-lg" />
-      </div>
-      <div>
-        <label class="block text-slate-500 font-semibold mb-1">Pronóstico de Evolución:</label>
-        <select [(ngModel)]="record!.prognosis" class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg font-semibold text-clinical-dark">
-          <option value="excelente">Excelente</option><option value="bueno">Bueno</option><option value="reservado">Reservado</option><option value="malo">Malo</option>
-        </select>
-      </div>
-      <div class="md:col-span-2">
-        <label class="block text-slate-500 font-semibold mb-1">Plan de Tratamiento Farmacológico:</label>
-        <input type="text" [(ngModel)]="record!.treatmentPlan" class="w-full px-3 py-2 border border-slate-200 rounded-lg" />
+      <div class="flex justify-end border-t border-slate-100 pt-4">
+        <button (click)="guardarPsiquiatria()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 cursor-pointer">Guardar Expediente Psiquiátrico</button>
       </div>
     </div>
 
-    <div class="space-y-3">
-      <span class="font-bold text-clinical-dark block border-b border-slate-100 pb-2">Esquema Psicotrópico Farmacológico</span>
+    <!-- SUB: Esquema Psico-Farmacológico -->
+    <div *ngIf="psiquiatriaSubTab === 'esquema'" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4 text-xs">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-clinical-dark">Esquema Psicotrópico Farmacológico</h3>
+        <button (click)="agregarFarmaco()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg font-semibold">Agregar</button>
+      </div>
       <div class="border border-slate-200 rounded-lg overflow-hidden">
         <table class="w-full text-left border-collapse text-xs">
           <thead>
             <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
-              <th class="p-3">Psicofármaco</th><th class="p-3 text-center">Mañana</th><th class="p-3 text-center">Tarde</th><th class="p-3 text-center">Noche</th><th class="p-3">Efecto (EFF)</th><th class="p-3">Observaciones</th>
+              <th class="p-2">Psicofármaco</th><th class="p-2">Categoría</th><th class="p-2 text-center">Mañana</th><th class="p-2 text-center">Tarde</th><th class="p-2 text-center">Noche</th><th class="p-2">Efecto (EFF)</th><th class="p-2">Obs.</th><th class="p-2"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 text-slate-600 font-medium">
-            <tr *ngFor="let d of record?.drugsList">
-              <td class="p-3 font-bold text-clinical-dark">{{ d.name }}</td>
-              <td class="p-3 text-center">{{ d.doseMorning }}</td>
-              <td class="p-3 text-center">{{ d.doseAfternoon }}</td>
-              <td class="p-3 text-center">{{ d.doseNight }}</td>
-              <td class="p-3 text-clinical-risk">{{ d.eff }}</td>
-              <td class="p-3 text-slate-500">{{ d.notes }}</td>
+            <tr *ngFor="let d of record.drugsList || []">
+              <td class="p-2"><input type="text" [(ngModel)]="d.name" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg font-bold text-clinical-dark" /></td>
+              <td class="p-2">
+                <select [(ngModel)]="d.categoria" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white">
+                  <option *ngFor="let c of categoriasPsicofarmacos" [ngValue]="c.codigo">{{ c.etiqueta }}</option>
+                </select>
+              </td>
+              <td class="p-2"><input type="text" [(ngModel)]="d.doseMorning" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center" /></td>
+              <td class="p-2"><input type="text" [(ngModel)]="d.doseAfternoon" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center" /></td>
+              <td class="p-2"><input type="text" [(ngModel)]="d.doseNight" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center" /></td>
+              <td class="p-2"><input type="text" [(ngModel)]="d.eff" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-clinical-risk" /></td>
+              <td class="p-2"><input type="text" [(ngModel)]="d.notes" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></td>
+              <td class="p-2"><button (click)="eliminarFarmaco(d.id)" class="px-2 py-1 text-red-600 border border-red-200 rounded-lg">Eliminar</button></td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
-
-    <div class="flex justify-end border-t border-slate-100 pt-4">
-      <button (click)="guardarPsiquiatria()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 cursor-pointer">
-        Guardar Expediente Psiquiátrico
-      </button>
+      <div class="flex justify-end border-t border-slate-100 pt-4">
+        <button (click)="guardarPsiquiatria()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow">Guardar Esquema</button>
+      </div>
     </div>
   </div>
 

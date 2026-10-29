@@ -3,8 +3,10 @@ import { Observable, of } from 'rxjs';
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from '../ports/expediente.repository';
 import {
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
   CriterioClinico,
+  Establecimiento,
   OpcionConductual,
   Patient,
   Payment,
@@ -12,7 +14,8 @@ import {
   PhysicalCertificateLog,
   Session,
   SupervisionLog,
-  SupervisionRequest
+  SupervisionRequest,
+  TratamientoPrevio
 } from '../../../core/types/clinical.types';
 import { mockClinicalRecords, mockPatients, mockSessions } from '../../../core/data/mockData';
 
@@ -215,5 +218,42 @@ export class ExpedienteLocalStorageAdapter implements ExpedienteRepository {
       status: 'pendiente',
       createdAt: new Date().toISOString()
     });
+  }
+
+  // Historia Clínica
+  listarCategoriasPsicofarmacos(): Observable<CategoriaPsicofarmaco[]> {
+    return of([
+      { codigo: 'bzd', etiqueta: 'Benzodiacepinas (BZD)', orden: 1 },
+      { codigo: 'isrs', etiqueta: 'Antidepresivos ISRS', orden: 2 },
+      { codigo: 'duales', etiqueta: 'Antidepresivos Duales', orden: 3 },
+      { codigo: 'triciclicos_tetraciclicos', etiqueta: 'Antidepresivos Tricíclicos/Tetracíclicos', orden: 4 },
+      { codigo: 'neurolepticos_tipicos', etiqueta: 'Neurolépticos Típicos', orden: 5 },
+      { codigo: 'neurolepticos_atipicos', etiqueta: 'Neurolépticos Atípicos', orden: 6 },
+      { codigo: 'psicoestabilizadores', etiqueta: 'Psicoestabilizadores', orden: 7 },
+      { codigo: 'inductores_sueno', etiqueta: 'Inductores del Sueño', orden: 8 },
+      { codigo: 'otros', etiqueta: 'Otros', orden: 9 }
+    ]);
+  }
+
+  listarTratamientosPrevios(pacienteId: string): Observable<TratamientoPrevio[]> {
+    return of([]);
+  }
+
+  guardarTratamientosPrevios(pacienteId: string, items: TratamientoPrevio[]): Observable<TratamientoPrevio[]> {
+    return of(items.map((t, i) => ({ ...t, id: t.id ?? `trat-${Date.now()}-${i}` })));
+  }
+
+  obtenerSede(sedeId: string): Observable<Establecimiento | null> {
+    return of(null);
+  }
+
+  actualizarPaciente(pacienteId: string, datos: Partial<Patient>): Observable<Patient | null> {
+    const raw = localStorage.getItem(this.patientsKey);
+    const patients: Patient[] = raw ? JSON.parse(raw) : mockPatients;
+    const index = patients.findIndex(p => p.id === pacienteId);
+    if (index === -1) return of(null);
+    patients[index] = { ...patients[index], ...datos };
+    localStorage.setItem(this.patientsKey, JSON.stringify(patients));
+    return of(patients[index]);
   }
 }

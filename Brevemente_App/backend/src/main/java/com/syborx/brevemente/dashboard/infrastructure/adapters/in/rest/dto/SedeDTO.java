@@ -8,5 +8,14 @@ public record SedeDTO(
         String id,
 
         @Schema(description = "Nombre de la sede", example = "Sede Centro BreveMente")
-        String nombre
+        String nombre,
+
+        @Schema(description = "CLUES del establecimiento")
+        String clues,
+
+        @Schema(description = "Licencia sanitaria del establecimiento")
+        String licenciaSanitaria,
+
+        @Schema(description = "Tipo de establecimiento", allowableValues = {"publico", "privado", "social"})
+        String tipoEstablecimiento
 ) {}

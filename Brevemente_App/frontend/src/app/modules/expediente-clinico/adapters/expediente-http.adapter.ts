@@ -5,8 +5,10 @@ import { catchError, map } from 'rxjs/operators';
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from '../ports/expediente.repository';
 import {
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
   CriterioClinico,
+  Establecimiento,
   OpcionConductual,
   Patient,
   Payment,
@@ -14,7 +16,8 @@ import {
   PhysicalCertificateLog,
   Session,
   SupervisionLog,
-  SupervisionRequest
+  SupervisionRequest,
+  TratamientoPrevio
 } from '../../../core/types/clinical.types';
 import { environment } from '../../../../environments/environment';
 
@@ -137,5 +140,30 @@ export class ExpedienteHttpAdapter implements ExpedienteRepository {
   firmarConsentimiento(pacienteId: string): Observable<boolean> {
     return this.http.post<void>(`${this.base}/pacientes/${pacienteId}/consentimiento/firmar`, {})
       .pipe(map(() => true));
+  }
+
+  // Historia Clínica
+  listarCategoriasPsicofarmacos(): Observable<CategoriaPsicofarmaco[]> {
+    return this.http.get<CategoriaPsicofarmaco[]>(`${this.base}/expedientes/catalogos/categorias-psicofarmacos`)
+      .pipe(catchError(() => of([])));
+  }
+
+  listarTratamientosPrevios(pacienteId: string): Observable<TratamientoPrevio[]> {
+    return this.http.get<TratamientoPrevio[]>(`${this.base}/expedientes/paciente/${pacienteId}/tratamientos-previos`)
+      .pipe(catchError(() => of([])));
+  }
+
+  guardarTratamientosPrevios(pacienteId: string, items: TratamientoPrevio[]): Observable<TratamientoPrevio[]> {
+    return this.http.put<TratamientoPrevio[]>(`${this.base}/expedientes/paciente/${pacienteId}/tratamientos-previos`, items);
+  }
+
+  obtenerSede(sedeId: string): Observable<Establecimiento | null> {
+    return this.http.get<Establecimiento>(`${this.base}/sedes/${sedeId}`)
+      .pipe(catchError(() => of(null)));
+  }
+
+  actualizarPaciente(pacienteId: string, datos: Partial<Patient>): Observable<Patient | null> {
+    return this.http.patch<Patient>(`${this.base}/pacientes/${pacienteId}`, datos)
+      .pipe(catchError(() => of(null)));
   }
 }

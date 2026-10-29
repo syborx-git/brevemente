@@ -41,6 +41,11 @@ public class ExpedienteExceptionHandler {
         return body(HttpStatus.CONFLICT, "Violación de integridad de datos.");
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return body(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     private ResponseEntity<Map<String, Object>> body(HttpStatus status, String message) {
         return ResponseEntity.status(status).body(Map.of(
                 "timestamp", OffsetDateTime.now(),

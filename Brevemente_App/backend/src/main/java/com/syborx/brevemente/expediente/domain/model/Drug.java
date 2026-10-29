@@ -14,5 +14,6 @@ public record Drug(
         String doseAfternoon,
         String doseNight,
         String eff,
-        String notes
+        String notes,
+        @Schema(description = "Código de categoría del psicofármaco (catálogo)", example = "isrs") String categoria
 ) {}

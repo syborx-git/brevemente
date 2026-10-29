@@ -119,7 +119,7 @@
 
   <!-- Modal Crear Paciente -->
   <div *ngIf="showCreateModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <div>
           <h2 class="text-base font-bold text-clinical-textDark">Registrar Paciente</h2>
@@ -128,33 +128,141 @@
         <button (click)="closeCreateModal()" class="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
       </div>
 
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Nombre Completo *</label>
-          <input type="text" [(ngModel)]="newNombre" placeholder="Ej: Santiago Morales Vega" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
-        </div>
+      <div class="space-y-4 text-xs max-h-[65vh] overflow-y-auto pr-1">
+        <!-- Datos del Paciente -->
+        <section>
+          <h3 class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-2">Datos del Paciente</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Nombre Completo *</label>
+              <input type="text" [(ngModel)]="newNombre" placeholder="Ej: Santiago Morales Vega" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+            </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Fecha de Nacimiento *</label>
-            <input type="date" [(ngModel)]="newFechaNacimiento" (change)="onFechaNacimientoChange()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Fecha de Nacimiento *</label>
+                <input type="date" [(ngModel)]="newFechaNacimiento" (change)="onFechaNacimientoChange()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">CURP *</label>
+                <input type="text" [(ngModel)]="newCurp" (input)="onCurpChange()" placeholder="18 caracteres" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono" />
+              </div>
+            </div>
+
+            <p *ngIf="curpMismatchWarning" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              {{ curpMismatchWarning }}
+            </p>
+
+            <!-- Alerta de Minoría de Edad Automática -->
+            <div *ngIf="calculatedAge !== null" class="p-2.5 rounded-lg text-xs" [ngClass]="isMinor ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'">
+              <span class="font-bold">Edad Calculada:</span> {{ calculatedAge }} años.
+              <span *ngIf="isMinor"> Requiere designación de <strong>persona de apoyo</strong> (representación por edad).</span>
+              <span *ngIf="!isMinor"> Paciente mayor de edad (capacidad jurídica autónoma).</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">RFC</label>
+                <input type="text" [(ngModel)]="newRfc" maxlength="13" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Sexo</label>
+                <select [(ngModel)]="newSexo" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white">
+                  <option [ngValue]="null">Seleccionar</option>
+                  <option value="M">M</option>
+                  <option value="F">F</option>
+                  <option value="LGTB+">LGTB+</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Lugar de Nacimiento</label>
+                <input type="text" [(ngModel)]="newLugarNacimiento" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Estado Civil</label>
+                <input type="text" [(ngModel)]="newEstadoCivil" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Escolaridad</label>
+                <input type="text" [(ngModel)]="newEscolaridad" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Ocupación</label>
+                <input type="text" [(ngModel)]="newOcupacion" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Religión</label>
+                <input type="text" [(ngModel)]="newReligion" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Motivo Principal</label>
+                <input type="text" [(ngModel)]="newMotif" placeholder="Ej: Ataques de pánico" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+              </div>
+            </div>
           </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">CURP</label>
-            <input type="text" [(ngModel)]="newCurp" (input)="onCurpChange()" placeholder="18 caracteres" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono" />
+        </section>
+
+        <!-- Domicilio -->
+        <section class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <h3 class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-2">Domicilio</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-2">
+              <label class="block font-medium text-slate-600 mb-0.5">Calle y Número</label>
+              <input type="text" [(ngModel)]="newCalle" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Colonia</label>
+              <input type="text" [(ngModel)]="newColonia" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">C.P.</label>
+              <input type="text" [(ngModel)]="newCp" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Municipio/Delegación</label>
+              <input type="text" [(ngModel)]="newMunicipio" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Estado</label>
+              <input type="text" [(ngModel)]="newEstadoDomicilio" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Tel. Casa</label>
+              <input type="text" [(ngModel)]="newTelCasa" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Tel. Celular</label>
+              <input type="text" [(ngModel)]="newTelCelular" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Tel. Trabajo</label>
+              <input type="text" [(ngModel)]="newTelTrabajo" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div class="col-span-2">
+              <label class="block font-medium text-slate-600 mb-0.5">Correo Electrónico</label>
+              <input type="text" [(ngModel)]="newEmail" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
           </div>
-        </div>
+        </section>
 
-        <p *ngIf="curpMismatchWarning" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-          {{ curpMismatchWarning }}
-        </p>
-
-        <!-- Alerta de Minoría de Edad Automática -->
-        <div *ngIf="calculatedAge !== null" class="p-2.5 rounded-lg text-xs" [ngClass]="isMinor ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'">
-          <span class="font-bold">Edad Calculada:</span> {{ calculatedAge }} años.
-          <span *ngIf="isMinor"> Requiere designación de <strong>persona de apoyo</strong> (representación por edad).</span>
-          <span *ngIf="!isMinor"> Paciente mayor de edad (capacidad jurídica autónoma).</span>
-        </div>
+        <!-- Contacto de Emergencia -->
+        <section class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <h3 class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-2">Contacto de Emergencia</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-2">
+              <label class="block font-medium text-slate-600 mb-0.5">Nombre</label>
+              <input type="text" [(ngModel)]="newCeNombre" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Parentesco</label>
+              <input type="text" [(ngModel)]="newCeParentesco" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Teléfono</label>
+              <input type="text" [(ngModel)]="newCeTelefono" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+          </div>
+        </section>
 
         <!-- Campos de Persona de Apoyo si es menor -->
         <div *ngIf="isMinor" class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
@@ -163,22 +271,47 @@
             <label class="block font-medium text-slate-600 mb-0.5">Nombre del Representante / Apoyo *</label>
             <input type="text" [(ngModel)]="newPersonaApoyoNombre" placeholder="Ej: Claudia Vega (Madre)" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
           </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Parentesco</label>
+              <select [(ngModel)]="newParentescoApoyo" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+                <option value="MADRE">Madre</option>
+                <option value="PADRE">Padre</option>
+                <option value="TUTOR_LEGAL">Tutor legal</option>
+                <option value="PERSONA_DE_APOYO">Persona de apoyo</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Teléfono de Contacto del Apoyo</label>
+              <input type="text" [(ngModel)]="newPersonaApoyoTelefono" placeholder="+52 55 1234 5678" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            </div>
+          </div>
           <div>
-            <label class="block font-medium text-slate-600 mb-0.5">Teléfono de Contacto del Apoyo</label>
-            <input type="text" [(ngModel)]="newPersonaApoyoTelefono" placeholder="+52 55 1234 5678" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
+            <label class="block font-medium text-slate-600 mb-0.5">Correo del Representante</label>
+            <input type="text" [(ngModel)]="newCorreoRepresentante" placeholder="correo@familia.mx" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white" />
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Teléfono</label>
-            <input type="text" [(ngModel)]="newTelefono" placeholder="+52 55 9876 5432" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        <!-- Sede y Terapeuta -->
+        <section class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <h3 class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-2">Sede y Terapeuta</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Sede</label>
+              <select [(ngModel)]="newSedeId" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+                <option value="">Seleccionar sede</option>
+                <option *ngFor="let s of sedes" [value]="s.id">{{ s.nombre }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Terapeuta</label>
+              <select [(ngModel)]="newTherapistId" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+                <option value="">Seleccionar terapeuta</option>
+                <option *ngFor="let t of terapeutas" [value]="t.id">{{ t.nombre }}</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Motivo Principal</label>
-            <input type="text" [(ngModel)]="newMotif" placeholder="Ej: Ataques de pánico" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
-          </div>
-        </div>
+        </section>
       </div>
 
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">

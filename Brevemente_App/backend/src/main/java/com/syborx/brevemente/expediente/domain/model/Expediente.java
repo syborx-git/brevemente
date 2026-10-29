@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -50,4 +51,20 @@ public class Expediente {
     private String factoresDesfavorables;
     private String usoFarmacos;
     private List<Drug> drugsList;
+    private String tipoExpediente;
+    private LocalDate fechaApertura;
+    private String fuenteReferencia;
+    private String fuenteReferenciaOtro;
+    private String riesgoSuicida;
+    private String riesgoHeteroagresivo;
+    private String otrosRiesgos;
+    private LocalDate fechaEvaluacionRiesgo;
+    private Map<String, Object> examenMental;
+    private List<Map<String, Object>> historialFarmacos;
+    private List<Map<String, Object>> historialPsicofarmacos;
+    private List<Map<String, Object>> historialDrogas;
+    private Map<String, Object> antecedentes;
+    private String riesgoSuicidaEspecificar;
+    private String riesgoHeteroagresivoEspecificar;
+    private LocalDate fechaExamenMental;
 }

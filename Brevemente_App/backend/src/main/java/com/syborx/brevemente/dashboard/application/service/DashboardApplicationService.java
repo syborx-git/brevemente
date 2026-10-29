@@ -15,6 +15,7 @@ import com.syborx.brevemente.dashboard.application.ports.in.ListarPendientesPrio
 import com.syborx.brevemente.dashboard.application.ports.in.ObtenerAccionDominanteUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ObtenerCatalogosDashboardUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ObtenerDashboardStatsUseCase;
+import com.syborx.brevemente.dashboard.application.ports.in.ObtenerSedeUseCase;
 import com.syborx.brevemente.dashboard.application.ports.out.DashboardCatalogosRepositoryPort;
 import com.syborx.brevemente.dashboard.domain.model.AccionDominante;
 import com.syborx.brevemente.dashboard.domain.model.AlcanceDashboard;
@@ -27,6 +28,7 @@ import com.syborx.brevemente.dashboard.domain.model.DashboardStats;
 import com.syborx.brevemente.dashboard.domain.model.DistribucionFase;
 import com.syborx.brevemente.dashboard.domain.model.PendientePrioritario;
 import com.syborx.brevemente.dashboard.domain.model.Protocolo;
+import com.syborx.brevemente.dashboard.domain.model.Sede;
 import com.syborx.brevemente.dashboard.domain.model.SerieMes;
 import com.syborx.brevemente.paciente.application.ports.out.PacienteRepositoryPort;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
@@ -60,7 +62,8 @@ public class DashboardApplicationService implements
         ListarCasosPorProtocoloUseCase,
         ListarAlertasMayoriaEdadUseCase,
         ObtenerCatalogosDashboardUseCase,
-        ListarPendientesPrioritariosUseCase {
+        ListarPendientesPrioritariosUseCase,
+        ObtenerSedeUseCase {
 
     private static final ZoneId ZONA = ZoneId.of("America/Mexico_City");
     private static final List<String> ESTADOS_CITAS_HOY = List.of("confirmada", "pendiente", "solicita_reagendar");
@@ -242,6 +245,11 @@ public class DashboardApplicationService implements
     @Override
     public CatalogosDashboard obtenerCatalogos() {
         return dashboardCatalogosRepositoryPort.obtenerCatalogos();
+    }
+
+    @Override
+    public Optional<Sede> obtenerSede(String sedeId) {
+        return dashboardCatalogosRepositoryPort.findSedeById(sedeId);
     }
 
     @Override

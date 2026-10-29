@@ -103,6 +103,16 @@ export interface Patient {
   pendienteReconsentimiento?: boolean;
   notificacionesRepresentanteRevocadas?: boolean;
   sessionFrequency?: 'semanal' | 'quincenal' | 'mensual';
+  rfc?: string;
+  sexo?: Sexo;
+  lugarNacimiento?: string;
+  estadoCivil?: string;
+  escolaridad?: string;
+  ocupacion?: string;
+  religion?: string;
+  domicilio?: Domicilio;
+  contactoEmergencia?: ContactoEmergencia;
+  sedeId?: string;
 }
 
 export interface PacienteResumen {
@@ -191,6 +201,22 @@ export interface ClinicalRecord {
   unfavorableFactors?: string;
   drugsUsage?: string;
   drugsList?: Drug[];
+  intentosSolucion?: string;
+  tipoExpediente?: TipoExpediente;
+  fechaApertura?: string;
+  fuenteReferencia?: FuenteReferencia;
+  fuenteReferenciaOtro?: string;
+  riesgoSuicida?: RiesgoSuicida;
+  riesgoHeteroagresivo?: RiesgoHeteroagresivo;
+  otrosRiesgos?: string;
+  riesgoSuicidaEspecificar?: string;
+  riesgoHeteroagresivoEspecificar?: string;
+  antecedentes?: Antecedentes;
+  fechaExamenMental?: string;
+  examenMental?: ExamenMental;
+  historialFarmacos?: HistorialFarmaco[];
+  historialPsicofarmacos?: HistorialPsicofarmaco[];
+  historialDrogas?: HistorialDroga[];
 }
 
 export interface Session {
@@ -265,6 +291,80 @@ export interface LibraryDocument {
   warnings?: string[];
 }
 
+export type Sexo = 'M' | 'F' | 'LGTB+';
+export type TipoExpediente = 'fisico' | 'electronico' | 'mixto';
+export type RiesgoSuicida = 'ausente' | 'bajo' | 'moderado' | 'alto' | 'inminente';
+export type RiesgoHeteroagresivo = 'ausente' | 'bajo' | 'moderado' | 'alto';
+export type FuenteReferencia = 'iniciativa_propia' | 'medico' | 'psiquiatra' | 'psicoterapeuta' | 'familiar' | 'amigo' | 'otro';
+export type CodigoCategoriaPsicofarmaco =
+  'bzd' | 'isrs' | 'duales' | 'triciclicos_tetraciclicos'
+  | 'neurolepticos_tipicos' | 'neurolepticos_atipicos'
+  | 'psicoestabilizadores' | 'inductores_sueno' | 'otros';
+
+export interface CategoriaPsicofarmaco { codigo: CodigoCategoriaPsicofarmaco; etiqueta: string; orden: number; }
+export interface Domicilio {
+  calleNumero: string; colonia: string; codigoPostal: string;
+  municipio: string; estadoDomicilio: string;
+  telefonoCasa: string | null; telefonoCelular: string | null; telefonoTrabajo: string | null;
+}
+export interface ContactoEmergencia { nombre: string; parentesco: string; telefono: string; }
+export interface HábitoPresente {
+  presente: boolean;
+  cantidad?: string;
+  tiempo?: string;
+  frecuencia?: string;
+  tipo?: string;
+}
+
+export interface Antecedentes {
+  personalesPatológicos: {
+    médicos: string;
+    quirúrgicos: string;
+    traumáticos: string;
+    alérgicos: string;
+    transfusionales: string;
+    hospitalizaciones: string;
+  };
+  personalesNoPatológicos: {
+    tabaquismo: HábitoPresente;
+    alcoholismo: HábitoPresente;
+    toxicomanías: HábitoPresente;
+    actividadFísica: string;
+    alimentación: string;
+  };
+  heredoFamiliares: {
+    enfermedadesMentales: string;
+    enfermedadesCrónicas: string;
+    suicidiosIntentos: string;
+    adicciones: string;
+  };
+}
+
+export interface ExamenRiesgoItem {
+  nivel: string;
+  hallazgo: string;
+}
+
+export interface ExamenMental {
+  aparienciaConducta?: Record<string, string>;
+  concienciaSensorio?: Record<string, string>;
+  lenguajeHabla?: Record<string, string>;
+  afectividad?: Record<string, string>;
+  pensamiento?: Record<string, string>;
+  sensopercepción?: Record<string, string>;
+  funcionesCognoscitivas?: Record<string, string>;
+  juicioIntrospección?: Record<string, string>;
+  funcionesFisiológicas?: Record<string, string>;
+  evaluaciónRiesgo?: Record<string, ExamenRiesgoItem>;
+  síntesis?: Record<string, string>;
+}
+
+export interface TratamientoPrevio { id?: string; enfoque: string; duracion: string; resultado: 'resuelto' | 'mejorado' | 'invariable' | 'drop_out' | 'otro'; }
+export interface HistorialFarmaco { nombre: string; }
+export interface HistorialPsicofarmaco { nombre: string; duracion: string; }
+export interface HistorialDroga { nombre: string; }
+export interface Establecimiento { id: string; nombre: string; clues: string | null; licenciaSanitaria: string | null; tipoEstablecimiento: 'publico' | 'privado' | 'social' | null; }
+
 export interface Drug {
   id: string;
   name: string;
@@ -273,6 +373,7 @@ export interface Drug {
   doseNight: string;
   eff: string;
   notes: string;
+  categoria?: CodigoCategoriaPsicofarmaco;
 }
 
 export interface VcEntry {
