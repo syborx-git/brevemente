@@ -34,6 +34,16 @@ public class ExpedienteApplicationService implements ObtenerExpedienteUseCase, A
                 saved.getPacienteId(), usuarioId,
                 "Actualización de expediente",
                 "Se actualizó la formulación TBE / expediente psiquiátrico.", "expediente");
+        boolean historiaClinica = (datosParciales.getAntecedentes() != null && !datosParciales.getAntecedentes().isEmpty())
+                || (datosParciales.getExamenMental() != null && !datosParciales.getExamenMental().isEmpty())
+                || datosParciales.getRiesgoSuicidaEspecificar() != null
+                || datosParciales.getRiesgoHeteroagresivoEspecificar() != null;
+        if (historiaClinica) {
+            auditoriaExpedientePort.registrar(
+                    saved.getPacienteId(), usuarioId,
+                    "Actualización de antecedentes/examen mental",
+                    "Se actualizó la historia clínica (antecedentes, examen mental y/o evaluación de riesgo).", "expediente");
+        }
         return saved;
     }
 
@@ -61,5 +71,22 @@ public class ExpedienteApplicationService implements ObtenerExpedienteUseCase, A
         if (src.getFactoresDesfavorables() != null) target.setFactoresDesfavorables(src.getFactoresDesfavorables());
         if (src.getUsoFarmacos() != null) target.setUsoFarmacos(src.getUsoFarmacos());
         if (src.getDrugsList() != null) target.setDrugsList(src.getDrugsList());
+        if (src.getIntentosSolucion() != null) target.setIntentosSolucion(src.getIntentosSolucion());
+        if (src.getTipoExpediente() != null) target.setTipoExpediente(src.getTipoExpediente());
+        if (src.getFechaApertura() != null) target.setFechaApertura(src.getFechaApertura());
+        if (src.getFuenteReferencia() != null) target.setFuenteReferencia(src.getFuenteReferencia());
+        if (src.getFuenteReferenciaOtro() != null) target.setFuenteReferenciaOtro(src.getFuenteReferenciaOtro());
+        if (src.getRiesgoSuicida() != null) target.setRiesgoSuicida(src.getRiesgoSuicida());
+        if (src.getRiesgoHeteroagresivo() != null) target.setRiesgoHeteroagresivo(src.getRiesgoHeteroagresivo());
+        if (src.getOtrosRiesgos() != null) target.setOtrosRiesgos(src.getOtrosRiesgos());
+        if (src.getFechaEvaluacionRiesgo() != null) target.setFechaEvaluacionRiesgo(src.getFechaEvaluacionRiesgo());
+        if (src.getExamenMental() != null && !src.getExamenMental().isEmpty()) target.setExamenMental(src.getExamenMental());
+        if (src.getHistorialFarmacos() != null) target.setHistorialFarmacos(src.getHistorialFarmacos());
+        if (src.getHistorialPsicofarmacos() != null) target.setHistorialPsicofarmacos(src.getHistorialPsicofarmacos());
+        if (src.getHistorialDrogas() != null) target.setHistorialDrogas(src.getHistorialDrogas());
+        if (src.getAntecedentes() != null && !src.getAntecedentes().isEmpty()) target.setAntecedentes(src.getAntecedentes());
+        if (src.getRiesgoSuicidaEspecificar() != null) target.setRiesgoSuicidaEspecificar(src.getRiesgoSuicidaEspecificar());
+        if (src.getRiesgoHeteroagresivoEspecificar() != null) target.setRiesgoHeteroagresivoEspecificar(src.getRiesgoHeteroagresivoEspecificar());
+        if (src.getFechaExamenMental() != null) target.setFechaExamenMental(src.getFechaExamenMental());
     }
 }

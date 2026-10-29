@@ -6,6 +6,7 @@ import com.syborx.brevemente.paciente.domain.exception.TerapeutaAccesoDenegadoEx
 import com.syborx.brevemente.paciente.domain.exception.TerapeutaConfigNotFoundException;
 import com.syborx.brevemente.paciente.domain.exception.TerapeutaSedeInvalidaException;
 import com.syborx.brevemente.paciente.domain.exception.TerapeutaVinculoException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,6 +35,16 @@ public class PacienteExceptionHandler {
                 "status", HttpStatus.CONFLICT.value(),
                 "error", "Conflict",
                 "message", ex.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "timestamp", OffsetDateTime.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", "Bad Request",
+                "message", "Datos inválidos o en conflicto con las restricciones del sistema"
         ));
     }
 

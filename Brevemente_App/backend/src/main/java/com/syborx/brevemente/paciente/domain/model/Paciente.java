@@ -34,6 +34,15 @@ public class Paciente {
     private String sedeId;
     private String protocoloId;
     private String usuarioId;
+    private String rfc;
+    private String sexo;
+    private String lugarNacimiento;
+    private String estadoCivil;
+    private String escolaridad;
+    private String ocupacion;
+    private String religion;
+    private Domicilio domicilio;
+    private ContactoEmergencia contactoEmergencia;
     private CapacidadConsentimiento capacidadConsentimiento;
     private RepresentanteLegal representante;
     private Boolean consentimientoRepresentanteFirmado;

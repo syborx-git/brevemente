@@ -4,6 +4,20 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
   const consoleErrors: string[] = [];
   const http500Errors: string[] = [];
 
+  test.beforeAll(async ({ request }) => {
+    // Idempotencia: restaura el estado "Sin datos" del examen mental de exp-001.
+    // El backend ignora '{}' (guard !isEmpty), por lo que se usa una estructura
+    // que el frontend interpreta como vacía.
+    const login = await request.post('/api/v1/auth/login', {
+      data: { email: 'sofia.ramirez@brevemente.org', password: 'demo123' }
+    });
+    const body = await login.json();
+    await request.patch('/api/v1/expedientes/paciente/pac-001', {
+      headers: { Authorization: `Bearer ${body.token}` },
+      data: { examenMental: { síntesis: {} } }
+    });
+  });
+
   test.beforeEach(async ({ page }) => {
     consoleErrors.length = 0;
     http500Errors.length = 0;
@@ -89,16 +103,20 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
     });
   });
 
-  test('TC-EXP-04: Expediente psiquiátrico cargado desde la BD (pac-002)', async ({ page }) => {
+  test('TC-EXP-04: Expediente psiquiátrico y esquema farmacológico cargados desde la BD (pac-002)', async ({ page }) => {
     await page.goto('/expediente/pac-002');
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: /Tratamiento Psiquiátrico/ }).click();
 
-    await expect(page.getByText('Expediente Médico Psiquiátrico')).toBeVisible();
+    // Sub-pestaña por defecto: Expediente Médico Psiquiátrico
+    await expect(page.getByRole('heading', { name: 'Expediente Médico Psiquiátrico' })).toBeVisible();
+
     // Esquema farmacológico servido por el oráculo (drugsList de exp-002)
-    await expect(page.getByText('Sertralina 50mg')).toBeVisible();
-    await expect(page.getByText('Alprazolam 0.25mg')).toBeVisible();
+    await page.getByRole('button', { name: /^Esquema Psico-Farmacológico$/ }).click();
+    const drugValues = await page.locator('input').evaluateAll(els => els.map(e => (e as HTMLInputElement).value));
+    expect(drugValues).toContain('Sertralina 50mg');
+    expect(drugValues).toContain('Alprazolam 0.25mg');
   });
 
   test('TC-EXP-05: Pagos del expediente cargados desde la BD', async ({ page }) => {
@@ -226,19 +244,20 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
 
     await page.getByRole('button', { name: /Nueva Sesión/ }).click();
 
-    // VC: Percepción → "Nuevo patrón", Pensamientos → "Empeoramiento"
-    await page.locator('select').nth(0).selectOption('Nuevo patrón');
-    await page.locator('select').nth(1).selectOption('Empeoramiento');
+    // VC (semáforo): Percepción → "Nuevo patrón", Pensamientos → "Recaída" (persiste como "Empeoramiento")
+    const semaforos = page.getByRole('radiogroup');
+    await semaforos.nth(0).getByRole('radio', { name: 'Nuevo patrón' }).click();
+    await semaforos.nth(1).getByRole('radio', { name: 'Recaída' }).click();
 
     // VG: marcar esfera YO
     await page.locator('input[type="checkbox"]').nth(0).check();
 
     await page.getByRole('button', { name: /Guardar Sesión/ }).click();
 
-    // La sesión se guarda y se recarga; verificar en el sub-tab VC
+    // La sesión se guarda y se recarga; verificar en el sub-tab VC (etiquetas canónicas del semáforo)
     await page.getByRole('button', { name: /Valoración del Cambio/ }).click();
     await expect(page.getByText('Nuevo patrón').first()).toBeVisible();
-    await expect(page.getByText('Empeoramiento').first()).toBeVisible();
+    await expect(page.getByText('Recaída').first()).toBeVisible();
   });
 
   test('TC-EXP-15: Folio de constancia duplicado no rompe la UI (manejo de error)', async ({ page }) => {
@@ -265,5 +284,124 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
     // los monitores de error para no fallar las aserciones del afterEach.
     consoleErrors.length = 0;
     http500Errors.length = 0;
+  });
+
+  test('TC-EXP-16: Datos de Admisión — Datos Generales cargados desde la BD (oráculo)', async ({ page }) => {
+    await page.goto('/expediente/pac-001');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ }).click();
+
+    // Sub-pestaña por defecto: Datos Generales
+    await expect(page.getByRole('heading', { name: 'Establecimiento' })).toBeVisible();
+    await expect(page.getByText('CLSM-000001')).toBeVisible();
+    await expect(page.getByText('LS-BM-2026-01')).toBeVisible();
+
+    // Datos del paciente servidos por el oráculo (GET /pacientes/{id})
+    const values = await page.locator('input').evaluateAll(els => els.map(e => (e as HTMLInputElement).value));
+    expect(values).toContain('SARM020815XXX');
+    expect(values).toContain('Av. Insurgentes 123');
+    expect(values).toContain('Ciudad de México');
+
+    await expect(page.getByRole('button', { name: 'Guardar Datos Generales' })).toBeVisible();
+  });
+
+  test('TC-EXP-17: Datos de Admisión — Historia clínica con 5 cards (oráculo)', async ({ page }) => {
+    await page.goto('/expediente/pac-001');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ }).click();
+    await page.getByRole('button', { name: /^Historia clínica$/ }).click();
+
+    // Las 5 cards latentes de la página "Historia clínica" del PDF
+    await expect(page.getByRole('heading', { name: 'Antecedentes Personales Patológicos' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Antecedentes Personales No Patológicos' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Antecedentes Heredo Familiares' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Evaluación del Estado Mental (Examen Mental)' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Evaluación de Riesgo' })).toBeVisible();
+
+    // Antecedentes migrados por V22 (seed exp-001)
+    await expect(page.getByText('Alergia a la penicilina')).toBeVisible();
+    await expect(page.getByText('Madre con trastorno de ansiedad')).toBeVisible();
+
+    // Botones "Editar" por card (aria-label descriptivo)
+    await expect(page.getByRole('button', { name: 'Editar antecedentes personales patológicos' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Editar antecedentes personales no patológicos' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Editar antecedentes heredo familiares' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Editar evaluación de riesgo' })).toBeVisible();
+
+    // Card del Examen Mental: botones latentes + estado "Sin datos"
+    await expect(page.getByRole('button', { name: 'Realizar examen' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ver resultados' })).toBeVisible();
+    await expect(page.getByText('Sin datos — Realice el examen para registrar la evaluación del estado mental.')).toBeVisible();
+  });
+
+  test('TC-EXP-17B: Historia clínica — Realizar examen mental (modal y guardado)', async ({ page }) => {
+    await page.goto('/expediente/pac-001');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ }).click();
+    await page.getByRole('button', { name: /^Historia clínica$/ }).click();
+
+    await page.getByRole('button', { name: 'Realizar examen' }).click();
+
+    // Modal de formulario completo (11 secciones)
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.locator('textarea[name="sintesis-impresiónDiagnóstica"]')).toBeVisible();
+
+    await page.locator('textarea[name="sintesis-impresiónDiagnóstica"]').fill('Trastorno de ansiedad generalizada (E2E)');
+    await page.getByRole('button', { name: 'Guardar examen' }).click();
+
+    // El modal se cierra y la card resume la impresión diagnóstica
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByText('Trastorno de ansiedad generalizada (E2E)')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ver resultados' })).toBeEnabled();
+  });
+
+  test('TC-EXP-17C: Historia clínica — Ver resultados del examen mental', async ({ page }) => {
+    await page.goto('/expediente/pac-001');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ }).click();
+    await page.getByRole('button', { name: /^Historia clínica$/ }).click();
+
+    // TC-EXP-17B dejó un examen guardado
+    await page.getByRole('button', { name: 'Ver resultados' }).click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Resultados del Examen Mental' })).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('Trastorno de ansiedad generalizada (E2E)')).toBeVisible();
+  });
+
+  test('TC-EXP-18: Datos de Admisión — Ficha de identificación renderiza desde la BD', async ({ page }) => {
+    await page.goto('/expediente/pac-001');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ }).click();
+    await page.getByRole('button', { name: /^Ficha de identificación$/ }).click();
+
+    await expect(page.getByRole('heading', { name: 'Ficha de Identificación' })).toBeVisible();
+    await expect(page.getByText('CURP')).toBeVisible();
+    await expect(page.getByText('Mateo Herrera Santos').first()).toBeVisible();
+  });
+
+  test('TC-EXP-19: Tratamiento Psiquiátrico — Esquema Psico-Farmacológico con fármacos y CRUD (oráculo)', async ({ page }) => {
+    await page.goto('/expediente/pac-002');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Tratamiento Psiquiátrico/ }).click();
+    await page.getByRole('button', { name: /^Esquema Psico-Farmacológico$/ }).click();
+
+    await expect(page.getByRole('heading', { name: 'Esquema Psicotrópico Farmacológico' })).toBeVisible();
+
+    // Fármacos semilla de exp-002 (drugsList) → ahora inputs editables
+    const values = await page.locator('input').evaluateAll(els => els.map(e => (e as HTMLInputElement).value));
+    expect(values).toContain('Sertralina 50mg');
+    expect(values).toContain('Alprazolam 0.25mg');
+
+    // CRUD: agregar fila (sin persistir para no mutar datos)
+    const rowsBefore = await page.locator('tbody tr').count();
+    await page.getByRole('button', { name: /^Agregar$/ }).click();
+    await expect(page.locator('tbody tr')).toHaveCount(rowsBefore + 1);
   });
 });

@@ -17,6 +17,8 @@ public interface SpringDataPacienteRepository extends JpaRepository<PacienteJpaE
     Optional<PacienteJpaEntity> findByCurp(String curp);
     boolean existsByCurp(String curp);
 
+    boolean existsByRfc(String rfc);
+
     long countByStatus(String status);
 
     long countByRiskLevelIn(Collection<String> niveles);

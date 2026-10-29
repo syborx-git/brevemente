@@ -5,6 +5,8 @@ import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.Expe
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.ExpedienteUpdateRequest;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+
 @Component
 public class ExpedienteRestMapper {
 
@@ -42,7 +44,23 @@ public class ExpedienteRestMapper {
                 e.getFactoresFavorables(),
                 e.getFactoresDesfavorables(),
                 e.getUsoFarmacos(),
-                e.getDrugsList()
+                e.getDrugsList(),
+                e.getIntentosSolucion(),
+                e.getTipoExpediente(),
+                e.getFechaApertura() != null ? e.getFechaApertura().toString() : null,
+                e.getFuenteReferencia(),
+                e.getFuenteReferenciaOtro(),
+                e.getRiesgoSuicida(),
+                e.getRiesgoHeteroagresivo(),
+                e.getOtrosRiesgos(),
+                e.getExamenMental(),
+                e.getHistorialFarmacos(),
+                e.getHistorialPsicofarmacos(),
+                e.getHistorialDrogas(),
+                e.getAntecedentes(),
+                e.getRiesgoSuicidaEspecificar(),
+                e.getRiesgoHeteroagresivoEspecificar(),
+                e.getFechaExamenMental() != null ? e.getFechaExamenMental().toString() : null
         );
     }
 
@@ -74,6 +92,31 @@ public class ExpedienteRestMapper {
                 .factoresDesfavorables(r.unfavorableFactors())
                 .usoFarmacos(r.drugsUsage())
                 .drugsList(r.drugsList())
+                .intentosSolucion(r.intentosSolucion())
+                .tipoExpediente(r.tipoExpediente())
+                .fechaApertura(parseDate(r.fechaApertura()))
+                .fuenteReferencia(r.fuenteReferencia())
+                .fuenteReferenciaOtro(r.fuenteReferenciaOtro())
+                .riesgoSuicida(r.riesgoSuicida())
+                .riesgoHeteroagresivo(r.riesgoHeteroagresivo())
+                .otrosRiesgos(r.otrosRiesgos())
+                .examenMental(r.examenMental() instanceof java.util.Map ? (java.util.Map<String, Object>) r.examenMental() : null)
+                .historialFarmacos(r.historialFarmacos())
+                .historialPsicofarmacos(r.historialPsicofarmacos())
+                .historialDrogas(r.historialDrogas())
+                .antecedentes(r.antecedentes())
+                .riesgoSuicidaEspecificar(r.riesgoSuicidaEspecificar())
+                .riesgoHeteroagresivoEspecificar(r.riesgoHeteroagresivoEspecificar())
+                .fechaExamenMental(parseDate(r.fechaExamenMental()))
                 .build();
+    }
+
+    private LocalDate parseDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) return null;
+        try {
+            return LocalDate.parse(dateStr.trim().substring(0, 10));
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

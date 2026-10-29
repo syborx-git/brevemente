@@ -8,10 +8,15 @@ import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, Sesion
 import { ExpedienteLocalStorageAdapter } from './adapters/expediente-localstorage.adapter';
 import { ExpedienteHttpAdapter } from './adapters/expediente-http.adapter';
 import {
+  Antecedentes,
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
   CriterioCategoria,
   CriterioClinico,
+  Establecimiento,
+  ExamenMental,
+  HábitoPresente,
   OpcionConductual,
   Patient,
   Payment,
@@ -19,6 +24,8 @@ import {
   PaymentStatus,
   PhysicalCertificateLog,
   PhysicalCertificateType,
+  RiesgoHeteroagresivo,
+  RiesgoSuicida,
   Session,
   SupervisionLog,
   SupervisionRequest,
@@ -29,6 +36,160 @@ import { VcEstado, vcEstadoDeTexto, VC_ESTADO_A_TEXTO, VC_ESCALA } from '../../c
 import { VcSemaphoreComponent } from './components/vc-semaphore/vc-semaphore.component';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
+
+const ANTECEDENTES_VACIO: Antecedentes = {
+  personalesPatológicos: {
+    médicos: '', quirúrgicos: '', traumáticos: '', alérgicos: '', transfusionales: '', hospitalizaciones: ''
+  },
+  personalesNoPatológicos: {
+    tabaquismo: { presente: false, cantidad: '', tiempo: '' },
+    alcoholismo: { presente: false, cantidad: '', frecuencia: '' },
+    toxicomanías: { presente: false, tipo: '', tiempo: '' },
+    actividadFísica: '',
+    alimentación: ''
+  },
+  heredoFamiliares: {
+    enfermedadesMentales: '', enfermedadesCrónicas: '', suicidiosIntentos: '', adicciones: ''
+  }
+};
+
+interface ExamenParametro {
+  clave: string;
+  etiqueta: string;
+  queEvaluar: string;
+  descriptores: string;
+}
+
+interface ExamenSeccion {
+  clave: string;
+  titulo: string;
+  parametros: ExamenParametro[];
+}
+
+const EXAMEN_SECCIONES: ExamenSeccion[] = [
+  {
+    clave: 'aparienciaConducta',
+    titulo: 'Apariencia y conducta',
+    parametros: [
+      { clave: 'aspectoGeneral', etiqueta: 'Aspecto general', queEvaluar: 'Presentación, higiene, aliño y complexión.', descriptores: 'Adecuado / Descuidado / Extravagante / Emaciado' },
+      { clave: 'actitudEntrevista', etiqueta: 'Actitud ante la entrevista', queEvaluar: 'Disposición y colaboración del paciente.', descriptores: 'Cooperador / Hostil / Evasivo / Seductor' },
+      { clave: 'contactoVisual', etiqueta: 'Contacto visual', queEvaluar: 'Cantidad y calidad del contacto ocular.', descriptores: 'Mantenido / Evitado / Fijo / Perdido' },
+      { clave: 'actividadPsicomotora', etiqueta: 'Actividad psicomotora', queEvaluar: 'Nivel de actividad global.', descriptores: 'Normal / Hiperactivo / Inhibido / Catatónico' },
+      { clave: 'movimientosAnormales', etiqueta: 'Movimientos anormales', queEvaluar: 'Tics, estereotipias y temblores.', descriptores: 'Ausentes / Tics / Temblor / Discinesias' },
+      { clave: 'posturaMarcha', etiqueta: 'Postura y marcha', queEvaluar: 'Alineación corporal y deambulación.', descriptores: 'Normal / Encorvada / Rígida / Inestable' }
+    ]
+  },
+  {
+    clave: 'concienciaSensorio',
+    titulo: 'Conciencia y sensorio',
+    parametros: [
+      { clave: 'nivelConciencia', etiqueta: 'Nivel de conciencia', queEvaluar: 'Alerta y respuesta a estímulos.', descriptores: 'Alerta / Somnoliento / Obnubilado / Estuporoso' },
+      { clave: 'orientación', etiqueta: 'Orientación', queEvaluar: 'Ubicación en tiempo, lugar y persona.', descriptores: 'Orientado / Desorientado' },
+      { clave: 'atenciónConcentración', etiqueta: 'Atención y concentración', queEvaluar: 'Capacidad de enfocar y sostener la atención.', descriptores: 'Conservada / Distraído / Disminuida' }
+    ]
+  },
+  {
+    clave: 'lenguajeHabla',
+    titulo: 'Lenguaje y habla',
+    parametros: [
+      { clave: 'cantidad', etiqueta: 'Cantidad', queEvaluar: 'Producción verbal espontánea.', descriptores: 'Normal / Verborreico / Pobre / Mutista' },
+      { clave: 'velocidadRitmo', etiqueta: 'Velocidad y ritmo', queEvaluar: 'Fluidez del discurso.', descriptores: 'Normal / Taquilalia / Bradilalia / Bloqueos' },
+      { clave: 'volumenProsodia', etiqueta: 'Volumen y prosodia', queEvaluar: 'Intensidad y entonación del habla.', descriptores: 'Normal / Elevado / Disminuido / Monótono' },
+      { clave: 'articulaciónFluidez', etiqueta: 'Articulación y fluidez', queEvaluar: 'Pronunciación y continuidad del discurso.', descriptores: 'Clara / Disártrico / Tartamudeo' },
+      { clave: 'comprensiónDenominaciónRepetición', etiqueta: 'Comprensión, denominación y repetición', queEvaluar: 'Integridad de funciones lingüísticas.', descriptores: 'Conservadas / Alteradas' },
+      { clave: 'alteracionesParticulares', etiqueta: 'Alteraciones particulares', queEvaluar: 'Neologismos, parafasias y ecolalia.', descriptores: 'Ninguna / Neologismos / Parafasias / Ecolalia' }
+    ]
+  },
+  {
+    clave: 'afectividad',
+    titulo: 'Afectividad',
+    parametros: [
+      { clave: 'estadoÁnimo', etiqueta: 'Estado de ánimo', queEvaluar: 'Tono afectivo predominante.', descriptores: 'Eutímico / Deprimido / Eufórico / Irritable / Ansioso' },
+      { clave: 'afecto', etiqueta: 'Afecto', queEvaluar: 'Expresión emocional observable.', descriptores: 'Adecuado / Aplanado / Embotado / Lábil' },
+      { clave: 'rangoIntensidad', etiqueta: 'Rango e intensidad', queEvaluar: 'Amplitud de la expresión afectiva.', descriptores: 'Normal / Restringido / Amplio / Intenso' },
+      { clave: 'estabilidad', etiqueta: 'Estabilidad', queEvaluar: 'Constancia del afecto durante la entrevista.', descriptores: 'Estable / Lábil' },
+      { clave: 'congruenciaAdecuación', etiqueta: 'Congruencia y adecuación', queEvaluar: 'Coherencia del afecto con el contenido.', descriptores: 'Congruente / Incongruente' },
+      { clave: 'reactividad', etiqueta: 'Reactividad', queEvaluar: 'Respuesta afectiva ante estímulos.', descriptores: 'Reactivo / Poco reactivo / No reactivo' }
+    ]
+  },
+  {
+    clave: 'pensamiento',
+    titulo: 'Pensamiento',
+    parametros: [
+      { clave: 'curso', etiqueta: 'Curso', queEvaluar: 'Velocidad y continuidad del pensamiento.', descriptores: 'Normal / Acelerado / Lentificado / Bloqueado' },
+      { clave: 'forma', etiqueta: 'Forma', queEvaluar: 'Organización lógica del pensamiento.', descriptores: 'Lógico / Circunstancial / Tangencial / Descarrilado' },
+      { clave: 'ideasDelirantes', etiqueta: 'Ideas delirantes', queEvaluar: 'Creencias falsas fijas e irreductibles.', descriptores: 'Ausentes / Persecutorias / Referenciales / Somáticas / Grandiosas' },
+      { clave: 'fenómenosPasividad', etiqueta: 'Fenómenos de pasividad', queEvaluar: 'Vivencia de control externo del pensamiento.', descriptores: 'Ausentes / Inserción / Robo / Difusión del pensamiento' },
+      { clave: 'ideasSobrevaloradas', etiqueta: 'Ideas sobrevaloradas', queEvaluar: 'Creencias con fuerte carga afectiva.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'obsesionesCompulsiones', etiqueta: 'Obsesiones y compulsiones', queEvaluar: 'Ideas intrusivas y rituales asociados.', descriptores: 'Ausentes / Obsesiones / Compulsiones' },
+      { clave: 'fobiasPreocupacionesRumiaciones', etiqueta: 'Fobias, preocupaciones y rumiaciones', queEvaluar: 'Temores y pensamientos recurrentes.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'ideaciónSuicidaAutolesivaHomicida', etiqueta: 'Ideación suicida, autolesiva u homicida', queEvaluar: 'Pensamientos de daño hacia sí mismo o a otros.', descriptores: 'Ausente / Pasiva / Activa / Con plan' }
+    ]
+  },
+  {
+    clave: 'sensopercepción',
+    titulo: 'Sensopercepción',
+    parametros: [
+      { clave: 'alucinaciones', etiqueta: 'Alucinaciones', queEvaluar: 'Percepciones sin objeto real.', descriptores: 'Ausentes / Auditivas / Visuales / Táctiles / Olfatorias' },
+      { clave: 'pseudoalucinacionesAlucinosis', etiqueta: 'Pseudoalucinaciones y alucinosis', queEvaluar: 'Percepciones reconocidas como irreales.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'ilusiones', etiqueta: 'Ilusiones', queEvaluar: 'Distorsiones de un estímulo real.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'despersonalizaciónDesrealización', etiqueta: 'Despersonalización y desrealización', queEvaluar: 'Vivencia de extrañeza de sí mismo o del entorno.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'conductaAlucinatoria', etiqueta: 'Conducta alucinatoria', queEvaluar: 'Conductas derivadas de la alucinación.', descriptores: 'Ausente / Soliloquios / Respuesta a estímulos internos' },
+      { clave: 'otrasDistorsiones', etiqueta: 'Otras distorsiones', queEvaluar: 'Otras alteraciones perceptivas.', descriptores: 'Ninguna / Otras' }
+    ]
+  },
+  {
+    clave: 'funcionesCognoscitivas',
+    titulo: 'Funciones cognoscitivas',
+    parametros: [
+      { clave: 'memoriaInmediata', etiqueta: 'Memoria inmediata', queEvaluar: 'Retención a corto plazo.', descriptores: 'Conservada / Alterada' },
+      { clave: 'memoriaReciente', etiqueta: 'Memoria reciente', queEvaluar: 'Evocación de hechos recientes.', descriptores: 'Conservada / Alterada' },
+      { clave: 'memoriaRemota', etiqueta: 'Memoria remota', queEvaluar: 'Evocación de hechos pasados.', descriptores: 'Conservada / Alterada' },
+      { clave: 'cálculo', etiqueta: 'Cálculo', queEvaluar: 'Ejecución de operaciones aritméticas.', descriptores: 'Conservado / Alterado' },
+      { clave: 'abstracción', etiqueta: 'Abstracción', queEvaluar: 'Pensamiento simbólico y de semejanzas.', descriptores: 'Conservada / Concreta / Alterada' },
+      { clave: 'visoespacialPraxiasGnosias', etiqueta: 'Visoespacial, praxias y gnosias', queEvaluar: 'Organización espacial y ejecución motora.', descriptores: 'Conservadas / Alteradas' },
+      { clave: 'funcionesEjecutivas', etiqueta: 'Funciones ejecutivas', queEvaluar: 'Planeación, juicio y flexibilidad.', descriptores: 'Conservadas / Alteradas' },
+      { clave: 'inteligenciaCaudal', etiqueta: 'Inteligencia y caudal', queEvaluar: 'Nivel intelectual estimado.', descriptores: 'Promedio / Superior / Inferior' }
+    ]
+  },
+  {
+    clave: 'juicioIntrospección',
+    titulo: 'Juicio e introspección',
+    parametros: [
+      { clave: 'juicioRealidad', etiqueta: 'Juicio de realidad', queEvaluar: 'Discriminación de lo real.', descriptores: 'Conservado / Alterado' },
+      { clave: 'juicioCríticoSocial', etiqueta: 'Juicio crítico y social', queEvaluar: 'Adecuación a normas sociales.', descriptores: 'Conservado / Alterado' },
+      { clave: 'introspección', etiqueta: 'Introspección', queEvaluar: 'Conciencia de la propia enfermedad.', descriptores: 'Adecuada / Parcial / Nula' },
+      { clave: 'controlImpulsos', etiqueta: 'Control de impulsos', queEvaluar: 'Capacidad de diferir la gratificación.', descriptores: 'Conservado / Disminuido / Ausente' },
+      { clave: 'confiabilidad', etiqueta: 'Confiabilidad', queEvaluar: 'Veracidad de la información aportada.', descriptores: 'Fiable / Dudosa / No fiable' }
+    ]
+  },
+  {
+    clave: 'funcionesFisiológicas',
+    titulo: 'Funciones fisiológicas',
+    parametros: [
+      { clave: 'sueño', etiqueta: 'Sueño', queEvaluar: 'Patrón de sueño.', descriptores: 'Normal / Insomnio / Hipersomnia / Pesadillas' },
+      { clave: 'apetitoPeso', etiqueta: 'Apetito y peso', queEvaluar: 'Ingesta y variación ponderal.', descriptores: 'Normal / Aumentado / Disminuido' },
+      { clave: 'libido', etiqueta: 'Libido', queEvaluar: 'Deseo sexual.', descriptores: 'Normal / Aumentada / Disminuida' }
+    ]
+  }
+];
+
+const EXAMEN_RIESGO_ITEMS: Array<{ clave: string; etiqueta: string }> = [
+  { clave: 'suicida', etiqueta: 'Suicida' },
+  { clave: 'autolesión', etiqueta: 'Autolesión' },
+  { clave: 'heteroagresivo', etiqueta: 'Heteroagresivo' },
+  { clave: 'abandonoAutocuidado', etiqueta: 'Abandono de autocuidado' },
+  { clave: 'vulnerabilidad', etiqueta: 'Vulnerabilidad' },
+  { clave: 'fugaAbandono', etiqueta: 'Fuga o abandono' }
+];
+
+const EXAMEN_SINTESIS_ITEMS: Array<{ clave: string; etiqueta: string }> = [
+  { clave: 'resumenHallazgos', etiqueta: 'Resumen de hallazgos' },
+  { clave: 'integraciónSindromática', etiqueta: 'Integración sindromática' },
+  { clave: 'impresiónDiagnóstica', etiqueta: 'Impresión diagnóstica' },
+  { clave: 'conductaASeguir', etiqueta: 'Conducta a seguir' },
+  { clave: 'nombreFirmaEvaluador', etiqueta: 'Nombre y firma del evaluador' }
+];
 
 @Component({
   selector: 'app-expediente-clinico',
@@ -62,7 +223,40 @@ export class ExpedienteClinicoComponent implements OnInit {
 
   activeTab: 'datos' | 'psiquiatria' | 'tbe' | 'pagos' | 'auditoria' | 'supervision' | 'constancias' = 'tbe';
   tbeSubTab: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' | 'criterios' = 'dx';
+  datosSubTab: 'generales' | 'historia' | 'ficha' = 'generales';
+  psiquiatriaSubTab: 'esquema' | 'expediente' = 'expediente';
   selectedSession: Session | null = null;
+
+  // Historia Clínica (estructurada — SDD-HC-3)
+  antecedentes: Antecedentes | null = null;
+  antecedentesDraft: Antecedentes | null = null;
+  editandoPatologicos = false;
+  editandoNoPatologicos = false;
+  editandoHeredoFamiliares = false;
+  editandoRiesgo = false;
+  riesgoDraft: {
+    riesgoSuicida: RiesgoSuicida | null;
+    riesgoSuicidaEspecificar: string;
+    riesgoHeteroagresivo: RiesgoHeteroagresivo | null;
+    riesgoHeteroagresivoEspecificar: string;
+    otrosRiesgos: string;
+  } = {
+    riesgoSuicida: null,
+    riesgoSuicidaEspecificar: '',
+    riesgoHeteroagresivo: null,
+    riesgoHeteroagresivoEspecificar: '',
+    otrosRiesgos: ''
+  };
+  categoriasPsicofarmacos: CategoriaPsicofarmaco[] = [];
+  establecimiento: Establecimiento | null = null;
+
+  // Examen Mental (SDD-HC-3)
+  showExamenModal = false;
+  showResultadosModal = false;
+  examenDraft: ExamenMental = {};
+  readonly examenSecciones = EXAMEN_SECCIONES;
+  readonly examenRiesgoItems = EXAMEN_RIESGO_ITEMS;
+  readonly examenSintesisItems = EXAMEN_SINTESIS_ITEMS;
 
   // Edición inline de sesión (#102/#103/#104)
   editingField: 'fase' | 'significado' | 'dxOp' | 'spr' | null = null;
@@ -183,6 +377,11 @@ export class ExpedienteClinicoComponent implements OnInit {
     this.expedienteRepo.obtenerPaciente(this.pacienteId).subscribe(p => {
       this.patient = p;
       if (p) {
+        if (!p.domicilio) p.domicilio = { calleNumero: '', colonia: '', codigoPostal: '', municipio: '', estadoDomicilio: '', telefonoCasa: null, telefonoCelular: null, telefonoTrabajo: null };
+        if (!p.contactoEmergencia) p.contactoEmergencia = { nombre: '', parentesco: '', telefono: '' };
+        if (p.sedeId) {
+          this.expedienteRepo.obtenerSede(p.sedeId).subscribe(s => this.establecimiento = s);
+        }
         if (!this.newConstancia.issuerName) {
           this.newConstancia.issuerName = p.therapistName || 'Dr. Carlos Mendoza';
         }
@@ -200,7 +399,10 @@ export class ExpedienteClinicoComponent implements OnInit {
         }
       }
     });
-    this.expedienteRepo.obtenerExpediente(this.pacienteId).subscribe(r => this.record = r);
+    this.expedienteRepo.obtenerExpediente(this.pacienteId).subscribe(r => {
+      this.record = r;
+      this.antecedentes = r?.antecedentes ?? null;
+    });
     this.expedienteRepo.obtenerSesiones(this.pacienteId).subscribe(s => {
       this.sessions = s;
       if (!this.selectedSession && s.length > 0) {
@@ -214,6 +416,7 @@ export class ExpedienteClinicoComponent implements OnInit {
     this.expedienteRepo.listarAuditoria(this.pacienteId).subscribe(a => this.auditoria = a);
     this.expedienteRepo.listarBitacoras(this.pacienteId).subscribe(b => this.bitacoras = b);
     this.expedienteRepo.listarSolicitudes(this.pacienteId).subscribe(s => this.solicitudes = s);
+    this.expedienteRepo.listarCategoriasPsicofarmacos().subscribe(c => this.categoriasPsicofarmacos = c);
   }
 
   get totalCobrado(): number {
@@ -285,6 +488,14 @@ export class ExpedienteClinicoComponent implements OnInit {
     if (sub === 'criterios') {
       this.cargarCriterios();
     }
+  }
+
+  setDatosSubTab(sub: 'generales' | 'historia' | 'ficha'): void {
+    this.datosSubTab = sub;
+  }
+
+  setPsiquiatriaSubTab(sub: 'esquema' | 'expediente'): void {
+    this.psiquiatriaSubTab = sub;
   }
 
   // --- Edición inline de sesión (#102, #103, #104) ---
@@ -373,7 +584,9 @@ export class ExpedienteClinicoComponent implements OnInit {
     if (this.showConstanciaModal) { this.closeConstanciaModal(); return; }
     if (this.showBitacoraModal) { this.closeBitacoraModal(); return; }
     if (this.selectedConstancia) { this.cerrarDetalleConstancia(); return; }
-    if (this.showSessionModal) { this.closeSessionModal(); }
+    if (this.showSessionModal) { this.closeSessionModal(); return; }
+    if (this.showExamenModal) { this.cerrarExamen(); return; }
+    if (this.showResultadosModal) { this.cerrarResultados(); }
   }
 
   firmarConsentimiento(): void {
@@ -441,6 +654,292 @@ export class ExpedienteClinicoComponent implements OnInit {
       drugsUsage: this.record.drugsUsage,
       drugsList: this.record.drugsList
     }).subscribe(r => this.record = r);
+  }
+
+  guardarDatosGenerales(): void {
+    if (!this.patient) return;
+    this.expedienteRepo.actualizarPaciente(this.pacienteId, {
+      email: this.patient.email,
+      rfc: this.patient.rfc,
+      sexo: this.patient.sexo,
+      lugarNacimiento: this.patient.lugarNacimiento,
+      estadoCivil: this.patient.estadoCivil,
+      escolaridad: this.patient.escolaridad,
+      ocupacion: this.patient.ocupacion,
+      religion: this.patient.religion,
+      domicilio: this.patient.domicilio,
+      contactoEmergencia: this.patient.contactoEmergencia
+    }).subscribe(p => { if (p) this.patient = p; });
+    if (this.record) {
+      this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+        tipoExpediente: this.record.tipoExpediente,
+        fechaApertura: this.record.fechaApertura
+      }).subscribe(r => this.record = r);
+    }
+  }
+
+  // --- Historia Clínica estructurada (SDD-HC-3) ---
+  get personalesPatologicos() {
+    return this.antecedentes?.personalesPatológicos ?? ANTECEDENTES_VACIO.personalesPatológicos;
+  }
+
+  get personalesNoPatologicos() {
+    return this.antecedentes?.personalesNoPatológicos ?? ANTECEDENTES_VACIO.personalesNoPatológicos;
+  }
+
+  get heredoFamiliares() {
+    return this.antecedentes?.heredoFamiliares ?? ANTECEDENTES_VACIO.heredoFamiliares;
+  }
+
+  get draftPatologicos() {
+    return this.antecedentesDraft?.personalesPatológicos ?? ANTECEDENTES_VACIO.personalesPatológicos;
+  }
+
+  get draftNoPatologicos() {
+    return this.antecedentesDraft?.personalesNoPatológicos ?? ANTECEDENTES_VACIO.personalesNoPatológicos;
+  }
+
+  get draftHeredoFamiliares() {
+    return this.antecedentesDraft?.heredoFamiliares ?? ANTECEDENTES_VACIO.heredoFamiliares;
+  }
+
+  // Acceso por clave para el template (el parser de Angular no admite acentos en identificadores)
+  antPat(clave: string): string { return (this.personalesPatologicos as any)[clave] ?? ''; }
+  draftAntPat(clave: string): string { return (this.draftPatologicos as any)[clave] ?? ''; }
+  setAntPat(clave: string, valor: string): void { (this.draftPatologicos as any)[clave] = valor; }
+
+  antNoPat(clave: string): string { return (this.personalesNoPatologicos as any)[clave] ?? ''; }
+  draftAntNoPat(clave: string): string { return (this.draftNoPatologicos as any)[clave] ?? ''; }
+  setAntNoPat(clave: string, valor: string): void { (this.draftNoPatologicos as any)[clave] = valor; }
+
+  antHer(clave: string): string { return (this.heredoFamiliares as any)[clave] ?? ''; }
+  draftAntHer(clave: string): string { return (this.draftHeredoFamiliares as any)[clave] ?? ''; }
+  setAntHer(clave: string, valor: string): void { (this.draftHeredoFamiliares as any)[clave] = valor; }
+
+  habitoActual(clave: string): HábitoPresente | undefined {
+    return (this.personalesNoPatologicos as any)[clave];
+  }
+
+  draftHabito(clave: string): HábitoPresente {
+    const h: any = (this.draftNoPatologicos as any)[clave];
+    return h && typeof h === 'object' ? h : { presente: false, cantidad: '', tiempo: '', frecuencia: '', tipo: '' };
+  }
+
+  habitoResumen(habito: HábitoPresente | undefined): string {
+    if (!habito?.presente) return 'No';
+    const detalle = [habito.cantidad, habito.tiempo, habito.frecuencia, habito.tipo]
+      .filter(x => !!x && !!x.trim()).join(' · ');
+    return 'Sí' + (detalle ? ' — ' + detalle : '');
+  }
+
+  private clonarAntecedentes(a: Antecedentes | null): Antecedentes {
+    const base: Antecedentes = JSON.parse(JSON.stringify(ANTECEDENTES_VACIO));
+    if (!a) return base;
+    base.personalesPatológicos = { ...base.personalesPatológicos, ...(a.personalesPatológicos ?? {}) };
+    base.personalesNoPatológicos = {
+      tabaquismo: { ...base.personalesNoPatológicos.tabaquismo, ...(a.personalesNoPatológicos?.tabaquismo ?? {}) },
+      alcoholismo: { ...base.personalesNoPatológicos.alcoholismo, ...(a.personalesNoPatológicos?.alcoholismo ?? {}) },
+      toxicomanías: { ...base.personalesNoPatológicos.toxicomanías, ...(a.personalesNoPatológicos?.toxicomanías ?? {}) },
+      actividadFísica: a.personalesNoPatológicos?.actividadFísica ?? '',
+      alimentación: a.personalesNoPatológicos?.alimentación ?? ''
+    };
+    base.heredoFamiliares = { ...base.heredoFamiliares, ...(a.heredoFamiliares ?? {}) };
+    return base;
+  }
+
+  hasPatologicosData(): boolean {
+    return Object.values(this.personalesPatologicos).some(v => !!v && !!v.trim());
+  }
+
+  hasNoPatologicosData(): boolean {
+    const n = this.personalesNoPatologicos;
+    return !!n.tabaquismo?.presente || !!n.alcoholismo?.presente || !!n.toxicomanías?.presente
+      || !!(n.actividadFísica?.trim()) || !!(n.alimentación?.trim());
+  }
+
+  hasHeredoFamiliaresData(): boolean {
+    return Object.values(this.heredoFamiliares).some(v => !!v && !!v.trim());
+  }
+
+  hasRiesgoData(): boolean {
+    return !!this.record?.riesgoSuicida || !!this.record?.riesgoHeteroagresivo
+      || !!(this.record?.riesgoSuicidaEspecificar?.trim())
+      || !!(this.record?.riesgoHeteroagresivoEspecificar?.trim())
+      || !!(this.record?.otrosRiesgos?.trim());
+  }
+
+  hasExamenMentalData(): boolean {
+    const em: any = this.record?.examenMental;
+    if (!em) return false;
+    return Object.keys(em).some(seccion => {
+      const val = em[seccion];
+      if (val && typeof val === 'object') {
+        return Object.values(val).some((v: any) => {
+          if (v && typeof v === 'object') {
+            return Object.values(v).some(x => x !== null && x !== undefined && x !== '');
+          }
+          return v !== null && v !== undefined && v !== '';
+        });
+      }
+      return false;
+    });
+  }
+
+  get examenImpresionDiagnostica(): string {
+    return (this.record?.examenMental as any)?.síntesis?.impresiónDiagnóstica ?? '';
+  }
+
+  get examenFechaTexto(): string {
+    const f = this.record?.fechaExamenMental;
+    if (!f) return '';
+    return new Date(`${f}T00:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  editarAntecedentes(card: 'patologicos' | 'noPatologicos' | 'heredoFamiliares'): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    this.antecedentesDraft = this.clonarAntecedentes(this.antecedentes);
+    if (card === 'patologicos') this.editandoPatologicos = true;
+    else if (card === 'noPatologicos') this.editandoNoPatologicos = true;
+    else this.editandoHeredoFamiliares = true;
+  }
+
+  cancelarAntecedentes(): void {
+    this.editandoPatologicos = false;
+    this.editandoNoPatologicos = false;
+    this.editandoHeredoFamiliares = false;
+    this.antecedentesDraft = null;
+  }
+
+  guardarAntecedentes(): void {
+    if (!this.antecedentesDraft) return;
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, { antecedentes: this.antecedentesDraft }).subscribe(r => {
+      this.record = r;
+      this.antecedentes = r?.antecedentes ?? null;
+      this.cancelarAntecedentes();
+    });
+  }
+
+  editarRiesgo(): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    this.riesgoDraft = {
+      riesgoSuicida: this.record?.riesgoSuicida ?? null,
+      riesgoSuicidaEspecificar: this.record?.riesgoSuicidaEspecificar ?? '',
+      riesgoHeteroagresivo: this.record?.riesgoHeteroagresivo ?? null,
+      riesgoHeteroagresivoEspecificar: this.record?.riesgoHeteroagresivoEspecificar ?? '',
+      otrosRiesgos: this.record?.otrosRiesgos ?? ''
+    };
+    this.editandoRiesgo = true;
+  }
+
+  cancelarRiesgo(): void {
+    this.editandoRiesgo = false;
+  }
+
+  guardarRiesgo(): void {
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+      riesgoSuicida: this.riesgoDraft.riesgoSuicida ?? undefined,
+      riesgoSuicidaEspecificar: this.riesgoDraft.riesgoSuicidaEspecificar,
+      riesgoHeteroagresivo: this.riesgoDraft.riesgoHeteroagresivo ?? undefined,
+      riesgoHeteroagresivoEspecificar: this.riesgoDraft.riesgoHeteroagresivoEspecificar,
+      otrosRiesgos: this.riesgoDraft.otrosRiesgos
+    }).subscribe(r => {
+      this.record = r;
+      this.editandoRiesgo = false;
+    });
+  }
+
+  // --- Examen Mental (SDD-HC-3) ---
+  abrirExamen(): void {
+    const prev: any = this.record?.examenMental;
+    this.examenDraft = prev && Object.keys(prev).length > 0 ? JSON.parse(JSON.stringify(prev)) : {};
+    this.showExamenModal = true;
+  }
+
+  cerrarExamen(): void {
+    this.showExamenModal = false;
+  }
+
+  hallazgoTexto(seccion: string, parametro: string): string {
+    const s: any = (this.examenDraft as any)[seccion];
+    return s && typeof s[parametro] === 'string' ? s[parametro] : '';
+  }
+
+  setHallazgoTexto(seccion: string, parametro: string, valor: string): void {
+    const d: any = this.examenDraft;
+    if (!d[seccion]) d[seccion] = {};
+    d[seccion][parametro] = valor;
+  }
+
+  riesgoNivel(clave: string): string {
+    const item: any = (this.examenDraft as any).evaluaciónRiesgo?.[clave];
+    return item && typeof item === 'object' ? (item.nivel ?? '') : '';
+  }
+
+  setRiesgoNivel(clave: string, nivel: string): void {
+    const d: any = this.examenDraft;
+    if (!d.evaluaciónRiesgo) d.evaluaciónRiesgo = {};
+    if (!d.evaluaciónRiesgo[clave] || typeof d.evaluaciónRiesgo[clave] !== 'object') {
+      d.evaluaciónRiesgo[clave] = { nivel: '', hallazgo: '' };
+    }
+    d.evaluaciónRiesgo[clave].nivel = nivel;
+  }
+
+  riesgoHallazgo(clave: string): string {
+    const item: any = (this.examenDraft as any).evaluaciónRiesgo?.[clave];
+    return item && typeof item === 'object' ? (item.hallazgo ?? '') : '';
+  }
+
+  setRiesgoHallazgo(clave: string, hallazgo: string): void {
+    const d: any = this.examenDraft;
+    if (!d.evaluaciónRiesgo) d.evaluaciónRiesgo = {};
+    if (!d.evaluaciónRiesgo[clave] || typeof d.evaluaciónRiesgo[clave] !== 'object') {
+      d.evaluaciónRiesgo[clave] = { nivel: '', hallazgo: '' };
+    }
+    d.evaluaciónRiesgo[clave].hallazgo = hallazgo;
+  }
+
+  sintesisTexto(clave: string): string {
+    const s: any = (this.examenDraft as any).síntesis;
+    return s && typeof s[clave] === 'string' ? s[clave] : '';
+  }
+
+  setSintesisTexto(clave: string, valor: string): void {
+    const d: any = this.examenDraft;
+    if (!d.síntesis) d.síntesis = {};
+    d.síntesis[clave] = valor;
+  }
+
+  guardarExamen(): void {
+    const examenMental: ExamenMental = JSON.parse(JSON.stringify(this.examenDraft));
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+      examenMental,
+      fechaExamenMental: new Date().toISOString().split('T')[0]
+    }).subscribe(r => {
+      this.record = r;
+      this.showExamenModal = false;
+    });
+  }
+
+  verResultados(): void {
+    if (!this.hasExamenMentalData()) return;
+    const prev: any = this.record?.examenMental;
+    this.examenDraft = prev ? JSON.parse(JSON.stringify(prev)) : {};
+    this.showResultadosModal = true;
+  }
+
+  cerrarResultados(): void {
+    this.showResultadosModal = false;
+  }
+
+  agregarFarmaco(): void {
+    if (!this.record) return;
+    const drugs = [...(this.record.drugsList || [])];
+    drugs.push({ id: `drug-${Date.now()}`, name: '', doseMorning: '', doseAfternoon: '', doseNight: '', eff: '', notes: '', categoria: 'otros' });
+    this.record.drugsList = drugs;
+  }
+  eliminarFarmaco(drugId: string): void {
+    if (!this.record) return;
+    this.record.drugsList = (this.record.drugsList || []).filter(d => d.id !== drugId);
   }
 
   solicitarSupervision(): void {

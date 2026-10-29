@@ -8,8 +8,13 @@ import com.syborx.brevemente.expediente.application.ports.in.ListarCriteriosSesi
 import com.syborx.brevemente.expediente.application.ports.in.ListarOpcionesConductualesUseCase;
 import com.syborx.brevemente.expediente.application.ports.in.ListarSesionesUseCase;
 import com.syborx.brevemente.expediente.application.ports.in.ObtenerExpedienteUseCase;
+import com.syborx.brevemente.expediente.application.ports.in.GuardarTratamientosPreviosUseCase;
+import com.syborx.brevemente.expediente.application.ports.in.ListarCategoriasPsicofarmacosUseCase;
+import com.syborx.brevemente.expediente.application.ports.in.ListarTratamientosPreviosUseCase;
 import com.syborx.brevemente.auth.infrastructure.security.UsuarioAutenticado;
 import com.syborx.brevemente.expediente.domain.model.CriterioClinico;
+import com.syborx.brevemente.expediente.domain.model.TratamientoPrevio;
+import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.CategoriaPsicofarmacoResponseDTO;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.CriterioClinicoRequest;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.CriterioClinicoResponseDTO;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.ExpedienteResponseDTO;
@@ -18,6 +23,8 @@ import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.Opci
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.SesionCreateRequest;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.SesionResponseDTO;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.SesionUpdateRequest;
+import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.TratamientoPrevioRequest;
+import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.TratamientoPrevioResponseDTO;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.mapper.ExpedienteRestMapper;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.mapper.SesionRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +60,9 @@ public class ExpedienteRestController {
     private final ListarCriteriosSesionUseCase listarCriteriosSesionUseCase;
     private final GuardarCriteriosSesionUseCase guardarCriteriosSesionUseCase;
     private final ListarOpcionesConductualesUseCase listarOpcionesConductualesUseCase;
+    private final ListarTratamientosPreviosUseCase listarTratamientosPreviosUseCase;
+    private final GuardarTratamientosPreviosUseCase guardarTratamientosPreviosUseCase;
+    private final ListarCategoriasPsicofarmacosUseCase listarCategoriasPsicofarmacosUseCase;
     private final ExpedienteRestMapper expedienteRestMapper;
     private final SesionRestMapper sesionRestMapper;
 
@@ -75,6 +85,39 @@ public class ExpedienteRestController {
                 pacienteId, expedienteRestMapper.toParcial(request),
                 principal != null ? principal.sub() : null);
         return ResponseEntity.ok(expedienteRestMapper.toResponse(actualizado));
+    }
+
+    @GetMapping("/paciente/{pacienteId}/tratamientos-previos")
+    @PreAuthorize("hasAuthority('EXPEDIENTE_LEER')")
+    @Operation(summary = "Listar tratamientos previos del expediente")
+    public ResponseEntity<List<TratamientoPrevioResponseDTO>> tratamientosPrevios(@PathVariable String pacienteId) {
+        return ResponseEntity.ok(listarTratamientosPreviosUseCase.listar(pacienteId).stream()
+                .map(t -> new TratamientoPrevioResponseDTO(t.id(), t.enfoque(), t.duracion(), t.resultado()))
+                .toList());
+    }
+
+    @PutMapping("/paciente/{pacienteId}/tratamientos-previos")
+    @PreAuthorize("hasAuthority('EXPEDIENTE_ESCRIBIR')")
+    @Operation(summary = "Reemplazar tratamientos previos del expediente")
+    public ResponseEntity<List<TratamientoPrevioResponseDTO>> guardarTratamientosPrevios(
+            @PathVariable String pacienteId,
+            @RequestBody List<TratamientoPrevioRequest> request,
+            @AuthenticationPrincipal UsuarioAutenticado principal) {
+        List<TratamientoPrevio> items = request == null ? List.of()
+                : request.stream().map(t -> new TratamientoPrevio(null, null, t.enfoque(), t.duracion(), t.resultado())).toList();
+        return ResponseEntity.ok(guardarTratamientosPreviosUseCase.guardar(
+                pacienteId, items, principal != null ? principal.sub() : null).stream()
+                .map(t -> new TratamientoPrevioResponseDTO(t.id(), t.enfoque(), t.duracion(), t.resultado()))
+                .toList());
+    }
+
+    @GetMapping("/catalogos/categorias-psicofarmacos")
+    @PreAuthorize("hasAuthority('EXPEDIENTE_LEER')")
+    @Operation(summary = "Listar catálogo de categorías de psicofármacos")
+    public ResponseEntity<List<CategoriaPsicofarmacoResponseDTO>> categoriasPsicofarmacos() {
+        return ResponseEntity.ok(listarCategoriasPsicofarmacosUseCase.listar().stream()
+                .map(c -> new CategoriaPsicofarmacoResponseDTO(c.codigo(), c.etiqueta(), c.orden()))
+                .toList());
     }
 
     @GetMapping("/paciente/{pacienteId}/sesiones")

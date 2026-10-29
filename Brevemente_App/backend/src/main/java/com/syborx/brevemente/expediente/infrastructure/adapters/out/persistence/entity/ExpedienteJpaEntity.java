@@ -123,6 +123,59 @@ public class ExpedienteJpaEntity {
     @Column(name = "esquema_farmacologico", columnDefinition = "jsonb", nullable = false)
     private List<Map<String, Object>> esquemaFarmacologico;
 
+    @Column(name = "tipo_expediente", length = 15)
+    private String tipoExpediente;
+
+    @Column(name = "fecha_apertura")
+    private LocalDate fechaApertura;
+
+    @Column(name = "fuente_referencia", length = 30)
+    private String fuenteReferencia;
+
+    @Column(name = "fuente_referencia_otro", length = 100)
+    private String fuenteReferenciaOtro;
+
+    @Column(name = "riesgo_suicida", length = 10)
+    private String riesgoSuicida;
+
+    @Column(name = "riesgo_heteroagresivo", length = 10)
+    private String riesgoHeteroagresivo;
+
+    @Column(name = "otros_riesgos", columnDefinition = "TEXT")
+    private String otrosRiesgos;
+
+    @Column(name = "fecha_evaluacion_riesgo")
+    private LocalDate fechaEvaluacionRiesgo;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "examen_mental", columnDefinition = "jsonb")
+    private Map<String, Object> examenMental;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "historial_farmacos", columnDefinition = "jsonb", nullable = false)
+    private List<Map<String, Object>> historialFarmacos;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "historial_psicofarmacos", columnDefinition = "jsonb", nullable = false)
+    private List<Map<String, Object>> historialPsicofarmacos;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "historial_drogas", columnDefinition = "jsonb", nullable = false)
+    private List<Map<String, Object>> historialDrogas;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "antecedentes", columnDefinition = "jsonb", nullable = false)
+    private Map<String, Object> antecedentes;
+
+    @Column(name = "riesgo_suicida_especificar", columnDefinition = "TEXT")
+    private String riesgoSuicidaEspecificar;
+
+    @Column(name = "riesgo_heteroagresivo_especificar", columnDefinition = "TEXT")
+    private String riesgoHeteroagresivoEspecificar;
+
+    @Column(name = "fecha_examen_mental")
+    private LocalDate fechaExamenMental;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

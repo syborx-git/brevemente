@@ -1,6 +1,7 @@
 package com.syborx.brevemente.dashboard.application.ports.out;
 
 import com.syborx.brevemente.dashboard.domain.model.CatalogosDashboard;
+import com.syborx.brevemente.dashboard.domain.model.Sede;
 
 import java.util.Optional;
 
@@ -12,6 +13,8 @@ import java.util.Optional;
 public interface DashboardCatalogosRepositoryPort {
 
     CatalogosDashboard obtenerCatalogos();
+
+    Optional<Sede> findSedeById(String sedeId);
 
     Optional<String> findTerapeutaNombre(String terapeutaId);
 

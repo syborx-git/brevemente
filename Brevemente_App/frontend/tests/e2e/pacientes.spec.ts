@@ -152,4 +152,24 @@ test.describe('Módulo de Pacientes — Validación E2E de Oráculo y Regresión
       fullPage: true
     });
   });
+
+  test('TC-PAC-06: CURP obligatoria bloquea el alta de paciente', async ({ page }) => {
+    await page.goto('/pacientes');
+    await page.waitForLoadState('networkidle');
+
+    // Abrir modal de nuevo paciente
+    await page.locator('button:has-text("Registrar Nuevo Paciente")').click();
+    await expect(page.locator('h2:has-text("Registrar Paciente")')).toBeVisible();
+
+    // Llenar nombre y fecha, pero dejar CURP vacía
+    await page.locator('input[placeholder*="Santiago Morales Vega"]').fill('Paciente Sin CURP');
+    const fechaInput = page.locator('input[type="date"]');
+    await fechaInput.fill('2000-01-01');
+    await fechaInput.dispatchEvent('change');
+
+    // Intentar guardar sin CURP → bloqueo con mensaje, el modal NO se cierra
+    await page.getByRole('button', { name: 'Guardar Paciente' }).click();
+    await expect(page.getByText(/CURP es obligatoria/)).toBeVisible();
+    await expect(page.locator('h2:has-text("Registrar Paciente")')).toBeVisible();
+  });
 });

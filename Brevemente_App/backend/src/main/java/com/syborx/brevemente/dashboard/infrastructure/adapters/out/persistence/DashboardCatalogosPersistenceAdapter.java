@@ -32,7 +32,7 @@ public class DashboardCatalogosPersistenceAdapter implements DashboardCatalogosR
     @Override
     public CatalogosDashboard obtenerCatalogos() {
         List<Sede> sedes = sedeRepository.findByActivoTrueOrderByNombreAsc().stream()
-                .map(e -> new Sede(e.getId(), e.getNombre()))
+                .map(e -> new Sede(e.getId(), e.getNombre(), e.getClues(), e.getLicenciaSanitaria(), e.getTipoEstablecimiento()))
                 .toList();
 
         List<Protocolo> protocolos = protocoloRepository.findByActivoTrueOrderByNombreAsc().stream()
@@ -52,6 +52,15 @@ public class DashboardCatalogosPersistenceAdapter implements DashboardCatalogosR
             return Optional.empty();
         }
         return terapeutaRepository.findTherapistDisplayName(terapeutaId);
+    }
+
+    @Override
+    public Optional<Sede> findSedeById(String sedeId) {
+        if (sedeId == null || sedeId.isBlank()) {
+            return Optional.empty();
+        }
+        return sedeRepository.findById(sedeId)
+                .map(e -> new Sede(e.getId(), e.getNombre(), e.getClues(), e.getLicenciaSanitaria(), e.getTipoEstablecimiento()));
     }
 
     @Override

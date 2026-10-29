@@ -1,6 +1,8 @@
 package com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.mapper;
 
 import com.syborx.brevemente.paciente.domain.model.CapacidadConsentimiento;
+import com.syborx.brevemente.paciente.domain.model.ContactoEmergencia;
+import com.syborx.brevemente.paciente.domain.model.Domicilio;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
 import com.syborx.brevemente.paciente.domain.model.RepresentanteLegal;
 import com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.entity.PacienteJpaEntity;
@@ -25,15 +27,37 @@ public class PacientePersistenceMapper {
 
         RepresentanteLegal representante = null;
         if (entity.getPersonaDeApoyoNombre() != null && !entity.getPersonaDeApoyoNombre().isBlank()) {
+            String repTelefono = entity.getRepresentanteTelefono() != null
+                    ? entity.getRepresentanteTelefono()
+                    : entity.getPersonaDeApoyoContacto();
             representante = new RepresentanteLegal(
                     entity.getPersonaDeApoyoNombre(),
                     entity.getRepresentanteParentesco() != null ? entity.getRepresentanteParentesco() : "MADRE",
-                    entity.getPersonaDeApoyoContacto(),
+                    repTelefono,
                     entity.getRepresentanteCorreo(),
                     null,
                     null,
                     null
             );
+        }
+
+        Domicilio domicilio = null;
+        if (entity.getCalleNumero() != null || entity.getColonia() != null
+                || entity.getCodigoPostal() != null || entity.getMunicipio() != null
+                || entity.getEstadoDomicilio() != null || entity.getTelefonoCasa() != null
+                || entity.getTelefonoCelular() != null || entity.getTelefonoTrabajo() != null) {
+            domicilio = new Domicilio(
+                    entity.getCalleNumero(), entity.getColonia(), entity.getCodigoPostal(),
+                    entity.getMunicipio(), entity.getEstadoDomicilio(),
+                    entity.getTelefonoCasa(), entity.getTelefonoCelular(), entity.getTelefonoTrabajo());
+        }
+
+        ContactoEmergencia contactoEmergencia = null;
+        if (entity.getContactoEmergenciaNombre() != null && !entity.getContactoEmergenciaNombre().isBlank()) {
+            contactoEmergencia = new ContactoEmergencia(
+                    entity.getContactoEmergenciaNombre(),
+                    entity.getContactoEmergenciaParentesco(),
+                    entity.getContactoEmergenciaTelefono());
         }
 
         String terapeutaId = entity.getTerapeuta() != null ? entity.getTerapeuta().getId() : null;
@@ -62,6 +86,15 @@ public class PacientePersistenceMapper {
                 .sedeId(entity.getSedeId())
                 .protocoloId(entity.getProtocoloId())
                 .usuarioId(entity.getUsuarioId())
+                .rfc(entity.getRfc())
+                .sexo(entity.getSexo())
+                .lugarNacimiento(entity.getLugarNacimiento())
+                .estadoCivil(entity.getEstadoCivil())
+                .escolaridad(entity.getEscolaridad())
+                .ocupacion(entity.getOcupacion())
+                .religion(entity.getReligion())
+                .domicilio(domicilio)
+                .contactoEmergencia(contactoEmergencia)
                 .capacidadConsentimiento(consentimiento)
                 .representante(representante)
                 .consentimientoRepresentanteFirmado(Boolean.TRUE.equals(entity.getConsentimientoRepresentanteFirmado()))
@@ -85,15 +118,30 @@ public class PacientePersistenceMapper {
                 : null;
 
         String personaApoyoNombre = null;
-        String personaApoyoContacto = null;
         String repParentesco = null;
         String repCorreo = null;
+        String repTelefono = null;
 
         if (domain.getRepresentante() != null) {
             personaApoyoNombre = domain.getRepresentante().nombreCompleto();
-            personaApoyoContacto = domain.getRepresentante().telefono();
             repParentesco = domain.getRepresentante().parentesco();
             repCorreo = domain.getRepresentante().correo();
+            repTelefono = domain.getRepresentante().telefono();
+        }
+
+        String calleNumero = null, colonia = null, codigoPostal = null, municipio = null, estadoDomicilio = null;
+        String telefonoCasa = null, telefonoCelular = null, telefonoTrabajo = null;
+        if (domain.getDomicilio() != null) {
+            Domicilio d = domain.getDomicilio();
+            calleNumero = d.calleNumero(); colonia = d.colonia(); codigoPostal = d.codigoPostal();
+            municipio = d.municipio(); estadoDomicilio = d.estadoDomicilio();
+            telefonoCasa = d.telefonoCasa(); telefonoCelular = d.telefonoCelular(); telefonoTrabajo = d.telefonoTrabajo();
+        }
+
+        String ceNombre = null, ceParentesco = null, ceTelefono = null;
+        if (domain.getContactoEmergencia() != null) {
+            ContactoEmergencia ce = domain.getContactoEmergencia();
+            ceNombre = ce.nombre(); ceParentesco = ce.parentesco(); ceTelefono = ce.telefono();
         }
 
         return PacienteJpaEntity.builder()
@@ -116,12 +164,30 @@ public class PacientePersistenceMapper {
                 .sedeId(domain.getSedeId())
                 .protocoloId(domain.getProtocoloId())
                 .usuarioId(domain.getUsuarioId())
+                .rfc(domain.getRfc())
+                .sexo(domain.getSexo())
+                .lugarNacimiento(domain.getLugarNacimiento())
+                .estadoCivil(domain.getEstadoCivil())
+                .escolaridad(domain.getEscolaridad())
+                .ocupacion(domain.getOcupacion())
+                .religion(domain.getReligion())
+                .calleNumero(calleNumero)
+                .colonia(colonia)
+                .codigoPostal(codigoPostal)
+                .municipio(municipio)
+                .estadoDomicilio(estadoDomicilio)
+                .telefonoCasa(telefonoCasa)
+                .telefonoCelular(telefonoCelular)
+                .telefonoTrabajo(telefonoTrabajo)
+                .contactoEmergenciaNombre(ceNombre)
+                .contactoEmergenciaParentesco(ceParentesco)
+                .contactoEmergenciaTelefono(ceTelefono)
                 .fechaDeterminacionConsentimiento(fechaDet)
                 .motivoDeterminacionConsentimiento(motivoDet)
                 .personaDeApoyoNombre(personaApoyoNombre)
-                .personaDeApoyoContacto(personaApoyoContacto)
                 .representanteParentesco(repParentesco)
                 .representanteCorreo(repCorreo)
+                .representanteTelefono(repTelefono)
                 .consentimientoRepresentanteFirmado(Boolean.TRUE.equals(domain.getConsentimientoRepresentanteFirmado()))
                 .build();
     }

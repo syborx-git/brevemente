@@ -1,8 +1,10 @@
 import { Observable } from 'rxjs';
 import {
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
   CriterioClinico,
+  Establecimiento,
   OpcionConductual,
   Patient,
   Payment,
@@ -10,7 +12,8 @@ import {
   PhysicalCertificateLog,
   Session,
   SupervisionLog,
-  SupervisionRequest
+  SupervisionRequest,
+  TratamientoPrevio
 } from '../../../core/types/clinical.types';
 
 export type PagoNuevo = Omit<Payment, 'id' | 'patientName' | 'registeredBy' | 'createdAt'>;
@@ -51,4 +54,11 @@ export abstract class ExpedienteRepository {
   abstract eliminarBitacora(bitacoraId: string): Observable<void>;
   abstract listarSolicitudes(pacienteId: string): Observable<SupervisionRequest[]>;
   abstract crearSolicitud(pacienteId: string, reason: string): Observable<SupervisionRequest>;
+
+  // Historia Clínica
+  abstract listarCategoriasPsicofarmacos(): Observable<CategoriaPsicofarmaco[]>;
+  abstract listarTratamientosPrevios(pacienteId: string): Observable<TratamientoPrevio[]>;
+  abstract guardarTratamientosPrevios(pacienteId: string, items: TratamientoPrevio[]): Observable<TratamientoPrevio[]>;
+  abstract obtenerSede(sedeId: string): Observable<Establecimiento | null>;
+  abstract actualizarPaciente(pacienteId: string, datos: Partial<Patient>): Observable<Patient | null>;
 }
