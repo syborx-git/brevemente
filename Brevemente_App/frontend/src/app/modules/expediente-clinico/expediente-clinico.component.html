@@ -626,7 +626,7 @@
           <ng-template #editarFuente>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><label class="text-slate-500 block mb-1">Fuente de referencia</label>
-                <select [(ngModel)]="fuenteReferenciaDraft" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white">
+                <select [(ngModel)]="fuenteReferenciaDraft" [attr.name]="'fuente-referencia'" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white">
                   <option [ngValue]="null">—</option>
                   <option value="iniciativa_propia">Iniciativa propia</option>
                   <option value="medico">Médico</option>
@@ -637,7 +637,7 @@
                   <option value="otro">Otro</option>
                 </select>
               </div>
-              <div *ngIf="fuenteReferenciaDraft === 'otro'"><label class="text-slate-500 block mb-1">Especificar otro</label><input type="text" [(ngModel)]="fuenteReferenciaOtroDraft" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+              <div *ngIf="fuenteReferenciaDraft === 'otro'"><label class="text-slate-500 block mb-1">Especificar otro</label><input type="text" [(ngModel)]="fuenteReferenciaOtroDraft" [attr.name]="'fuente-referencia-otro'" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
             </div>
           </ng-template>
         </section>
@@ -692,7 +692,7 @@
             </div>
             <div *ngIf="farmacosSi" class="space-y-2">
               <div *ngFor="let f of farmacosDraft; let i = index" class="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
-                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Fármaco {{ i + 1 }}</label><input type="text" [(ngModel)]="f.nombre" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Fármaco {{ i + 1 }}</label><input type="text" [(ngModel)]="f.nombre" [attr.name]="'farmaco-' + i" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
                 <button (click)="eliminarFarmacoHistorial(i)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
               </div>
               <button *ngIf="farmacosDraft.length < 3" (click)="agregarFarmacoHistorial()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
