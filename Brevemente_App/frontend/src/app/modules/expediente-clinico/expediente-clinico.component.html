@@ -589,13 +589,172 @@
       </div>
     </div>
 
-    <!-- SUB: Ficha de identificación -->
-    <div *ngIf="datosSubTab === 'ficha' && patient" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs text-xs space-y-2">
-      <h3 class="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Ficha de Identificación</h3>
-      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">Nombre</span>{{ patient.name }}</p>
-      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">CURP</span>{{ patient.curp || '—' }}</p>
-      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">Fecha de Nacimiento</span>{{ patient.fechaNacimiento }} · Edad {{ patient.edadCalculada }}</p>
-      <p><span class="text-slate-400 font-bold uppercase text-[10px] block">Representante Legal</span>{{ patient.representante?.nombreCompleto || '—' }} ({{ patient.representante?.parentesco || '—' }})</p>
+    <!-- SUB: Ficha de identificación (SDD-FI-1) -->
+    <div *ngIf="datosSubTab === 'ficha' && record" class="space-y-4 text-xs">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+          <h3 class="text-sm font-bold text-clinical-dark">Ficha de Identificación</h3>
+          <button *ngIf="!editandoFicha" (click)="editarFicha()" aria-label="Editar ficha de identificación" class="px-3 py-1.5 border border-clinical-accent text-clinical-accent rounded-lg text-xs font-semibold hover:bg-clinical-accent hover:text-white transition-colors cursor-pointer">Editar</button>
+        </div>
+
+        <!-- 1. Identificación del paciente -->
+        <section class="mb-4">
+          <h4 class="text-slate-400 font-bold uppercase text-[10px] mb-2">Identificación del paciente</h4>
+          <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-slate-600">
+            <div class="flex justify-between gap-2"><dt class="text-slate-400">Nombre</dt><dd class="text-right">{{ patient?.name || '—' }}</dd></div>
+            <div class="flex justify-between gap-2"><dt class="text-slate-400">CURP</dt><dd class="text-right">{{ patient?.curp || '—' }}</dd></div>
+            <div class="flex justify-between gap-2"><dt class="text-slate-400">Fecha de nacimiento</dt><dd class="text-right">{{ patient?.fechaNacimiento || '—' }} · Edad {{ patient?.edadCalculada ?? '—' }}</dd></div>
+            <div class="flex justify-between gap-2"><dt class="text-slate-400">Representante legal</dt><dd class="text-right">{{ patient?.representante?.nombreCompleto || '—' }} ({{ patient?.representante?.parentesco || '—' }})</dd></div>
+          </dl>
+        </section>
+
+        <!-- 2. Fecha de inicio -->
+        <section class="mb-4">
+          <h4 class="text-slate-400 font-bold uppercase text-[10px] mb-1">Fecha de inicio</h4>
+          <p class="text-slate-700">{{ fechaInicioTexto }}</p>
+        </section>
+
+        <!-- 3. Fuente de referencia -->
+        <section class="mb-4 border-t border-slate-100 pt-3">
+          <h4 class="text-slate-400 font-bold uppercase text-[10px] mb-1">Fuente de referencia</h4>
+          <ng-container *ngIf="!editandoFicha; else editarFuente">
+            <p class="text-slate-700">
+              {{ fuenteReferenciaTexto(record.fuenteReferencia) }}
+              <span *ngIf="record.fuenteReferencia === 'otro' && record.fuenteReferenciaOtro"> — {{ record.fuenteReferenciaOtro }}</span>
+            </p>
+          </ng-container>
+          <ng-template #editarFuente>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div><label class="text-slate-500 block mb-1">Fuente de referencia</label>
+                <select [(ngModel)]="fuenteReferenciaDraft" [attr.name]="'fuente-referencia'" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white">
+                  <option [ngValue]="null">—</option>
+                  <option value="iniciativa_propia">Iniciativa propia</option>
+                  <option value="medico">Médico</option>
+                  <option value="psiquiatra">Psiquiatra</option>
+                  <option value="psicoterapeuta">Psicoterapeuta</option>
+                  <option value="familiar">Familiar</option>
+                  <option value="amigo">Amigo</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div *ngIf="fuenteReferenciaDraft === 'otro'"><label class="text-slate-500 block mb-1">Especificar otro</label><input type="text" [(ngModel)]="fuenteReferenciaOtroDraft" [attr.name]="'fuente-referencia-otro'" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+            </div>
+          </ng-template>
+        </section>
+
+        <!-- 4. Tratamientos previos psicoterapéuticos -->
+        <section class="mb-4 border-t border-slate-100 pt-3">
+          <h4 class="text-slate-400 font-bold uppercase text-[10px] mb-1">Tratamientos Previos Psicoterapéuticos</h4>
+          <ng-container *ngIf="!editandoFicha; else editarTratamientos">
+            <p *ngIf="!tieneTratamientos()" class="text-slate-400 italic">No</p>
+            <dl *ngIf="tieneTratamientos()" class="space-y-1 text-slate-700">
+              <div *ngFor="let t of tratamientosPrevios" class="flex flex-wrap gap-x-3 gap-y-1">
+                <span class="font-semibold">{{ t.enfoque || '—' }}</span>
+                <span class="text-slate-500">{{ t.duracion || '—' }}</span>
+                <span class="text-slate-500">{{ resultadoTexto(t.resultado) }}</span>
+              </div>
+            </dl>
+          </ng-container>
+          <ng-template #editarTratamientos>
+            <div role="radiogroup" aria-label="Tratamientos previos psicoterapéuticos" class="flex gap-4 mb-2">
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-tratamientos" [value]="false" [(ngModel)]="tratamientosSi" /> No</label>
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-tratamientos" [value]="true" [(ngModel)]="tratamientosSi" /> Sí</label>
+            </div>
+            <div *ngIf="tratamientosSi" class="space-y-2">
+              <div *ngFor="let t of tratamientosDraft; let i = index" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end border-b border-slate-50 pb-2">
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Enfoque</label><input type="text" [(ngModel)]="t.enfoque" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Duración</label><input type="text" [(ngModel)]="t.duracion" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Resultado</label>
+                  <select [(ngModel)]="t.resultado" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white">
+                    <option value="resuelto">Resuelto</option><option value="mejorado">Mejorado</option><option value="invariable">Invariable</option><option value="drop_out">Drop out</option><option value="otro">Otro</option>
+                  </select>
+                </div>
+                <button (click)="eliminarTratamiento(i)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg">Eliminar</button>
+              </div>
+              <button (click)="agregarTratamiento()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+            </div>
+          </ng-template>
+        </section>
+
+        <!-- 5. Fármacos -->
+        <section class="mb-4 border-t border-slate-100 pt-3">
+          <h4 class="text-slate-400 font-bold uppercase text-[10px] mb-1">Fármacos</h4>
+          <ng-container *ngIf="!editandoFicha; else editarFarmacos">
+            <p *ngIf="!tieneFarmacos()" class="text-slate-400 italic">No</p>
+            <ul *ngIf="tieneFarmacos()" class="list-disc list-inside text-slate-700">
+              <li *ngFor="let f of historialFarmacos">{{ f.nombre || '—' }}</li>
+            </ul>
+          </ng-container>
+          <ng-template #editarFarmacos>
+            <div role="radiogroup" aria-label="Fármacos" class="flex gap-4 mb-2">
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-farmacos" [value]="false" [(ngModel)]="farmacosSi" /> No</label>
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-farmacos" [value]="true" [(ngModel)]="farmacosSi" /> Sí</label>
+            </div>
+            <div *ngIf="farmacosSi" class="space-y-2">
+              <div *ngFor="let f of farmacosDraft; let i = index" class="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Fármaco {{ i + 1 }}</label><input type="text" [(ngModel)]="f.nombre" [attr.name]="'farmaco-' + i" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <button (click)="eliminarFarmacoHistorial(i)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+              </div>
+              <button *ngIf="farmacosDraft.length < 3" (click)="agregarFarmacoHistorial()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+            </div>
+          </ng-template>
+        </section>
+
+        <!-- 6. Psicofármacos -->
+        <section class="mb-4 border-t border-slate-100 pt-3">
+          <h4 class="text-slate-400 font-bold uppercase text-[10px] mb-1">Psicofármacos</h4>
+          <ng-container *ngIf="!editandoFicha; else editarPsicofarmacos">
+            <p *ngIf="!tienePsicofarmacos()" class="text-slate-400 italic">No</p>
+            <ul *ngIf="tienePsicofarmacos()" class="list-disc list-inside text-slate-700">
+              <li *ngFor="let p of historialPsicofarmacos">{{ p.nombre || '—' }}<span *ngIf="p.duracion"> ({{ p.duracion }})</span></li>
+            </ul>
+          </ng-container>
+          <ng-template #editarPsicofarmacos>
+            <div role="radiogroup" aria-label="Psicofármacos" class="flex gap-4 mb-2">
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-psicofarmacos" [value]="false" [(ngModel)]="psicofarmacosSi" /> No</label>
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-psicofarmacos" [value]="true" [(ngModel)]="psicofarmacosSi" /> Sí</label>
+            </div>
+            <div *ngIf="psicofarmacosSi" class="space-y-2">
+              <div *ngFor="let p of psicofarmacosDraft; let i = index" class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Nombre {{ i + 1 }}</label><input type="text" [(ngModel)]="p.nombre" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Duración</label><input type="text" [(ngModel)]="p.duracion" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <button (click)="eliminarPsicofarmacoHistorial(i)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+              </div>
+              <button *ngIf="psicofarmacosDraft.length < 8" (click)="agregarPsicofarmacoHistorial()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+            </div>
+          </ng-template>
+        </section>
+
+        <!-- 7. Drogas -->
+        <section class="mb-4 border-t border-slate-100 pt-3">
+          <h4 class="text-slate-400 font-bold uppercase text-[10px] mb-1">Drogas</h4>
+          <ng-container *ngIf="!editandoFicha; else editarDrogas">
+            <p *ngIf="!tieneDrogas()" class="text-slate-400 italic">No</p>
+            <ul *ngIf="tieneDrogas()" class="list-disc list-inside text-slate-700">
+              <li *ngFor="let d of historialDrogas">{{ d.nombre || '—' }}</li>
+            </ul>
+          </ng-container>
+          <ng-template #editarDrogas>
+            <div role="radiogroup" aria-label="Drogas" class="flex gap-4 mb-2">
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-drogas" [value]="false" [(ngModel)]="drogasSi" /> No</label>
+              <label class="flex items-center gap-1"><input type="radio" name="ficha-drogas" [value]="true" [(ngModel)]="drogasSi" /> Sí</label>
+            </div>
+            <div *ngIf="drogasSi" class="space-y-2">
+              <div *ngFor="let d of drogasDraft; let i = index" class="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Droga {{ i + 1 }}</label><input type="text" [(ngModel)]="d.nombre" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <button (click)="eliminarDrogaHistorial(i)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+              </div>
+              <button *ngIf="drogasDraft.length < 4" (click)="agregarDrogaHistorial()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+            </div>
+          </ng-template>
+        </section>
+
+        <!-- Guardar / Cancelar -->
+        <div *ngIf="editandoFicha" class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <button (click)="cancelarFicha()" class="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+          <button (click)="guardarFicha()" class="px-4 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-semibold">Guardar Ficha</button>
+        </div>
+      </div>
     </div>
   </div>
 

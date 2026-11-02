@@ -16,7 +16,11 @@ import {
   CriterioClinico,
   Establecimiento,
   ExamenMental,
+  FuenteReferencia,
   HábitoPresente,
+  HistorialDroga,
+  HistorialFarmaco,
+  HistorialPsicofarmaco,
   OpcionConductual,
   Patient,
   Payment,
@@ -29,6 +33,7 @@ import {
   Session,
   SupervisionLog,
   SupervisionRequest,
+  TratamientoPrevio,
   VcEntry,
   VgEntry
 } from '../../core/types/clinical.types';
@@ -258,6 +263,20 @@ export class ExpedienteClinicoComponent implements OnInit {
   readonly examenRiesgoItems = EXAMEN_RIESGO_ITEMS;
   readonly examenSintesisItems = EXAMEN_SINTESIS_ITEMS;
 
+  // Ficha de identificación (SDD-FI-1)
+  tratamientosPrevios: TratamientoPrevio[] = [];
+  editandoFicha = false;
+  tratamientosSi = false;
+  farmacosSi = false;
+  psicofarmacosSi = false;
+  drogasSi = false;
+  fuenteReferenciaDraft: FuenteReferencia | null = null;
+  fuenteReferenciaOtroDraft = '';
+  tratamientosDraft: TratamientoPrevio[] = [];
+  farmacosDraft: HistorialFarmaco[] = [];
+  psicofarmacosDraft: HistorialPsicofarmaco[] = [];
+  drogasDraft: HistorialDroga[] = [];
+
   // Edición inline de sesión (#102/#103/#104)
   editingField: 'fase' | 'significado' | 'dxOp' | 'spr' | null = null;
   isSavingField = false;
@@ -417,6 +436,7 @@ export class ExpedienteClinicoComponent implements OnInit {
     this.expedienteRepo.listarBitacoras(this.pacienteId).subscribe(b => this.bitacoras = b);
     this.expedienteRepo.listarSolicitudes(this.pacienteId).subscribe(s => this.solicitudes = s);
     this.expedienteRepo.listarCategoriasPsicofarmacos().subscribe(c => this.categoriasPsicofarmacos = c);
+    this.cargarFicha();
   }
 
   get totalCobrado(): number {
@@ -930,6 +950,107 @@ export class ExpedienteClinicoComponent implements OnInit {
   cerrarResultados(): void {
     this.showResultadosModal = false;
   }
+
+  // --- Ficha de identificación (SDD-FI-1) ---
+  cargarFicha(): void {
+    this.expedienteRepo.listarTratamientosPrevios(this.pacienteId).subscribe(t => this.tratamientosPrevios = t);
+  }
+
+  get fechaInicioTexto(): string {
+    const f = this.record?.startDate;
+    if (!f) return '—';
+    return new Date(`${f}T00:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  get historialFarmacos(): HistorialFarmaco[] {
+    return this.record?.historialFarmacos ?? [];
+  }
+
+  get historialPsicofarmacos(): HistorialPsicofarmaco[] {
+    return this.record?.historialPsicofarmacos ?? [];
+  }
+
+  get historialDrogas(): HistorialDroga[] {
+    return this.record?.historialDrogas ?? [];
+  }
+
+  tieneTratamientos(): boolean { return this.tratamientosPrevios.length > 0; }
+  tieneFarmacos(): boolean { return this.historialFarmacos.length > 0; }
+  tienePsicofarmacos(): boolean { return this.historialPsicofarmacos.length > 0; }
+  tieneDrogas(): boolean { return this.historialDrogas.length > 0; }
+
+  fuenteReferenciaTexto(fuente: FuenteReferencia | null | undefined): string {
+    const mapa: Record<string, string> = {
+      iniciativa_propia: 'Iniciativa propia',
+      medico: 'Médico',
+      psiquiatra: 'Psiquiatra',
+      psicoterapeuta: 'Psicoterapeuta',
+      familiar: 'Familiar',
+      amigo: 'Amigo',
+      otro: 'Otro'
+    };
+    return fuente ? (mapa[fuente] ?? fuente) : '—';
+  }
+
+  resultadoTexto(resultado: string): string {
+    const mapa: Record<string, string> = {
+      resuelto: 'Resuelto', mejorado: 'Mejorado', invariable: 'Invariable', drop_out: 'Drop out', otro: 'Otro'
+    };
+    return mapa[resultado] ?? resultado;
+  }
+
+  editarFicha(): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    if (this.record) {
+      this.record.historialFarmacos = this.record.historialFarmacos ?? [];
+      this.record.historialPsicofarmacos = this.record.historialPsicofarmacos ?? [];
+      this.record.historialDrogas = this.record.historialDrogas ?? [];
+    }
+    this.fuenteReferenciaDraft = this.record?.fuenteReferencia ?? null;
+    this.fuenteReferenciaOtroDraft = this.record?.fuenteReferenciaOtro ?? '';
+    this.tratamientosDraft = JSON.parse(JSON.stringify(this.tratamientosPrevios));
+    this.farmacosDraft = JSON.parse(JSON.stringify(this.historialFarmacos));
+    this.psicofarmacosDraft = JSON.parse(JSON.stringify(this.historialPsicofarmacos));
+    this.drogasDraft = JSON.parse(JSON.stringify(this.historialDrogas));
+    this.tratamientosSi = this.tratamientosDraft.length > 0;
+    this.farmacosSi = this.farmacosDraft.length > 0;
+    this.psicofarmacosSi = this.psicofarmacosDraft.length > 0;
+    this.drogasSi = this.drogasDraft.length > 0;
+    this.editandoFicha = true;
+  }
+
+  cancelarFicha(): void {
+    this.editandoFicha = false;
+  }
+
+  guardarFicha(): void {
+    const fuente = this.fuenteReferenciaDraft;
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+      fuenteReferencia: fuente ?? undefined,
+      fuenteReferenciaOtro: fuente === 'otro' ? this.fuenteReferenciaOtroDraft : '',
+      historialFarmacos: this.farmacosSi ? this.farmacosDraft : [],
+      historialPsicofarmacos: this.psicofarmacosSi ? this.psicofarmacosDraft : [],
+      historialDrogas: this.drogasSi ? this.drogasDraft : []
+    }).subscribe(r => {
+      this.record = r;
+      this.expedienteRepo.guardarTratamientosPrevios(this.pacienteId, this.tratamientosSi ? this.tratamientosDraft : []).subscribe(() => {
+        this.cargarFicha();
+        this.editandoFicha = false;
+      });
+    });
+  }
+
+  agregarTratamiento(): void { this.tratamientosDraft.push({ enfoque: '', duracion: '', resultado: 'mejorado' }); }
+  eliminarTratamiento(i: number): void { this.tratamientosDraft.splice(i, 1); }
+
+  agregarFarmacoHistorial(): void { if (this.farmacosDraft.length < 3) this.farmacosDraft.push({ nombre: '' }); }
+  eliminarFarmacoHistorial(i: number): void { this.farmacosDraft.splice(i, 1); }
+
+  agregarPsicofarmacoHistorial(): void { if (this.psicofarmacosDraft.length < 8) this.psicofarmacosDraft.push({ nombre: '', duracion: '' }); }
+  eliminarPsicofarmacoHistorial(i: number): void { this.psicofarmacosDraft.splice(i, 1); }
+
+  agregarDrogaHistorial(): void { if (this.drogasDraft.length < 4) this.drogasDraft.push({ nombre: '' }); }
+  eliminarDrogaHistorial(i: number): void { this.drogasDraft.splice(i, 1); }
 
   agregarFarmaco(): void {
     if (!this.record) return;

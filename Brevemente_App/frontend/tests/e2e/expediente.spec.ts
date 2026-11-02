@@ -5,16 +5,33 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
   const http500Errors: string[] = [];
 
   test.beforeAll(async ({ request }) => {
-    // Idempotencia: restaura el estado "Sin datos" del examen mental de exp-001.
-    // El backend ignora '{}' (guard !isEmpty), por lo que se usa una estructura
-    // que el frontend interpreta como vacía.
+    // Idempotencia: restaura el estado "Sin datos" del examen mental de exp-001
+    // (SDD-HC-3) y el seed de la Ficha de identificación (SDD-FI-1).
     const login = await request.post('/api/v1/auth/login', {
       data: { email: 'sofia.ramirez@brevemente.org', password: 'demo123' }
     });
     const body = await login.json();
+    const headers = { Authorization: `Bearer ${body.token}` };
+    // Examen mental: el backend ignora '{}' (guard !isEmpty); se usa una
+    // estructura que el frontend interpreta como vacía.
     await request.patch('/api/v1/expedientes/paciente/pac-001', {
-      headers: { Authorization: `Bearer ${body.token}` },
+      headers,
       data: { examenMental: { síntesis: {} } }
+    });
+    // Ficha de identificación: restaura el seed de exp-001.
+    await request.patch('/api/v1/expedientes/paciente/pac-001', {
+      headers,
+      data: {
+        fuenteReferencia: 'psicoterapeuta',
+        fuenteReferenciaOtro: '',
+        historialFarmacos: [],
+        historialPsicofarmacos: [],
+        historialDrogas: []
+      }
+    });
+    await request.put('/api/v1/expedientes/paciente/pac-001/tratamientos-previos', {
+      headers,
+      data: []
     });
   });
 
@@ -373,16 +390,58 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
     await expect(page.getByRole('dialog').getByText('Trastorno de ansiedad generalizada (E2E)')).toBeVisible();
   });
 
-  test('TC-EXP-18: Datos de Admisión — Ficha de identificación renderiza desde la BD', async ({ page }) => {
+  test('TC-EXP-18: Datos de Admisión — Ficha de identificación con 7 secciones (oráculo)', async ({ page }) => {
     await page.goto('/expediente/pac-001');
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ }).click();
     await page.getByRole('button', { name: /^Ficha de identificación$/ }).click();
 
+    // Cabecera y las 7 secciones de la lámina del PDF
     await expect(page.getByRole('heading', { name: 'Ficha de Identificación' })).toBeVisible();
+    await expect(page.getByText('Identificación del paciente', { exact: true })).toBeVisible();
+    await expect(page.getByText('Fecha de inicio', { exact: true })).toBeVisible();
+    await expect(page.getByText('Fuente de referencia', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tratamientos Previos Psicoterapéuticos', { exact: true })).toBeVisible();
+    await expect(page.getByText('Fármacos', { exact: true })).toBeVisible();
+    await expect(page.getByText('Psicofármacos', { exact: true })).toBeVisible();
+    await expect(page.getByText('Drogas', { exact: true })).toBeVisible();
+
+    // Identificación del paciente (seed pac-001)
     await expect(page.getByText('CURP')).toBeVisible();
     await expect(page.getByText('Mateo Herrera Santos').first()).toBeVisible();
+
+    // Fecha de inicio y fuente de referencia servidas por el oráculo (exp-001)
+    await expect(page.getByText('10 de agosto de 2026')).toBeVisible();
+    await expect(page.getByText('Psicoterapeuta')).toBeVisible();
+
+    // Botón de edición latente
+    await expect(page.getByRole('button', { name: 'Editar ficha de identificación' })).toBeVisible();
+  });
+
+  test('TC-EXP-18B: Ficha de identificación — editar fuente, fármacos y guardar (persistencia)', async ({ page }) => {
+    await page.goto('/expediente/pac-001');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Datos de Admisión e Historia Clínica/ }).click();
+    await page.getByRole('button', { name: /^Ficha de identificación$/ }).click();
+
+    await page.getByRole('button', { name: 'Editar ficha de identificación' }).click();
+
+    // Fuente de referencia → Otro + especificar
+    await page.locator('select[name="fuente-referencia"]').selectOption('otro');
+    await page.locator('input[name="fuente-referencia-otro"]').fill('Derivado por familiar');
+
+    // Fármacos → Sí + agregar un fármaco
+    await page.getByRole('radiogroup', { name: 'Fármacos', exact: true }).getByRole('radio', { name: 'Sí' }).click();
+    await page.getByRole('button', { name: 'Agregar' }).click();
+    await page.locator('input[name="farmaco-0"]').fill('Paracetamol 500mg');
+
+    await page.getByRole('button', { name: 'Guardar Ficha' }).click();
+
+    // La vista de lectura refleja los cambios persistidos
+    await expect(page.getByText('Derivado por familiar')).toBeVisible();
+    await expect(page.getByText('Paracetamol 500mg')).toBeVisible();
   });
 
   test('TC-EXP-19: Tratamiento Psiquiátrico — Esquema Psico-Farmacológico con fármacos y CRUD (oráculo)', async ({ page }) => {
