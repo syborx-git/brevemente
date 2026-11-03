@@ -1142,7 +1142,7 @@
     <!-- Sub-pestañas -->
     <div class="flex gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold w-fit">
       <button (click)="setPsiquiatriaSubTab('expediente')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="psiquiatriaSubTab === 'expediente' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Expediente Médico Psiquiátrico</button>
-      <button (click)="setPsiquiatriaSubTab('esquema')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="psiquiatriaSubTab === 'esquema' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Esquema Psico-Farmacológico</button>
+      <button (click)="setPsiquiatriaSubTab('esquema')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="psiquiatriaSubTab === 'esquema' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Esquema Psico Farmacológico</button>
     </div>
 
     <!-- SUB: Expediente Médico Psiquiátrico (SDD-EMP-1) -->
@@ -1290,7 +1290,7 @@
       </div>
     </div>
 
-    <!-- SUB: Esquema Psico-Farmacológico -->
+    <!-- SUB: Esquema Psico Farmacológico -->
     <div *ngIf="psiquiatriaSubTab === 'esquema'" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4 text-xs">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="text-sm font-bold text-clinical-dark">Esquema Psicotrópico Farmacológico</h3>
@@ -1300,7 +1300,7 @@
         <table class="w-full text-left border-collapse text-xs">
           <thead>
             <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
-              <th class="p-2">Psicofármaco</th><th class="p-2">Categoría</th><th class="p-2 text-center">Mañana</th><th class="p-2 text-center">Tarde</th><th class="p-2 text-center">Noche</th><th class="p-2">Efecto (EFF)</th><th class="p-2">Obs.</th><th class="p-2"></th>
+              <th class="p-2">Psicofármaco</th><th class="p-2">Categoría</th><th class="p-2 text-center">Mañana</th><th class="p-2 text-center">Tarde</th><th class="p-2 text-center">Noche</th><th class="p-2">Efecto Secundario (EFF)</th><th class="p-2">Observaciones</th><th class="p-2"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 text-slate-600 font-medium">
