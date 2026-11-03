@@ -95,4 +95,49 @@ class ExpedienteApplicationServiceTest {
 
         assertEquals("Motivo original", resultado.getMotivoConsulta());
     }
+
+    @Test
+    @DisplayName("Actualizar fusiona farmacosEsquema, drogasEsquema y usoDrogas (SDD-EMP-1): [] limpia, null no toca")
+    void actualizarFusionaEsquemasEmp() {
+        Expediente actual = Expediente.builder()
+                .id("exp-001")
+                .pacienteId("pac-001")
+                .farmacosEsquema(java.util.List.of(java.util.Map.of("nombre", "Losartan")))
+                .drogasEsquema(java.util.List.of(java.util.Map.of("nombre", "Cannabis")))
+                .usoDrogas("SI")
+                .build();
+        Expediente parcial = Expediente.builder()
+                .farmacosEsquema(java.util.List.of()) // [] sí limpia
+                .drogasEsquema(java.util.List.of(java.util.Map.of("nombre", "Alcohol")))
+                .usoDrogas("NO")
+                .build();
+        when(expedienteRepositoryPort.findByPacienteId("pac-001")).thenReturn(Optional.of(actual));
+        when(expedienteRepositoryPort.save(any(Expediente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Expediente resultado = service.actualizar("pac-001", parcial, "usr-001");
+
+        assertTrue(resultado.getFarmacosEsquema().isEmpty(), "un [] debe limpiar farmacosEsquema");
+        assertEquals(1, resultado.getDrogasEsquema().size());
+        assertEquals("NO", resultado.getUsoDrogas());
+    }
+
+    @Test
+    @DisplayName("Actualizar no limpia los esquemas EMP cuando el parcial viene con null (SDD-EMP-1)")
+    void actualizarNoLimpiaEsquemasEmpConNull() {
+        Expediente actual = Expediente.builder()
+                .id("exp-001")
+                .pacienteId("pac-001")
+                .farmacosEsquema(java.util.List.of(java.util.Map.of("nombre", "Losartan")))
+                .drogasEsquema(java.util.List.of())
+                .usoDrogas("SI")
+                .build();
+        Expediente parcial = Expediente.builder().build(); // null en los 3 campos EMP
+        when(expedienteRepositoryPort.findByPacienteId("pac-001")).thenReturn(Optional.of(actual));
+        when(expedienteRepositoryPort.save(any(Expediente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Expediente resultado = service.actualizar("pac-001", parcial, "usr-001");
+
+        assertEquals(1, resultado.getFarmacosEsquema().size(), "null no debe tocar farmacosEsquema");
+        assertEquals("SI", resultado.getUsoDrogas(), "null no debe tocar usoDrogas");
+    }
 }

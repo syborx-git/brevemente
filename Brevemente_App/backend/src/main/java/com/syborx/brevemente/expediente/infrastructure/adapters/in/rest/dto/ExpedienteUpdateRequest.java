@@ -44,5 +44,8 @@ public record ExpedienteUpdateRequest(
         @Schema(description = "Antecedentes estructurados (JSONB)") Map<String, Object> antecedentes,
         @Schema(description = "Especificación del riesgo suicida") String riesgoSuicidaEspecificar,
         @Schema(description = "Especificación del riesgo heteroagresivo") String riesgoHeteroagresivoEspecificar,
-        @Schema(description = "Fecha del examen mental (YYYY-MM-DD)") String fechaExamenMental
+        @Schema(description = "Fecha del examen mental (YYYY-MM-DD)") String fechaExamenMental,
+        @Schema(description = "Fármacos del esquema vigente (0-3)") List<Map<String, Object>> farmacosEsquema,
+        @Schema(description = "Drogas del esquema vigente (0-4)") List<Map<String, Object>> drogasEsquema,
+        @Schema(description = "Uso de drogas (SI/NO/ESPECIFICAR)") String usoDrogas
 ) {}

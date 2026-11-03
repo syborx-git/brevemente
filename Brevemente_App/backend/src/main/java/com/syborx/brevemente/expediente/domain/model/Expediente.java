@@ -51,6 +51,9 @@ public class Expediente {
     private String factoresDesfavorables;
     private String usoFarmacos;
     private List<Drug> drugsList;
+    private List<Map<String, Object>> farmacosEsquema;
+    private List<Map<String, Object>> drogasEsquema;
+    private String usoDrogas;
     private String tipoExpediente;
     private LocalDate fechaApertura;
     private String fuenteReferencia;

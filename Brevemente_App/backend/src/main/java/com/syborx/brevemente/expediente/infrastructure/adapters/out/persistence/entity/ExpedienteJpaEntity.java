@@ -123,6 +123,17 @@ public class ExpedienteJpaEntity {
     @Column(name = "esquema_farmacologico", columnDefinition = "jsonb", nullable = false)
     private List<Map<String, Object>> esquemaFarmacologico;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "farmacos_esquema", columnDefinition = "jsonb", nullable = false)
+    private List<Map<String, Object>> farmacosEsquema;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "drogas_esquema", columnDefinition = "jsonb", nullable = false)
+    private List<Map<String, Object>> drogasEsquema;
+
+    @Column(name = "uso_drogas", length = 15)
+    private String usoDrogas;
+
     @Column(name = "tipo_expediente", length = 15)
     private String tipoExpediente;
 
