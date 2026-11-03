@@ -149,7 +149,7 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
     await expect(page.getByRole('heading', { name: 'Expediente Médico Psiquiátrico' })).toBeVisible();
 
     // Esquema farmacológico servido por el oráculo (drugsList de exp-002)
-    await page.getByRole('button', { name: /^Esquema Psico-Farmacológico$/ }).click();
+    await page.getByRole('button', { name: /^Esquema Psico Farmacológico$/ }).click();
     const drugValues = await page.locator('input').evaluateAll(els => els.map(e => (e as HTMLInputElement).value));
     expect(drugValues).toContain('Sertralina 50mg');
     expect(drugValues).toContain('Alprazolam 0.25mg');
@@ -463,12 +463,12 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
     await expect(page.getByText('Paracetamol 500mg')).toBeVisible();
   });
 
-  test('TC-EXP-19: Tratamiento Psiquiátrico — Esquema Psico-Farmacológico con fármacos y CRUD (oráculo)', async ({ page }) => {
+  test('TC-EXP-19: Tratamiento Psiquiátrico — Esquema Psico Farmacológico con fármacos y CRUD (oráculo)', async ({ page }) => {
     await page.goto('/expediente/pac-002');
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: /Tratamiento Psiquiátrico/ }).click();
-    await page.getByRole('button', { name: /^Esquema Psico-Farmacológico$/ }).click();
+    await page.getByRole('button', { name: /^Esquema Psico Farmacológico$/ }).click();
 
     await expect(page.getByRole('heading', { name: 'Esquema Psicotrópico Farmacológico' })).toBeVisible();
 
