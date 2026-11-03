@@ -4,7 +4,7 @@
 - **Código SDD**: `SDD-EMP-1`
 - **Versión**: 1.0.0
 - **Fecha**: 2026-11-02
-- **Estado**: 🟡 BORRADOR (pendiente de auditoría por `jarvis-database`, `jarvis-backend` y `jarvis-frontend`)
+- **Estado**: ✅ APROBADO (auditado por `jarvis-database`, `jarvis-backend` y `jarvis-frontend`; implementado y validado E2E)
 - **Sucede a**: `SDD-FI-1` (Ficha de identificación) y `SDD-HC-3` (Historia clínica)
 - **Fuente de verdad**: `C:\proyectos_Syborx\Brevemente_Demo\historia clínica.pdf` — submenú *Tratamiento Psiquiátrico → Expediente Médico Psiquiátrico* (láminas de campos, Fármacos/Psicofármacos y Drogas)
 - **Alineación**: ADR-001 (Hexagonal/SDOP), ADR-002 (Dual Adapters), ADR-003 (Backend hexagonal y OpenAPI)
@@ -225,6 +225,6 @@ WHERE id = 'exp-002'
 - [x] Gap-report aprobado (base)
 - [x] Especificación backend (V23 + hexagonal)
 - [x] Especificación frontend (8 secciones)
-- [ ] Auditoría por `jarvis-database`, `jarvis-backend` y `jarvis-frontend`
-- [ ] Implementación (`demo-gap-implementation`)
-- [ ] E2E y reporte
+- [x] Auditoría por `jarvis-database`, `jarvis-backend` y `jarvis-frontend`
+- [x] Implementación (`demo-gap-implementation`)
+- [x] E2E y reporte
