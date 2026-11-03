@@ -60,7 +60,10 @@ public class ExpedienteRestMapper {
                 e.getAntecedentes(),
                 e.getRiesgoSuicidaEspecificar(),
                 e.getRiesgoHeteroagresivoEspecificar(),
-                e.getFechaExamenMental() != null ? e.getFechaExamenMental().toString() : null
+                e.getFechaExamenMental() != null ? e.getFechaExamenMental().toString() : null,
+                e.getFarmacosEsquema(),
+                e.getDrogasEsquema(),
+                e.getUsoDrogas()
         );
     }
 
@@ -108,6 +111,9 @@ public class ExpedienteRestMapper {
                 .riesgoSuicidaEspecificar(r.riesgoSuicidaEspecificar())
                 .riesgoHeteroagresivoEspecificar(r.riesgoHeteroagresivoEspecificar())
                 .fechaExamenMental(parseDate(r.fechaExamenMental()))
+                .farmacosEsquema(r.farmacosEsquema())
+                .drogasEsquema(r.drogasEsquema())
+                .usoDrogas(r.usoDrogas())
                 .build();
     }
 

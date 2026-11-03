@@ -1145,35 +1145,148 @@
       <button (click)="setPsiquiatriaSubTab('esquema')" class="px-4 py-1.5 rounded-md transition-all" [ngClass]="psiquiatriaSubTab === 'esquema' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'">Esquema Psico-Farmacológico</button>
     </div>
 
-    <!-- SUB: Expediente Médico Psiquiátrico -->
+    <!-- SUB: Expediente Médico Psiquiátrico (SDD-EMP-1) -->
     <div *ngIf="psiquiatriaSubTab === 'expediente'" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4 text-xs">
-      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="text-sm font-bold text-clinical-dark">Expediente Médico Psiquiátrico</h3>
+        <button *ngIf="!editandoEMP" (click)="editarExpedienteMedico()" aria-label="Editar expediente médico psiquiátrico"
+          class="px-3 py-1.5 border border-clinical-accent text-clinical-accent rounded-lg text-xs font-semibold hover:bg-clinical-accent hover:text-white transition-colors cursor-pointer">Editar</button>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="md:col-span-3"><label class="block text-slate-500 font-semibold mb-1">Motivo de Consulta (Textual):</label>
-          <textarea [(ngModel)]="record!.motif" class="w-full px-3 py-2 border border-slate-200 rounded-lg" rows="2"></textarea>
+
+      <!-- 1. Motivo de Consulta (Textual del paciente) -->
+      <section data-testid="emp-seccion-motivo">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Motivo de Consulta (Textual del paciente)</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3">
+          <textarea [(ngModel)]="record!.motif" class="w-full px-3 py-2 border border-slate-200 rounded-lg" rows="3"></textarea>
         </div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Diagnóstico Nosológico Clínico:</label><input type="text" [(ngModel)]="record!.dxNosologico" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Criterio DSM-5TR:</label><input type="text" [(ngModel)]="record!.dsm5" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Criterio CIE-11:</label><input type="text" [(ngModel)]="record!.cie11" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Primera Aparición:</label><input type="text" [(ngModel)]="record!.firstAppearance" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Factores Precipitantes:</label><input type="text" [(ngModel)]="record!.precipitatingFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Evolución Temporal:</label>
-          <select [(ngModel)]="record!.evolutionType" class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg"><option value="progresivo">Progresivo</option><option value="agudo">Agudo</option><option value="crónico">Crónico</option><option value="episódico">Episódico</option></select>
+      </section>
+
+      <!-- 2. DX. Nosológico -->
+      <section data-testid="emp-seccion-dx">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">DX. Nosológico</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div><label class="block text-slate-500 font-semibold mb-1">Diagnóstico Nosológico:</label><input type="text" [(ngModel)]="record!.dxNosologico" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="block text-slate-500 font-semibold mb-1">Criterio DSM-5-TR:</label><input type="text" [(ngModel)]="record!.dsm5" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="block text-slate-500 font-semibold mb-1">Criterio CIE-11:</label><input type="text" [(ngModel)]="record!.cie11" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="block text-slate-500 font-semibold mb-1">Primera Aparición:</label><input type="text" [(ngModel)]="record!.firstAppearance" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="block text-slate-500 font-semibold mb-1">Factores Precipitantes:</label><input type="text" [(ngModel)]="record!.precipitatingFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="block text-slate-500 font-semibold mb-1">Evolución Temporal:</label>
+            <select [(ngModel)]="record!.evolutionType" class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg"><option value="progresivo">Progresivo</option><option value="agudo">Agudo</option><option value="crónico">Crónico</option><option value="episódico">Episódico</option></select>
+          </div>
         </div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Comorbilidad:</label><input type="text" [(ngModel)]="record!.comorbilidad" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Diagnóstico Diferencial:</label><input type="text" [(ngModel)]="record!.differentialDx" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Pronóstico de Evolución:</label>
-          <select [(ngModel)]="record!.prognosis" class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg font-semibold text-clinical-dark"><option value="excelente">Excelente</option><option value="bueno">Bueno</option><option value="reservado">Reservado</option><option value="malo">Malo</option></select>
+      </section>
+
+      <!-- 3. DX.DIF -->
+      <section data-testid="emp-seccion-dx-dif">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">DX.DIF</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3">
+          <textarea [(ngModel)]="record!.differentialDx" class="w-full px-3 py-2 border border-slate-200 rounded-lg" rows="2"></textarea>
         </div>
-        <div class="md:col-span-2"><label class="block text-slate-500 font-semibold mb-1">Plan de Tratamiento Farmacológico:</label><input type="text" [(ngModel)]="record!.treatmentPlan" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Uso de Fármacos:</label><input type="text" [(ngModel)]="record!.drugsUsage" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Factores Favorables:</label><input type="text" [(ngModel)]="record!.favorableFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-        <div><label class="block text-slate-500 font-semibold mb-1">Factores Desfavorables:</label><input type="text" [(ngModel)]="record!.unfavorableFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
-      </div>
-      <div class="flex justify-end border-t border-slate-100 pt-4">
-        <button (click)="guardarPsiquiatria()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 cursor-pointer">Guardar Expediente Psiquiátrico</button>
+      </section>
+
+      <!-- 4. Plan de tratamiento -->
+      <section data-testid="emp-seccion-plan">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Plan de tratamiento</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3">
+          <textarea [(ngModel)]="record!.treatmentPlan" class="w-full px-3 py-2 border border-slate-200 rounded-lg" rows="2"></textarea>
+        </div>
+      </section>
+
+      <!-- 5. Pronóstico -->
+      <section data-testid="emp-seccion-pronostico">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Pronóstico</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div><label class="block text-slate-500 font-semibold mb-1">Pronóstico de Evolución:</label>
+            <select [(ngModel)]="record!.prognosis" class="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg font-semibold text-clinical-dark"><option value="excelente">Excelente</option><option value="bueno">Bueno</option><option value="reservado">Reservado</option><option value="malo">Malo</option></select>
+          </div>
+          <div><label class="block text-slate-500 font-semibold mb-1">Factores Favorables:</label><input type="text" [(ngModel)]="record!.favorableFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+          <div><label class="block text-slate-500 font-semibold mb-1">Factores Desfavorables:</label><input type="text" [(ngModel)]="record!.unfavorableFactors" class="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+        </div>
+      </section>
+
+      <!-- 6. Fármacos -->
+      <section data-testid="emp-seccion-farmacos">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Fármacos</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3">
+          <ng-container *ngIf="!editandoEMP; else editarEmpFarmacos">
+            <p *ngIf="empFarmacosVigentes.length === 0" class="text-slate-400 italic">No</p>
+            <ul *ngIf="empFarmacosVigentes.length > 0" class="list-disc list-inside text-slate-700">
+              <li *ngFor="let f of empFarmacosVigentes">{{ f.nombre || '—' }}</li>
+            </ul>
+          </ng-container>
+          <ng-template #editarEmpFarmacos>
+            <div role="radiogroup" aria-label="Fármacos" class="flex gap-4 mb-2">
+              <label class="flex items-center gap-1"><input type="radio" name="emp-farmacos" [value]="false" [(ngModel)]="empFarmacosSi" /> No</label>
+              <label class="flex items-center gap-1"><input type="radio" name="emp-farmacos" [value]="true" [(ngModel)]="empFarmacosSi" /> Sí</label>
+            </div>
+            <div *ngIf="empFarmacosSi" class="space-y-2">
+              <div *ngFor="let f of empFarmacosDraft; let i = index" class="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Fármaco {{ i + 1 }}</label><input type="text" [(ngModel)]="f.nombre" [attr.name]="'emp-farmaco-' + i" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <button (click)="eliminarFarmacoEsquema(i)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+              </div>
+              <button *ngIf="empFarmacosDraft.length < 3" (click)="agregarFarmacoEsquema()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+            </div>
+          </ng-template>
+        </div>
+      </section>
+
+      <!-- 7. Psicofármacos -->
+      <section data-testid="emp-seccion-psicofarmacos">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Psicofármacos</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3 space-y-3">
+          <div *ngFor="let g of empGruposPsicofarmacos">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-clinical-dark">{{ g.grupo }}</span>
+              <button (click)="agregarPsicofarmaco(g)" class="px-2 py-1 text-clinical-accent border border-clinical-accent rounded-lg text-[10px] font-semibold">+ Agregar</button>
+            </div>
+            <div *ngIf="empFarmacosDeGrupo(g).length === 0" class="text-slate-400 italic text-[11px]">Sin registros</div>
+            <div *ngFor="let d of empFarmacosDeGrupo(g)" class="border-b border-slate-50 pb-2 mb-2 space-y-2">
+              <div class="grid grid-cols-2 md:grid-cols-6 gap-2">
+                <div class="col-span-2"><label class="text-slate-400 block text-[10px] uppercase font-bold">Psicofármaco</label><input type="text" [(ngModel)]="d.name" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Mañana</label><input type="text" [(ngModel)]="d.doseMorning" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Tarde</label><input type="text" [(ngModel)]="d.doseAfternoon" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Noche</label><input type="text" [(ngModel)]="d.doseNight" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">EFF</label><input type="text" [(ngModel)]="d.eff" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+              </div>
+              <div class="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+                <div class="col-span-1 md:col-span-5"><label class="text-slate-400 block text-[10px] uppercase font-bold">Observaciones</label><input type="text" [(ngModel)]="d.notes" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <button (click)="eliminarFarmaco(d.id)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Drogas -->
+      <section data-testid="emp-seccion-drogas">
+        <div class="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Drogas</div>
+        <div class="border border-t-0 border-slate-200 rounded-b-lg p-3">
+          <ng-container *ngIf="!editandoEMP; else editarEmpDrogas">
+            <p *ngIf="empDrogasVigentes.length === 0" class="text-slate-400 italic">No</p>
+            <ul *ngIf="empDrogasVigentes.length > 0" class="list-disc list-inside text-slate-700">
+              <li *ngFor="let d of empDrogasVigentes">{{ d.nombre || '—' }}</li>
+            </ul>
+          </ng-container>
+          <ng-template #editarEmpDrogas>
+            <div role="radiogroup" aria-label="Drogas" class="flex gap-4 mb-2">
+              <label class="flex items-center gap-1"><input type="radio" name="emp-drogas" [value]="false" [(ngModel)]="empDrogasSi" /> No</label>
+              <label class="flex items-center gap-1"><input type="radio" name="emp-drogas" [value]="true" [(ngModel)]="empDrogasSi" /> Sí</label>
+            </div>
+            <div *ngIf="empDrogasSi" class="space-y-2">
+              <div *ngFor="let d of empDrogasDraft; let i = index" class="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
+                <div><label class="text-slate-400 block text-[10px] uppercase font-bold">Droga {{ i + 1 }}</label><input type="text" [(ngModel)]="d.nombre" [attr.name]="'emp-droga-' + i" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                <button (click)="eliminarDrogaEsquema(i)" class="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+              </div>
+              <button *ngIf="empDrogasDraft.length < 4" (click)="agregarDrogaEsquema()" class="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+            </div>
+          </ng-template>
+        </div>
+      </section>
+
+      <!-- Guardar / Cancelar -->
+      <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+        <button *ngIf="editandoEMP" (click)="cancelarExpedienteMedico()" class="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+        <button (click)="guardarExpedientePsiquiatrico()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 cursor-pointer">Guardar Expediente Psiquiátrico</button>
       </div>
     </div>
 
@@ -1209,7 +1322,7 @@
         </table>
       </div>
       <div class="flex justify-end border-t border-slate-100 pt-4">
-        <button (click)="guardarPsiquiatria()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow">Guardar Esquema</button>
+        <button (click)="guardarExpedientePsiquiatrico()" class="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow">Guardar Esquema</button>
       </div>
     </div>
   </div>

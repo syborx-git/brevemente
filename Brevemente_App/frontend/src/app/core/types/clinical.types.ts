@@ -201,6 +201,9 @@ export interface ClinicalRecord {
   unfavorableFactors?: string;
   drugsUsage?: string;
   drugsList?: Drug[];
+  farmacosEsquema?: HistorialFarmaco[];
+  drogasEsquema?: HistorialDroga[];
+  usoDrogas?: 'SI' | 'NO' | 'ESPECIFICAR';
   intentosSolucion?: string;
   tipoExpediente?: TipoExpediente;
   fechaApertura?: string;

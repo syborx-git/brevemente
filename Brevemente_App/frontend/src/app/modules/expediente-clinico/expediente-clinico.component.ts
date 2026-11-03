@@ -12,8 +12,10 @@ import {
   AuditLog,
   CategoriaPsicofarmaco,
   ClinicalRecord,
+  CodigoCategoriaPsicofarmaco,
   CriterioCategoria,
   CriterioClinico,
+  Drug,
   Establecimiento,
   ExamenMental,
   FuenteReferencia,
@@ -276,6 +278,21 @@ export class ExpedienteClinicoComponent implements OnInit {
   farmacosDraft: HistorialFarmaco[] = [];
   psicofarmacosDraft: HistorialPsicofarmaco[] = [];
   drogasDraft: HistorialDroga[] = [];
+
+  // Expediente Médico Psiquiátrico (SDD-EMP-1)
+  editandoEMP = false;
+  empFarmacosSi = false;
+  empDrogasSi = false;
+  empFarmacosDraft: HistorialFarmaco[] = [];
+  empDrogasDraft: HistorialDroga[] = [];
+  readonly empGruposPsicofarmacos: { grupo: string; categorias: CodigoCategoriaPsicofarmaco[] }[] = [
+    { grupo: 'BZD', categorias: ['bzd'] },
+    { grupo: 'Antidepresivos', categorias: ['isrs', 'duales', 'triciclicos_tetraciclicos'] },
+    { grupo: 'Neurolépticos', categorias: ['neurolepticos_tipicos', 'neurolepticos_atipicos'] },
+    { grupo: 'Psicoestabilizadores', categorias: ['psicoestabilizadores'] },
+    { grupo: 'Inductores del sueño', categorias: ['inductores_sueno'] },
+    { grupo: 'Otros', categorias: ['otros'] }
+  ];
 
   // Edición inline de sesión (#102/#103/#104)
   editingField: 'fase' | 'significado' | 'dxOp' | 'spr' | null = null;
@@ -659,21 +676,33 @@ export class ExpedienteClinicoComponent implements OnInit {
     }).subscribe(r => this.record = r);
   }
 
-  guardarPsiquiatria(): void {
+  guardarExpedientePsiquiatrico(): void {
     if (!this.record) return;
-    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+    const payload: Partial<ClinicalRecord> = {
+      motif: this.record.motif,
+      firstAppearance: this.record.firstAppearance,
+      precipitatingFactors: this.record.precipitatingFactors,
+      evolutionType: this.record.evolutionType,
       dxNosologico: this.record.dxNosologico,
       dsm5: this.record.dsm5,
       cie11: this.record.cie11,
-      comorbilidad: this.record.comorbilidad,
       differentialDx: this.record.differentialDx,
       treatmentPlan: this.record.treatmentPlan,
       prognosis: this.record.prognosis,
       favorableFactors: this.record.favorableFactors,
       unfavorableFactors: this.record.unfavorableFactors,
-      drugsUsage: this.record.drugsUsage,
       drugsList: this.record.drugsList
-    }).subscribe(r => this.record = r);
+    };
+    if (this.editandoEMP) {
+      payload.drugsUsage = this.empFarmacosSi ? 'SI' : 'NO';
+      payload.farmacosEsquema = this.empFarmacosSi ? this.empFarmacosDraft : [];
+      payload.usoDrogas = this.empDrogasSi ? 'SI' : 'NO';
+      payload.drogasEsquema = this.empDrogasSi ? this.empDrogasDraft : [];
+    }
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, payload).subscribe(r => {
+      this.record = r;
+      this.editandoEMP = false;
+    });
   }
 
   guardarDatosGenerales(): void {
@@ -1061,6 +1090,59 @@ export class ExpedienteClinicoComponent implements OnInit {
   eliminarFarmaco(drugId: string): void {
     if (!this.record) return;
     this.record.drugsList = (this.record.drugsList || []).filter(d => d.id !== drugId);
+  }
+
+  // --- Expediente Médico Psiquiátrico (SDD-EMP-1) ---
+  private static readonly EMP_CATEGORIAS_CONOCIDAS = [
+    'bzd', 'isrs', 'duales', 'triciclicos_tetraciclicos', 'neurolepticos_tipicos', 'neurolepticos_atipicos', 'psicoestabilizadores', 'inductores_sueno'
+  ];
+
+  editarExpedienteMedico(): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    if (this.record) {
+      this.record.farmacosEsquema = this.record.farmacosEsquema ?? [];
+      this.record.drogasEsquema = this.record.drogasEsquema ?? [];
+      this.record.drugsList = this.record.drugsList ?? [];
+    }
+    this.empFarmacosDraft = JSON.parse(JSON.stringify(this.record?.farmacosEsquema ?? []));
+    this.empDrogasDraft = JSON.parse(JSON.stringify(this.record?.drogasEsquema ?? []));
+    this.empFarmacosSi = this.empFarmacosDraft.length > 0;
+    this.empDrogasSi = this.empDrogasDraft.length > 0;
+    this.editandoEMP = true;
+  }
+
+  cancelarExpedienteMedico(): void {
+    this.editandoEMP = false;
+    this.cargarDatos();
+  }
+
+  agregarFarmacoEsquema(): void { if (this.empFarmacosDraft.length < 3) this.empFarmacosDraft.push({ nombre: '' }); }
+  eliminarFarmacoEsquema(i: number): void { this.empFarmacosDraft.splice(i, 1); }
+  agregarDrogaEsquema(): void { if (this.empDrogasDraft.length < 4) this.empDrogasDraft.push({ nombre: '' }); }
+  eliminarDrogaEsquema(i: number): void { this.empDrogasDraft.splice(i, 1); }
+
+  agregarPsicofarmaco(grupo: { grupo: string; categorias: CodigoCategoriaPsicofarmaco[] }): void {
+    if (!this.record) return;
+    const categoria: CodigoCategoriaPsicofarmaco = grupo.grupo === 'Otros' ? 'otros' : grupo.categorias[0];
+    const drugs = [...(this.record.drugsList || [])];
+    drugs.push({ id: `drug-${Date.now()}`, name: '', doseMorning: '', doseAfternoon: '', doseNight: '', eff: '', notes: '', categoria });
+    this.record.drugsList = drugs;
+  }
+
+  empFarmacosDeGrupo(grupo: { grupo: string; categorias: CodigoCategoriaPsicofarmaco[] }): Drug[] {
+    const drugs = this.record?.drugsList || [];
+    if (grupo.grupo === 'Otros') {
+      return drugs.filter(d => !d.categoria || !ExpedienteClinicoComponent.EMP_CATEGORIAS_CONOCIDAS.includes(d.categoria));
+    }
+    return drugs.filter(d => !!d.categoria && grupo.categorias.includes(d.categoria));
+  }
+
+  get empFarmacosVigentes(): HistorialFarmaco[] {
+    return this.record?.farmacosEsquema ?? [];
+  }
+
+  get empDrogasVigentes(): HistorialDroga[] {
+    return this.record?.drogasEsquema ?? [];
   }
 
   solicitarSupervision(): void {

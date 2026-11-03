@@ -71,6 +71,9 @@ public class ExpedienteApplicationService implements ObtenerExpedienteUseCase, A
         if (src.getFactoresDesfavorables() != null) target.setFactoresDesfavorables(src.getFactoresDesfavorables());
         if (src.getUsoFarmacos() != null) target.setUsoFarmacos(src.getUsoFarmacos());
         if (src.getDrugsList() != null) target.setDrugsList(src.getDrugsList());
+        if (src.getFarmacosEsquema() != null) target.setFarmacosEsquema(src.getFarmacosEsquema());
+        if (src.getDrogasEsquema() != null) target.setDrogasEsquema(src.getDrogasEsquema());
+        if (src.getUsoDrogas() != null) target.setUsoDrogas(src.getUsoDrogas());
         if (src.getIntentosSolucion() != null) target.setIntentosSolucion(src.getIntentosSolucion());
         if (src.getTipoExpediente() != null) target.setTipoExpediente(src.getTipoExpediente());
         if (src.getFechaApertura() != null) target.setFechaApertura(src.getFechaApertura());
