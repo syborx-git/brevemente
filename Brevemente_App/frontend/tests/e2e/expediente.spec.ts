@@ -33,6 +33,25 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
       headers,
       data: []
     });
+    // Expediente Médico Psiquiátrico (SDD-EMP-1): restaura los 4 campos clínicos
+    // de exp-001 (GAP-EMP-10) y los esquemas Fármacos/Drogas de exp-002.
+    await request.patch('/api/v1/expedientes/paciente/pac-001', {
+      headers,
+      data: {
+        motif: 'Bloqueo fóbico en situaciones de examen y alta autoexigencia académica.',
+        firstAppearance: 'Hace 6 meses tras periodo de alta exigencia académica.',
+        precipitatingFactors: 'Evaluaciones finales y crítica del entorno escolar.',
+        evolutionType: 'progresivo'
+      }
+    });
+    await request.patch('/api/v1/expedientes/paciente/pac-002', {
+      headers,
+      data: {
+        farmacosEsquema: [],
+        drogasEsquema: [],
+        usoDrogas: 'NO'
+      }
+    });
   });
 
   test.beforeEach(async ({ page }) => {
@@ -462,5 +481,104 @@ test.describe('Módulo de Expedientes — Validación E2E de Oráculo y Regresi�
     const rowsBefore = await page.locator('tbody tr').count();
     await page.getByRole('button', { name: /^Agregar$/ }).click();
     await expect(page.locator('tbody tr')).toHaveCount(rowsBefore + 1);
+  });
+
+  test('TC-EXP-20: Expediente Médico Psiquiátrico con 8 secciones (SDD-EMP-1, oráculo)', async ({ page }) => {
+    await page.goto('/expediente/pac-002');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Tratamiento Psiquiátrico/ }).click();
+
+    await expect(page.getByRole('heading', { name: 'Expediente Médico Psiquiátrico' })).toBeVisible();
+
+    // Las 8 secciones de la lámina del PDF (encabezados grises)
+    const secciones = [
+      'emp-seccion-motivo',
+      'emp-seccion-dx',
+      'emp-seccion-dx-dif',
+      'emp-seccion-plan',
+      'emp-seccion-pronostico',
+      'emp-seccion-farmacos',
+      'emp-seccion-psicofarmacos',
+      'emp-seccion-drogas'
+    ];
+    for (const tid of secciones) {
+      await expect(page.locator(`[data-testid="${tid}"]`)).toBeVisible();
+    }
+
+    // Encabezados textuales clave
+    await expect(page.getByText('Motivo de Consulta (Textual del paciente)', { exact: true })).toBeVisible();
+    await expect(page.getByText('DX. Nosológico', { exact: true })).toBeVisible();
+    await expect(page.getByText('DX.DIF', { exact: true })).toBeVisible();
+    await expect(page.getByText('Plan de tratamiento', { exact: true })).toBeVisible();
+    await expect(page.getByText('Pronóstico', { exact: true })).toBeVisible();
+    await expect(page.getByText('Fármacos', { exact: true })).toBeVisible();
+    await expect(page.getByText('Psicofármacos', { exact: true })).toBeVisible();
+    await expect(page.getByText('Drogas', { exact: true })).toBeVisible();
+
+    // Los 6 grupos de Psicofármacos del PDF
+    for (const grupo of ['BZD', 'Antidepresivos', 'Neurolépticos', 'Psicoestabilizadores', 'Inductores del sueño', 'Otros']) {
+      await expect(page.getByText(grupo, { exact: true })).toBeVisible();
+    }
+
+    // D-6: Comorbilidad oculta de esta pestaña
+    await expect(page.getByText('Comorbilidad', { exact: true })).toHaveCount(0);
+
+    // Botón de edición latente
+    await expect(page.getByRole('button', { name: 'Editar expediente médico psiquiátrico' })).toBeVisible();
+  });
+
+  test('TC-EXP-20B: Fármacos y Drogas — toggle Sí + persistencia (SDD-EMP-1)', async ({ page }) => {
+    await page.goto('/expediente/pac-002');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Tratamiento Psiquiátrico/ }).click();
+    await page.getByRole('button', { name: 'Editar expediente médico psiquiátrico' }).click();
+
+    const seccionFarmacos = page.locator('[data-testid="emp-seccion-farmacos"]');
+    const seccionDrogas = page.locator('[data-testid="emp-seccion-drogas"]');
+
+    // Fármacos → Sí + 1 fármaco
+    await seccionFarmacos.getByRole('radiogroup', { name: 'Fármacos' }).getByRole('radio', { name: 'Sí' }).click();
+    await seccionFarmacos.getByRole('button', { name: 'Agregar', exact: true }).click();
+    await seccionFarmacos.locator('input[name="emp-farmaco-0"]').fill('Losartan 50mg');
+
+    // Drogas → Sí + 1 droga
+    await seccionDrogas.getByRole('radiogroup', { name: 'Drogas' }).getByRole('radio', { name: 'Sí' }).click();
+    await seccionDrogas.getByRole('button', { name: 'Agregar', exact: true }).click();
+    await seccionDrogas.locator('input[name="emp-droga-0"]').fill('Cannabis');
+
+    await page.getByRole('button', { name: 'Guardar Expediente Psiquiátrico' }).click();
+
+    // Vista de lectura refleja la persistencia
+    await expect(page.getByText('Losartan 50mg')).toBeVisible();
+    await expect(page.getByText('Cannabis')).toBeVisible();
+  });
+
+  test('TC-EXP-20C: guardarExpedientePsiquiatrico persiste motif, firstAppearance, precipitatingFactors y evolutionType (GAP-EMP-10)', async ({ page }) => {
+    await page.goto('/expediente/pac-001');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /Tratamiento Psiquiátrico/ }).click();
+
+    // Secciones 1 y 2 con binding en vivo (no requieren modo edición)
+    await page.locator('[data-testid="emp-seccion-motivo"] textarea').fill('Motivo de consulta E2E (GAP-EMP-10)');
+
+    const seccionDx = page.locator('[data-testid="emp-seccion-dx"]');
+    await seccionDx.locator('input').nth(3).fill('Primera aparición E2E');
+    await seccionDx.locator('input').nth(4).fill('Factores precipitantes E2E');
+    await seccionDx.locator('select').selectOption('episódico');
+
+    await page.getByRole('button', { name: 'Guardar Expediente Psiquiátrico' }).click();
+
+    // Recarga para verificar persistencia real desde la BD
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /Tratamiento Psiquiátrico/ }).click();
+
+    await expect(page.locator('[data-testid="emp-seccion-motivo"] textarea')).toHaveValue('Motivo de consulta E2E (GAP-EMP-10)');
+    await expect(page.locator('[data-testid="emp-seccion-dx"] input').nth(3)).toHaveValue('Primera aparición E2E');
+    await expect(page.locator('[data-testid="emp-seccion-dx"] input').nth(4)).toHaveValue('Factores precipitantes E2E');
+    await expect(page.locator('[data-testid="emp-seccion-dx"] select')).toHaveValue('episódico');
   });
 });
