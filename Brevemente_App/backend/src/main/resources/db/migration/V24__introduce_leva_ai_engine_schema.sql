@@ -1,7 +1,8 @@
 -- =============================================================================
--- Migración V17: Esquema del Motor de Inteligencia Clínica LEVA (SDOP)
+-- Migración V24: Esquema del Motor de Inteligencia Clínica LEVA (SDOP)
 -- Introducción de Tareas de Transcripción, Propuestas Clínicas Human-in-the-Loop,
 -- Detección de Riesgo y Corpus Clínico Cerrado (TBE / DSM-5TR / CIE-11).
+-- (Renumerada de V17 a V24 para resolver colisión con V17__introduce_portal_paciente.sql)
 -- =============================================================================
 
 -- 1. Tabla de Tareas de Transcripción de Audio --------------------------------
