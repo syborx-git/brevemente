@@ -42,7 +42,7 @@ export const EXECUTIVE_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 5,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="clinical-record-tabs"]',
     title: 'Expediente Clínico y Fases TBE',
     explanation: 'Muestra la ficha clínica de la Terapia Breve Estratégica, con diagnóstico operativo, fases de intervención y evolución detallada.',
@@ -119,8 +119,8 @@ export const CLINICAL_TOUR: DemoStep[] = [
     stepIndex: 4,
     route: '/agenda',
     targetSelector: '[data-tour="agenda-carlos-mendoza"]',
-    title: 'Selección de Consulta (Carlos Mendoza)',
-    explanation: 'Seleccionamos la primera consulta de Carlos Mendoza. El sistema de la agenda soporta intervalos de media hora a las 11:30.',
+    title: 'Selección de Consulta (Mateo Herrera Santos)',
+    explanation: 'Seleccionamos la primera consulta de Mateo Herrera Santos. El sistema de la agenda soporta intervalos de media hora.',
     benefit: 'Identificación clara del estatus de admisión del paciente.'
   },
   {
@@ -133,7 +133,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 6,
-    route: '/intake?id=patient-2',
+    route: '/intake?id=pac-001',
     targetSelector: 'form',
     title: 'Portal del Paciente: Consentimiento',
     explanation: 'El paciente completa sus datos clínicos iniciales y firma digitalmente autorizando el resguardo y la grabación con LEVA.',
@@ -141,15 +141,15 @@ export const CLINICAL_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 7,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="clinical-record-tabs"]',
     title: 'Expediente Clínico TBE',
-    explanation: 'Entramos al expediente de Sofía Martínez para iniciar la sesión. Muestra el diagnóstico estratégico y el trastorno de Ataque de Pánico.',
+    explanation: 'Entramos al expediente de Valeria Gómez Fuentes para iniciar la sesión. Muestra el diagnóstico estratégico y el trastorno de Ataque de Pánico.',
     benefit: 'Fidelidad al modelo de Terapia Breve Estratégica.'
   },
   {
     stepIndex: 8,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="session-history-box"]',
     title: 'Creación de Nueva Sesión',
     explanation: 'Inicia el registro clínico de la Sesión 3. Permite elegir llenado con grabación de audio asistida por LEVA o llenado manual.',
@@ -157,7 +157,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 9,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="recording-mic-box"]',
     title: 'Grabación de Audio e IA',
     explanation: 'Simula la grabación del audio de la sesión y presiona "IA rellena expediente". LEVA transcribirá e identificará protocolos.',
@@ -165,7 +165,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 10,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="leva-widget"]',
     title: 'Consulta Contextual de LEVA',
     explanation: 'Abre el panel lateral de LEVA para buscar el protocolo de Ataque de Pánico sin abandonar tu formulario.',
@@ -173,7 +173,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 11,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="leva-ai-suggestion"]',
     title: 'Validación e Inserción de Borrador',
     explanation: 'LEVA sugiere intervenciones y cita manuales. El clínico valida y presiona "Aceptar e insertar" para inyectar la nota como borrador.',
@@ -181,7 +181,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 12,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="save-session-btn"]',
     title: 'Registro de Nota y Tareas',
     explanation: 'El terapeuta edita y presiona "Validar y Guardar Sesión", registrando la intervención y las tareas terapéuticas (Diario de abordo).',
@@ -189,7 +189,7 @@ export const CLINICAL_TOUR: DemoStep[] = [
   },
   {
     stepIndex: 13,
-    route: '/expedientes?id=patient-1',
+    route: '/expedientes?id=pac-002',
     targetSelector: '[data-tour="clinical-evolution"]',
     title: 'Gráficas de Evolución (VC y VG)',
     explanation: 'Revisa las gráficas dinámicas de Valoración del Cambio y Valoración Global (Yo/Demás/Mundo) para medir el avance científico.',

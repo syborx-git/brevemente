@@ -3,6 +3,7 @@ import { Search, UserPlus, FolderHeart, MessageSquare, ShieldAlert, Trash2, User
 import { Patient, Payment, Role, CounterReferral } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { paymentService } from '../services/paymentService';
+import { therapistService, getTherapistIdForRole } from '../services/therapistService';
 import { CreatePatientModal } from '../components/CreatePatientModal';
 
 interface PatientsProps {
@@ -18,6 +19,8 @@ interface PatientsProps {
 export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName, onDeletePatient, onAddPatient, derivedReferrals = [] }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [consentFilter, setConsentFilter] = useState<string>('TODOS');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [payments, setPayments] = useState<Payment[]>(paymentService.getPayments());
   useEffect(() => {
@@ -26,20 +29,22 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
     return () => window.removeEventListener('brevemente_payment_changed', refresh);
   }, []);
 
-  const filteredPatients = patients.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.curp.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone.includes(searchTerm) ||
-    p.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPatients = patients.filter(p => {
+    const matchText =
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.curp.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.phone.includes(searchTerm) ||
+      p.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = statusFilter === 'todos' || p.status === statusFilter;
+    const matchConsent = consentFilter === 'TODOS' || p.capacidadConsentimiento.estado === consentFilter;
+    return matchText && matchStatus && matchConsent;
+  });
 
   // ── Visibilidad de la columna "Estatus de pago" ─────────────────────────────
   // REGLA DE NEGOCIO (ver therapistService.shouldShowPaymentColumn):
   //   se muestra sólo para terapeutas SIN asistente.
-  // TODAVÍA NO CONECTADA al backend real → en demo se muestra SIEMPRE.
-  // Cuando exista el backend, reemplazar por:
-  //   const showPaymentColumn = therapistService.shouldShowPaymentColumn(idTerapeutaAutenticado);
-  const showPaymentColumn: boolean = true;
+  const therapistId = getTherapistIdForRole(userRole);
+  const showPaymentColumn: boolean = therapistId ? therapistService.shouldShowPaymentColumn(therapistId) : false;
 
 
   const handleOpenRecord = (patientId: string, patientName: string) => {
@@ -76,8 +81,8 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
       </div>
 
       {/* Buscador */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-3 items-start lg:items-center">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
           <input
             type="text"
@@ -86,6 +91,36 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-500 font-semibold text-[11px]">Estado:</span>
+            <select
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium focus:outline-none"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="todos">Todos</option>
+              <option value="activo">Activos</option>
+              <option value="completado">Completados</option>
+              <option value="pendiente">Pendientes</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-500 font-semibold text-[11px]">Consentimiento:</span>
+            <select
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium focus:outline-none"
+              value={consentFilter}
+              onChange={(e) => setConsentFilter(e.target.value)}
+            >
+              <option value="TODOS">Todos</option>
+              <option value="AUTONOMO">Autónomos (Mayoría)</option>
+              <option value="REPRESENTADO_POR_EDAD">Representados por Edad (&lt;18)</option>
+              <option value="PENDIENTE_DETERMINACION">Pendiente Determinación</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -97,6 +132,7 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
               <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase">
                 <th className="p-4">Nombre Paciente</th>
                 <th className="p-4">CURP / Folio</th>
+                <th className="p-4">Edad</th>
                 <th className="p-4">Contacto</th>
                 <th className="p-4">Registro</th>
                 <th className="p-4">Estado</th>
@@ -111,7 +147,7 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
             <tbody className="divide-y divide-slate-100 text-slate-600">
               {filteredPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={showPaymentColumn ? 9 : 8} className="p-8 text-center text-slate-400">
+                  <td colSpan={showPaymentColumn ? 10 : 9} className="p-8 text-center text-slate-400">
                     No se encontraron pacientes que coincidan con la búsqueda.
                   </td>
                 </tr>
@@ -148,6 +184,14 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                         {p.curp}
                       </td>
                       <td className="p-4">
+                        <span className="font-semibold text-slate-700">
+                          {p.edadCalculada} años
+                        </span>
+                        {p.edadCalculada < 18 && (
+                          <span className="text-[10px] text-amber-600 font-bold ml-1">(Menor)</span>
+                        )}
+                      </td>
+                      <td className="p-4">
                         <div className="space-y-0.5">
                           <span className="block">{p.phone}</span>
                           <span className="block text-slate-400 text-[10px]">{p.email}</span>
@@ -182,7 +226,10 @@ export const Patients: React.FC<PatientsProps> = ({ userRole, patients, userName
                           </span>
                         )}
                         {(!estadoCapacidad || estadoCapacidad === 'AUTONOMO') && (
-                          <span className="text-slate-300 font-bold px-2">—</span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5 w-fit">
+                            <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                            Autónomo
+                          </span>
                         )}
                       </td>
                       <td className="p-4">

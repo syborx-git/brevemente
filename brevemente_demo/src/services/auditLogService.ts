@@ -6,11 +6,11 @@ const initialLogs: AuditLog[] = [
   {
     id: 'log-1',
     timestamp: new Date(Date.now() - 3600000 * 24 * 2).toISOString(), // Hace 2 días
-    userId: 'therapist-1',
-    userName: 'Dr. Alejandro Silva',
+    userId: 'ter-001',
+    userName: 'Dra. Sofía Ramírez Lozano',
     role: 'therapist',
     action: 'Acceso a expediente',
-    details: 'Visualizó el expediente completo de Sofía Martínez (Folio: EXP-8849)',
+    details: 'Visualizó el expediente completo de Valeria Gómez Fuentes (Folio: EXP-0002)',
     category: 'expediente'
   },
   {
@@ -20,24 +20,24 @@ const initialLogs: AuditLog[] = [
     userName: 'Marta Gómez',
     role: 'assistant',
     action: 'Creación de cita',
-    details: 'Agendó cita de primera vez para el paciente Carlos Mendoza el 26/08/2026',
+    details: 'Agendó cita de primera vez para el paciente Emiliano Díaz Corona',
     category: 'sesion'
   },
   {
     id: 'log-3',
     timestamp: new Date(Date.now() - 3600000 * 12).toISOString(), // Hace 12 horas
-    userId: 'therapist-1',
-    userName: 'Dr. Alejandro Silva',
+    userId: 'ter-001',
+    userName: 'Dra. Sofía Ramírez Lozano',
     role: 'therapist',
     action: 'Edición de sesión',
-    details: 'Actualizó notas y reestructuración de la Sesión 3 de Sofía Martínez',
+    details: 'Actualizó notas y reestructuración de la Sesión 2 de Valeria Gómez Fuentes',
     category: 'sesion'
   },
   {
     id: 'log-4',
     timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), // Hace 4 horas
-    userId: 'therapist-1',
-    userName: 'Dr. Alejandro Silva',
+    userId: 'ter-001',
+    userName: 'Dra. Sofía Ramírez Lozano',
     role: 'therapist',
     action: 'Uso de Asistente IA',
     details: 'Consultó sugerencias de reestructuraciones para el protocolo de Ataque de Pánico',
@@ -46,11 +46,11 @@ const initialLogs: AuditLog[] = [
   {
     id: 'log-5',
     timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), // Hace 2 horas
-    userId: 'therapist-1',
-    userName: 'Dr. Alejandro Silva',
+    userId: 'ter-001',
+    userName: 'Dra. Sofía Ramírez Lozano',
     role: 'therapist',
     action: 'Generación de constancia',
-    details: 'Emitió constancia psicoterapéutica para Sofía Martínez y la descargó en PDF',
+    details: 'Emitió constancia psicoterapéutica para Valeria Gómez Fuentes y la descargó en PDF',
     category: 'reporte'
   }
 ];

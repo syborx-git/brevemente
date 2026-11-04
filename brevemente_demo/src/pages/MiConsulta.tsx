@@ -12,6 +12,7 @@ import { therapistService } from '../services/therapistService';
 import { CrisisResolutionModal } from '../components/CrisisResolutionModal';
 import { CrisisIncidentDetailModal } from '../components/CrisisIncidentDetailModal';
 import { sessionMinutes } from '../utils/sessionDuration';
+import { todayISO } from '../utils/dates';
 
 interface MiConsultaProps {
   userRole: Role;
@@ -55,8 +56,8 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
   };
 
   // Datos simulados del caseload del terapeuta activo
-  const todayStr = '2026-08-24';
-  const activeTherapistId = currentTherapistId || 'therapist-1';
+  const todayStr = todayISO();
+  const activeTherapistId = currentTherapistId || 'ter-001';
   const activeTherapistName = therapistService.getEntry(activeTherapistId)?.name || userName;
   const myPatients = patients.filter(p => p.therapistId === activeTherapistId);
   const myAppointments = appointments.filter(app => {
@@ -178,7 +179,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
               <div className="pt-2">
                 {sessionState === 'por_iniciar' && (
                   <button
-                    onClick={() => navigate('/expedientes?id=patient-1')}
+                    onClick={() => navigate('/expedientes?id=pac-002')}
                     className="w-full py-2 bg-[#75AFBC] hover:bg-[#6099a5] text-white rounded-lg font-bold shadow text-xs transition-colors flex items-center justify-center gap-1.5"
                   >
                     Atender / Preparar Sesión
@@ -187,7 +188,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                 )}
                 {sessionState === 'en_curso' && (
                   <button
-                    onClick={() => navigate('/expedientes?id=patient-1')}
+                    onClick={() => navigate('/expedientes?id=pac-002')}
                     className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow text-xs transition-colors flex items-center justify-center gap-1.5 animate-pulse"
                   >
                     Detener Grabación y Procesar con LEVA
@@ -201,7 +202,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
                 )}
                 {sessionState === 'nota_pendiente' && (
                   <button
-                    onClick={() => navigate('/expedientes?id=patient-1')}
+                    onClick={() => navigate('/expedientes?id=pac-002')}
                     className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow text-xs transition-colors flex items-center justify-center gap-1.5"
                   >
                     Redactar Nota de Sesión Urgente (Sugerida por LEVA)
@@ -314,11 +315,11 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
             <div className="p-3 border border-slate-100 rounded bg-slate-50/50 flex flex-col justify-between gap-2">
               <div>
                 <span className="font-bold text-clinical-dark block">Borrador sugerido por LEVA</span>
-                <span className="text-[9px] text-slate-400 block uppercase font-bold">Caso: Sofía Martínez • Sesión 2</span>
+                <span className="text-[9px] text-slate-400 block uppercase font-bold">Caso: Valeria Gómez Fuentes • Sesión 2</span>
                 <p className="text-[11px] text-slate-600 mt-1 leading-normal font-medium">"Prescribir la maniobra de la peor fantasía de 30 minutos a las 18:00..."</p>
               </div>
               <button
-                onClick={() => navigate('/expedientes?id=patient-1')}
+                onClick={() => navigate('/expedientes?id=pac-002')}
                 className="text-[10px] font-bold text-clinical-teal hover:underline block text-left"
               >
                 Revisar e Insertar Borrador →
@@ -344,7 +345,7 @@ export const MiConsulta: React.FC<MiConsultaProps> = ({ userRole, appointments, 
               <div className="space-y-1">
                 <span className="font-bold text-clinical-dark block text-[10px] uppercase">Supervisiones Solicitadas</span>
                 <div className="flex justify-between items-center bg-slate-50 p-2 rounded">
-                  <span>Sesión 2 (Sofía Martínez)</span>
+                  <span>Sesión 2 (Valeria Gómez Fuentes)</span>
                   <span className="text-amber-600 text-[9px] font-bold">En Revisión</span>
                 </div>
               </div>

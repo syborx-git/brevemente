@@ -89,6 +89,18 @@ export interface Patient {
 
   /** Frecuencia de sesiones del tratamiento: semanal | quincenal | mensual (se refleja en la agenda) */
   sessionFrequency?: 'semanal' | 'quincenal' | 'mensual';
+
+  // Identificación ampliada (paridad fullstack)
+  rfc?: string;
+  sexo?: 'M' | 'F' | 'LGTB+';
+  sedeId?: string;
+  lugarNacimiento?: string;
+  estadoCivil?: string;
+  escolaridad?: string;
+  ocupacion?: string;
+  religion?: string;
+  domicilio?: Domicilio;
+  contactoEmergencia?: ContactoEmergencia;
 }
 
 
@@ -110,6 +122,12 @@ export interface Appointment {
    * Opcional por compatibilidad: las citas de demo anteriores se interpretan como 60 min.
    */
   duration?: SessionDuration;
+  /** Modalidad de la sesión: presencial | online. */
+  modality?: 'presencial' | 'online';
+  /** Tipo de terapia: individual | pareja | familiar | grupal. */
+  tipoTerapia?: 'individual' | 'pareja' | 'familiar' | 'grupal';
+  /** Consultorio físico asignado a la sesión presencial. */
+  office?: 'A' | 'B';
 }
 
 /** Estado del ciclo de vida de una contra-referencia entre terapeutas. */
@@ -191,6 +209,7 @@ export interface ClinicalRecord {
 
   // DX Psiquiátrico
   dxNosologico?: string;
+  motivoConsulta?: string;
   dsm5?: string;
   cie11?: string;
   comorbilidad?: string;
@@ -199,17 +218,33 @@ export interface ClinicalRecord {
   prognosis?: 'excelente' | 'bueno' | 'reservado' | 'malo';
   favorableFactors?: string;
   unfavorableFactors?: string;
-  drugsList?: Array<{
-    id: string;
-    name: string;
-    doseMorning: string;
-    doseAfternoon: string;
-    doseNight: string;
-    eff: string;
-    notes: string;
-  }>;
+  drugsList?: Drug[];
   drugsUsage?: string; // sí / no / especificar
   crisisHistory?: CrisisIncident[];
+
+  // Identificación del expediente
+  tipoExpediente?: 'fisico' | 'electronico' | 'mixto';
+  fechaApertura?: string;
+  fuenteReferencia?: FuenteReferencia;
+  fuenteReferenciaOtro?: string;
+  intentosSolucion?: string;
+  // Historia clínica
+  antecedentes?: Antecedentes;
+  examenMental?: ExamenMental;
+  fechaExamenMental?: string;
+  riesgoSuicida?: RiesgoSuicida;
+  riesgoHeteroagresivo?: RiesgoHeteroagresivo;
+  otrosRiesgos?: string;
+  riesgoSuicidaEspecificar?: string;
+  riesgoHeteroagresivoEspecificar?: string;
+  // Ficha de identificación (historiales)
+  historialFarmacos?: HistorialFarmaco[];
+  historialPsicofarmacos?: HistorialPsicofarmaco[];
+  historialDrogas?: HistorialDroga[];
+  // Esquema vigente (fármacos/drogas)
+  farmacosEsquema?: HistorialFarmaco[];
+  drogasEsquema?: HistorialDroga[];
+  usoDrogas?: 'SI' | 'NO' | 'ESPECIFICAR';
 }
 
 export interface Session {
@@ -220,6 +255,8 @@ export interface Session {
   phase: string;
   protocol: string;
   dxOp: string;
+  spr?: string;
+  significado?: string;
   trastorno?: string; // Trastorno especificado manualmente cuando el protocolo no está disponible
   px: string[]; // Prescripciones/maniobras asignadas
   f1: string; // Frase 1 o foco
@@ -234,6 +271,9 @@ export interface Session {
   situation: string;
   audioDuration?: string;
   status: 'borrador' | 'validado';
+  valoracionCambio?: VcEntry;
+  valoracionGlobal?: VgEntry;
+  criterios?: CriterioClinico[];
 }
 
 export interface AuditLog {
@@ -386,4 +426,134 @@ export interface SupervisionLog {
   blocking: string;
   observations: string;
   recommendations: string;
+}
+
+// ── Tipos de paridad (copiados del fullstack) ────────────────────────────────
+
+export type RiesgoSuicida = 'ausente' | 'bajo' | 'moderado' | 'alto' | 'inminente';
+export type RiesgoHeteroagresivo = 'ausente' | 'bajo' | 'moderado' | 'alto';
+export type FuenteReferencia = 'iniciativa_propia' | 'medico' | 'psiquiatra' | 'psicoterapeuta' | 'familiar' | 'amigo' | 'otro';
+export type CodigoCategoriaPsicofarmaco =
+  'bzd' | 'isrs' | 'duales' | 'triciclicos_tetraciclicos'
+  | 'neurolepticos_tipicos' | 'neurolepticos_atipicos'
+  | 'psicoestabilizadores' | 'inductores_sueno' | 'otros';
+
+export interface CategoriaPsicofarmaco { codigo: CodigoCategoriaPsicofarmaco; etiqueta: string; orden: number; }
+export interface Domicilio {
+  calleNumero: string; colonia: string; codigoPostal: string;
+  municipio: string; estadoDomicilio: string;
+  telefonoCasa: string | null; telefonoCelular: string | null; telefonoTrabajo: string | null;
+}
+export interface ContactoEmergencia { nombre: string; parentesco: string; telefono: string; }
+export interface TerapeutaSede { id: string; nombre: string; esPrincipal: boolean; }
+export interface CambioConfiguracion {
+  id: string;
+  campo: string;
+  valorAnterior: string | null;
+  valorNuevo: string | null;
+  usuarioNombre: string;
+  fecha: string;
+}
+export interface HábitoPresente {
+  presente: boolean;
+  cantidad?: string;
+  tiempo?: string;
+  frecuencia?: string;
+  tipo?: string;
+}
+
+export interface Antecedentes {
+  personalesPatológicos: {
+    médicos: string;
+    quirúrgicos: string;
+    traumáticos: string;
+    alérgicos: string;
+    transfusionales: string;
+    hospitalizaciones: string;
+  };
+  personalesNoPatológicos: {
+    tabaquismo: HábitoPresente;
+    alcoholismo: HábitoPresente;
+    toxicomanías: HábitoPresente;
+    actividadFísica: string;
+    alimentación: string;
+  };
+  heredoFamiliares: {
+    enfermedadesMentales: string;
+    enfermedadesCrónicas: string;
+    suicidiosIntentos: string;
+    adicciones: string;
+  };
+}
+
+export interface ExamenRiesgoItem {
+  nivel: string;
+  hallazgo: string;
+}
+
+export interface ExamenMental {
+  aparienciaConducta?: Record<string, string>;
+  concienciaSensorio?: Record<string, string>;
+  lenguajeHabla?: Record<string, string>;
+  afectividad?: Record<string, string>;
+  pensamiento?: Record<string, string>;
+  sensopercepción?: Record<string, string>;
+  funcionesCognoscitivas?: Record<string, string>;
+  juicioIntrospección?: Record<string, string>;
+  funcionesFisiológicas?: Record<string, string>;
+  evaluaciónRiesgo?: Record<string, ExamenRiesgoItem>;
+  síntesis?: Record<string, string>;
+}
+
+export interface TratamientoPrevio { id?: string; enfoque: string; duracion: string; resultado: 'resuelto' | 'mejorado' | 'invariable' | 'drop_out' | 'otro'; }
+export interface HistorialFarmaco { nombre: string; }
+export interface HistorialPsicofarmaco { nombre: string; duracion: string; }
+export interface HistorialDroga { nombre: string; }
+export interface Establecimiento { id: string; nombre: string; clues: string | null; licenciaSanitaria: string | null; tipoEstablecimiento: 'publico' | 'privado' | 'social' | null; }
+
+export interface Drug {
+  id: string;
+  name: string;
+  doseMorning: string;
+  doseAfternoon: string;
+  doseNight: string;
+  eff: string;
+  notes: string;
+  categoria?: CodigoCategoriaPsicofarmaco;
+}
+
+export interface VcEntry {
+  sessionNum: number;
+  percepcion: string;
+  pensamientos: string;
+  sensaciones: string;
+  reacciones: string;
+  sintomas: string;
+  crisis: string;
+}
+
+export interface VgEntry {
+  sessionNum: number;
+  yo: boolean;
+  demas: boolean;
+  mundo: boolean;
+}
+
+export type CriterioCategoria =
+  | 'conductual'
+  | 'racionalizaciones_intelectualizaciones'
+  | 'comparaciones'
+  | 'imagenes_intrusivas'
+  | 'otro';
+
+export interface CriterioClinico {
+  id?: string;
+  categoria: CriterioCategoria;
+  valor: string;
+}
+
+export interface OpcionConductual {
+  codigo: string;
+  etiqueta: string;
+  orden: number;
 }

@@ -327,25 +327,24 @@ export const Campus: React.FC<CampusProps> = ({ userRole, userName }) => {
             {/* Grid Métricas Académicas */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-semibold">
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-center">
-                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">G.P.A / Calificación</span>
-                <span className="text-2xl font-extrabold text-clinical-dark block mt-1">{mockStudentProfile.gpa}</span>
-                <span className="text-[9px] text-slate-400 block mt-0.5">Promedio acumulado</span>
+                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Módulos Completados</span>
+                <span className="text-2xl font-extrabold text-clinical-dark block mt-1">{mockStudentProfile.completedModulesCount}</span>
+                <span className="text-[9px] text-slate-400 block mt-0.5">de 8 módulos curriculares</span>
               </div>
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-center">
-                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Horas Formación</span>
-                <span className="text-2xl font-extrabold text-clinical-teal block mt-1">{mockStudentProfile.trainingHours} hrs</span>
-                <span className="text-[9px] text-slate-400 block mt-0.5">90 de 120 requeridas</span>
+                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Simulaciones Aprobadas</span>
+                <span className="text-2xl font-extrabold text-clinical-teal block mt-1">7</span>
+                <span className="text-[9px] text-slate-400 block mt-0.5">calificación promedio 9.1</span>
               </div>
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-center">
-                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Módulos Aprobados</span>
-                <span className="text-2xl font-extrabold text-clinical-accent block mt-1">{mockStudentProfile.completedModulesCount} / 8</span>
-                <span className="text-[9px] text-slate-400 block mt-0.5">En diplomado activo</span>
+                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Supervisiones Programadas</span>
+                <span className="text-2xl font-extrabold text-clinical-accent block mt-1">{mockStudentProfile.scheduledSupervisionsCount}</span>
+                <span className="text-[9px] text-slate-400 block mt-0.5">esta semana</span>
               </div>
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-center">
-                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Estatus Grado</span>
-                <span className="text-sm font-extrabold bg-blue-50 border border-blue-200 text-clinical-dark px-2.5 py-1.5 rounded-lg inline-block mt-2">
-                  EN CURSO
-                </span>
+                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Certificados Emitidos</span>
+                <span className="text-2xl font-extrabold text-clinical-dark block mt-1">3</span>
+                <span className="text-[9px] text-slate-400 block mt-0.5">ruta TBE en curso</span>
               </div>
             </div>
 

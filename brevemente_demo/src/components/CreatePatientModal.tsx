@@ -13,6 +13,8 @@ import {
 } from '../utils/legalConsent';
 import { therapistSettingsService } from '../services/therapistSettingsService';
 import { auditLogService } from '../services/auditLogService';
+import { therapistService, getTherapistIdForRole } from '../services/therapistService';
+import { sedesService } from '../services/sedesService';
 
 interface CreatePatientModalProps {
   isOpen: boolean;
@@ -38,6 +40,21 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
   const [correo, setCorreo] = useState('');
   const [telefono, setTelefono] = useState('');
   const [quienCompletaRegistro, setQuienCompletaRegistro] = useState<QuienCompletaRegistro>('PACIENTE');
+  const [rfc, setRfc] = useState('');
+  const [sexo, setSexo] = useState<'M' | 'F' | 'LGTB+' | ''>('');
+  const [sedeId, setSedeId] = useState('');
+
+  // --- Domicilio ---
+  const [domCalle, setDomCalle] = useState('');
+  const [domColonia, setDomColonia] = useState('');
+  const [domCp, setDomCp] = useState('');
+  const [domMunicipio, setDomMunicipio] = useState('');
+  const [domEstado, setDomEstado] = useState('');
+
+  // --- Contacto de emergencia ---
+  const [emergenciaNombre, setEmergenciaNombre] = useState('');
+  const [emergenciaParentesco, setEmergenciaParentesco] = useState('');
+  const [emergenciaTelefono, setEmergenciaTelefono] = useState('');
 
   // Advertencias paso 1
   const [curpMismatchWarning, setCurpMismatchWarning] = useState<string | null>(null);
@@ -74,6 +91,17 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
     setCorreo('');
     setTelefono('');
     setQuienCompletaRegistro('PACIENTE');
+    setRfc('');
+    setSexo('');
+    setSedeId('');
+    setDomCalle('');
+    setDomColonia('');
+    setDomCp('');
+    setDomMunicipio('');
+    setDomEstado('');
+    setEmergenciaNombre('');
+    setEmergenciaParentesco('');
+    setEmergenciaTelefono('');
     setCurpMismatchWarning(null);
     setMinAgeWarning(null);
     setStep1Error(null);
@@ -153,6 +181,10 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
   const handleStep1Next = () => {
     if (!nombre.trim()) {
       setStep1Error('El nombre completo es obligatorio.');
+      return;
+    }
+    if (curp.trim().length !== 18) {
+      setStep1Error('La CURP es obligatoria (18 caracteres).');
       return;
     }
     if (!fechaNacimiento) {
@@ -257,14 +289,34 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
       phone: requiresStep2 ? (telefonoPacienteOpcional.trim() || repTelefono.trim()) : telefono.trim(),
       email: correo.trim(),
       birthDate: fechaNacimiento,
-      curp: curp.trim() || `CURP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
+      curp: curp.trim(),
       registrationDate: today,
       status: 'pendiente',
       riskLevel: 'bajo',
       registryMode: 'ia',
       motif: 'Ingreso inicial clínico',
-      therapistId: 'therapist-1',
-      therapistName: 'Dr. Alejandro Silva',
+      therapistId: getTherapistIdForRole(userRole) ?? 'ter-001',
+      therapistName: therapistService.getEntry(getTherapistIdForRole(userRole) ?? 'ter-001')?.name ?? 'Dra. Sofía Ramírez Lozano',
+
+      // Identificación ampliada (paridad fullstack)
+      rfc: rfc.trim() || undefined,
+      sexo: sexo ? (sexo as 'M' | 'F' | 'LGTB+') : undefined,
+      sedeId: sedeId || undefined,
+      domicilio: {
+        calleNumero: domCalle.trim(),
+        colonia: domColonia.trim(),
+        codigoPostal: domCp.trim(),
+        municipio: domMunicipio.trim(),
+        estadoDomicilio: domEstado.trim(),
+        telefonoCasa: null,
+        telefonoCelular: null,
+        telefonoTrabajo: null
+      },
+      contactoEmergencia: emergenciaNombre.trim() ? {
+        nombre: emergenciaNombre.trim(),
+        parentesco: emergenciaParentesco.trim() || 'Familiar',
+        telefono: emergenciaTelefono.trim()
+      } : undefined,
 
       // Campos normativos de representación legal
       fechaNacimiento,
@@ -458,7 +510,7 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
                 {/* CURP */}
                 <div>
                   <label className="block text-[11px] font-bold text-clinical-dark uppercase tracking-wider mb-1">
-                    CURP (18 caracteres)
+                    CURP (18 caracteres) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -530,6 +582,38 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
                       onChange={(e) => setTelefono(e.target.value)}
                     />
                   </div>
+                </div>
+
+                {/* RFC */}
+                <div>
+                  <label className="block text-[11px] font-bold text-clinical-dark uppercase tracking-wider mb-1">
+                    RFC
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={13}
+                    placeholder="Ej. MAVS980514ABC"
+                    className="w-full px-3 py-2 font-mono uppercase border border-slate-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-clinical-accent focus:outline-none tracking-wider"
+                    value={rfc}
+                    onChange={(e) => setRfc(e.target.value.toUpperCase())}
+                  />
+                </div>
+
+                {/* Sexo */}
+                <div>
+                  <label className="block text-[11px] font-bold text-clinical-dark uppercase tracking-wider mb-1">
+                    Sexo
+                  </label>
+                  <select
+                    value={sexo}
+                    onChange={(e) => setSexo(e.target.value as 'M' | 'F' | 'LGTB+' | '')}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none bg-white"
+                  >
+                    <option value="">Seleccionar</option>
+                    <option value="M">M</option>
+                    <option value="F">F</option>
+                    <option value="LGTB+">LGTB+</option>
+                  </select>
                 </div>
               </div>
 
@@ -853,6 +937,63 @@ export const CreatePatientModal: React.FC<CreatePatientModalProps> = ({
                     <span className="font-semibold text-slate-700">
                       {quienCompletaRegistro === 'PACIENTE' ? 'El propio paciente' : 'Familiar o persona de apoyo'}
                     </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Datos complementarios (Sede, Domicilio, Contacto de emergencia) */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                <span className="font-bold text-clinical-dark text-xs block border-b border-slate-100 pb-2 uppercase tracking-wider">
+                  Datos Complementarios del Expediente
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Sede</label>
+                    <select
+                      value={sedeId}
+                      onChange={(e) => setSedeId(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none bg-white"
+                    >
+                      <option value="">Seleccionar sede</option>
+                      {sedesService.getAll().map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Contacto de emergencia (nombre)</label>
+                    <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={emergenciaNombre} onChange={(e) => setEmergenciaNombre(e.target.value)} placeholder="Nombre de contacto" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Parentesco del contacto</label>
+                    <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={emergenciaParentesco} onChange={(e) => setEmergenciaParentesco(e.target.value)} placeholder="Ej. Madre, pareja" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Teléfono del contacto</label>
+                    <input type="tel" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={emergenciaTelefono} onChange={(e) => setEmergenciaTelefono(e.target.value)} placeholder="+52 55 ..." />
+                  </div>
+                </div>
+
+                <span className="font-bold text-clinical-dark text-[10px] uppercase tracking-wider block pt-1 border-t border-slate-100">Domicilio</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Calle y número</label>
+                    <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={domCalle} onChange={(e) => setDomCalle(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Colonia</label>
+                    <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={domColonia} onChange={(e) => setDomColonia(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">C.P.</label>
+                    <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={domCp} onChange={(e) => setDomCp(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Municipio/Delegación</label>
+                    <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={domMunicipio} onChange={(e) => setDomMunicipio(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-1">Estado</label>
+                    <input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-clinical-accent focus:outline-none" value={domEstado} onChange={(e) => setDomEstado(e.target.value)} />
                   </div>
                 </div>
               </div>
