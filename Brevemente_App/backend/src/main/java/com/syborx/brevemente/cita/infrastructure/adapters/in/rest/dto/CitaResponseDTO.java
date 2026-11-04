@@ -41,5 +41,8 @@ public record CitaResponseDTO(
         String office,
 
         @Schema(description = "Indica si la cita está bloqueada por normativa", example = "false")
-        Boolean bloqueadaPorNormativa
+        Boolean bloqueadaPorNormativa,
+
+        @Schema(description = "Tipo de terapia", example = "individual", allowableValues = {"individual", "pareja", "familiar", "grupal"})
+        String tipoTerapia
 ) {}

@@ -46,6 +46,9 @@ public class CitaJpaEntity {
     @Builder.Default
     private String tipoCita = "primera";
 
+    @Column(name = "tipo_sesion", length = 30)
+    private String tipoSesion;
+
     @Column(name = "modalidad", length = 20)
     @Builder.Default
     private String modalidad = "PRESENCIAL";

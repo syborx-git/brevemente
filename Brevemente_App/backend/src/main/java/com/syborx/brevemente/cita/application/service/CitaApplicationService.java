@@ -105,6 +105,9 @@ public class CitaApplicationService implements
         if (cita.getModalidad() == null || cita.getModalidad().isBlank()) {
             cita.setModalidad("PRESENCIAL");
         }
+        if (cita.getTipoSesion() == null || cita.getTipoSesion().isBlank()) {
+            cita.setTipoSesion("individual");
+        }
         // Regla ONLINE ⇒ consultorio null
         if ("ONLINE".equalsIgnoreCase(cita.getModalidad())) {
             cita.setConsultorio(null);
