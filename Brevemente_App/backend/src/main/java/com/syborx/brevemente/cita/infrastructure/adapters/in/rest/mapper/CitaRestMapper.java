@@ -43,7 +43,8 @@ public class CitaRestMapper {
                 domain.getDuracionMinutos(),
                 domain.getModalidad(),
                 domain.getConsultorio(),
-                domain.isBloqueadaPorNormativa()
+                domain.isBloqueadaPorNormativa(),
+                domain.getTipoSesion()
         );
     }
 
@@ -57,6 +58,7 @@ public class CitaRestMapper {
                 .terapeutaId(request.terapeutaId())
                 .fechaHoraInicio(inicio)
                 .tipoCita(request.tipo())
+                .tipoSesion(request.tipoTerapia())
                 .duracionMinutos(request.duracionMinutos() != null ? request.duracionMinutos() : 30)
                 .modalidad(request.modalidad() != null ? request.modalidad() : "PRESENCIAL")
                 .consultorio(request.consultorio())

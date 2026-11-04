@@ -1,29 +1,30 @@
 import { PhysicalCertificateLog, Role } from '../types/clinical';
 import { auditLogService } from './auditLogService';
+import { daysAgoISO } from '../utils/dates';
 
 const STORAGE_KEY = 'brevemente_physical_certificates';
 
 const initialPhysicalCertificates: PhysicalCertificateLog[] = [
   {
     id: 'cert-phys-1',
-    patientId: 'patient-1',
-    patientName: 'Sofía Martínez',
+    patientId: 'pac-002',
+    patientName: 'Valeria Gómez Fuentes',
     physicalFolio: 'CONST-2026-084-FIS',
-    issueDate: '2026-08-20',
+    issueDate: daysAgoISO(78),
     type: 'psicoterapeutica',
-    issuerName: 'Dr. Alejandro Silva',
-    issuerLicense: 'CED-8849302-MX',
+    issuerName: 'Dra. Sofía Ramírez Lozano',
+    issuerLicense: 'CED-782190-PSIC',
     recipient: 'Dirección de Recursos Humanos · Grupo Salinas',
     purpose: 'Acreditación formal de asistencia y continuidad a tratamiento psicoterapéutico',
-    periodCovered: '10 de Agosto de 2026 al 17 de Agosto de 2026',
+    periodCovered: 'Tratamiento en curso',
     sessionsCount: 2,
     clinicalSummary: 'Se hace constar en físico que la paciente acude de manera regular a intervención en Terapia Breve Estratégica. Presenta adherencia terapéutica satisfactoria y evolución clínica favorable.',
-    deliveredTo: 'Sofía Martínez (en mano propia, consultorio Sede Centro)',
-    digitalScanUrl: 'escaneo_constancia_sofia_martinez.pdf',
-    scanFileName: 'escaneo_constancia_sofia_martinez.pdf',
+    deliveredTo: 'Valeria Gómez Fuentes (en mano propia, consultorio Sede Centro)',
+    digitalScanUrl: 'escaneo_constancia_valeria_gomez.pdf',
+    scanFileName: 'escaneo_constancia_valeria_gomez.pdf',
     status: 'entregada_en_fisico',
-    registeredBy: 'Dr. Alejandro Silva',
-    registeredAt: '2026-08-20T14:30:00.000Z'
+    registeredBy: 'Dra. Sofía Ramírez Lozano',
+    registeredAt: `${daysAgoISO(78)}T14:30:00.000Z`
   }
 ];
 

@@ -1,85 +1,60 @@
 import { auditLogService } from './auditLogService';
 import { Role, Payment } from '../types/clinical';
+import { daysAgoISO, todayISO } from '../utils/dates';
 
 const STORAGE_KEY = 'brevemente_payments';
 
 const initialPayments: Payment[] = [
     {
         id: 'pay-1',
-        patientId: 'patient-1',
-        patientName: 'Sofía Martínez',
-        appointmentId: 'app-1b',
+        patientId: 'pac-002',
+        patientName: 'Valeria Gómez Fuentes',
+        appointmentId: 'cit-004',
         concept: 'Primera sesión',
         amount: 800,
-        date: '2026-08-10',
+        date: daysAgoISO(86),
         method: 'transferencia',
         status: 'pagado',
         notes: 'Transferencia SPEI',
         registeredBy: 'Marta Gómez',
-        createdAt: '2026-08-10T12:00:00.000Z'
+        createdAt: `${daysAgoISO(86)}T12:00:00.000Z`
     },
     {
         id: 'pay-2',
-        patientId: 'patient-1',
-        patientName: 'Sofía Martínez',
-        appointmentId: 'app-1c',
+        patientId: 'pac-002',
+        patientName: 'Valeria Gómez Fuentes',
         concept: 'Sesión 2 · Seguimiento',
         amount: 800,
-        date: '2026-08-17',
+        date: daysAgoISO(79),
         method: 'tarjeta',
         status: 'pagado',
         registeredBy: 'Marta Gómez',
-        createdAt: '2026-08-17T12:00:00.000Z'
+        createdAt: `${daysAgoISO(79)}T12:00:00.000Z`
     },
     {
         id: 'pay-3',
-        patientId: 'patient-1',
-        patientName: 'Sofía Martínez',
-        appointmentId: 'app-1',
-        concept: 'Sesión 3 · Seguimiento',
-        amount: 800,
-        date: '2026-08-24',
-        method: 'transferencia',
+        patientId: 'pac-001',
+        patientName: 'Mateo Herrera Santos',
+        concept: 'Primera sesión',
+        amount: 700,
+        date: daysAgoISO(90),
+        method: 'efectivo',
         status: 'pendiente',
         notes: 'Pendiente de pago',
         registeredBy: 'Marta Gómez',
-        createdAt: '2026-08-24T12:00:00.000Z'
+        createdAt: `${daysAgoISO(90)}T12:00:00.000Z`
     },
     {
         id: 'pay-4',
-        patientId: 'patient-3',
-        patientName: 'Ana María Ruiz',
-        concept: 'Primera sesión',
-        amount: 750,
-        date: '2026-07-01',
-        method: 'efectivo',
-        status: 'pagado',
-        registeredBy: 'Dra. Patricia Ortiz',
-        createdAt: '2026-07-01T12:00:00.000Z'
-    },
-    {
-        id: 'pay-5',
-        patientId: 'patient-3',
-        patientName: 'Ana María Ruiz',
+        patientId: 'pac-004',
+        patientName: 'Roberto Valdés Garza',
         concept: 'Sesión de seguimiento',
         amount: 750,
-        date: '2026-08-15',
+        date: todayISO(),
         method: 'transferencia',
-        status: 'pendiente',
-        registeredBy: 'Dra. Patricia Ortiz',
-        createdAt: '2026-08-15T12:00:00.000Z'
-    },
-    {
-        id: 'pay-6',
-        patientId: 'patient-6',
-        patientName: 'Leonardo Salinas Vargas',
-        concept: 'Primera sesión',
-        amount: 700,
-        date: '2026-08-05',
-        method: 'tarjeta',
-        status: 'pendiente',
-        registeredBy: 'Marta Gómez',
-        createdAt: '2026-08-05T12:00:00.000Z'
+        status: 'pagado',
+        registeredBy: 'Mtro. Alejandro Mendoza Garza',
+        createdAt: `${todayISO()}T12:00:00.000Z`
     }
 ];
 

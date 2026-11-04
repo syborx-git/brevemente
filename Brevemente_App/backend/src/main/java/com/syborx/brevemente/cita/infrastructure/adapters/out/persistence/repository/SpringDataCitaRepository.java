@@ -17,7 +17,7 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
 
     @Query(value = """
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
-                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.modalidad,
+                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
                    c.bloqueada_por_normativa, c.created_at, c.updated_at
             FROM citas c
@@ -165,7 +165,7 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
 
     @Query(value = """
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
-                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.modalidad,
+                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
                    c.bloqueada_por_normativa, c.created_at, c.updated_at
             FROM citas c
@@ -187,7 +187,7 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
 
     @Query(value = """
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
-                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.modalidad,
+                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
                    c.bloqueada_por_normativa, c.created_at, c.updated_at
             FROM citas c
@@ -211,7 +211,7 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
 
     @Query(value = """
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
-                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.modalidad,
+                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
                    c.bloqueada_por_normativa, c.created_at, c.updated_at
             FROM citas c
@@ -234,7 +234,7 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
 
     @Query(value = """
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
-                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.modalidad,
+                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
                    c.bloqueada_por_normativa, c.created_at, c.updated_at
             FROM citas c

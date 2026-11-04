@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
 import { FileText, Send, Paperclip, Download, ShieldCheck, HelpCircle, Lock, AlertTriangle } from 'lucide-react';
-import { Role, Patient } from '../types/clinical';
+import { Role, Patient, PhysicalCertificateType } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP } from '../utils/legalConsent';
+import { todayISO, startOfMonthISO } from '../utils/dates';
+
+const CERTIFICATE_TYPES: Record<PhysicalCertificateType, string> = {
+  psicoterapeutica: 'Constancia Psicoterapéutica',
+  psiquiatrica: 'Constancia Psiquiátrica / Farmacológica',
+  asistencia: 'Constancia de Asistencia a Citas',
+  informe_pericial: 'Informe Pericial',
+  justificante: 'Justificante'
+};
 
 interface ReportsProps {
   userRole: Role;
@@ -11,27 +20,28 @@ interface ReportsProps {
 }
 
 export const Reports: React.FC<ReportsProps> = ({ userRole, patients, userName }) => {
-  const [selectedPatientId, setSelectedPatientId] = useState('patient-1');
+  const [selectedPatientId, setSelectedPatientId] = useState('pac-002');
   const activePatient = patients.find(p => p.id === selectedPatientId);
 
   const blockCheck = isActionBlockedByLegalConsent(activePatient);
   const isBlocked = blockCheck.isBlocked;
 
   // Form states
+  const [certificateType, setCertificateType] = useState<PhysicalCertificateType>('psicoterapeutica');
   const [profName, setProfName] = useState(userName);
-  const [license, setLicense] = useState('CED-8849302-MX');
+  const [license, setLicense] = useState('CED-782190-PSIC');
   const [address, setAddress] = useState('Av. Universidad 402, CDMX');
   const [phone, setPhone] = useState('+52 55 9999 8888');
-  const [email, setEmail] = useState('consultorio.silva@email.com');
-  const [periodStart, setPeriodStart] = useState('2026-08-01');
-  const [periodEnd, setPeriodEnd] = useState('2026-08-24');
+  const [email, setEmail] = useState('sofia.ramirez@brevemente.org');
+  const [periodStart, setPeriodStart] = useState(startOfMonthISO());
+  const [periodEnd, setPeriodEnd] = useState(todayISO());
   const [totalSessions, setTotalSessions] = useState(3);
   const [frequency, setFrequency] = useState('Semanal');
   const [modality, setModality] = useState('Sesiones en Línea (Videollamada)');
   const [symptoms, setSymptoms] = useState('Crisis agudas de ansiedad, agorafobia leve y evitación conductual.');
   const [evolution, setEvolution] = useState('Favorable. Disminución del 80% de crisis agudas espontáneas tras prescripciones de reestructuración paradójica (Worry Time).');
   const [recommendations, setRecommendations] = useState('Continuar exposiciones controladas autónomas y bitácoras de tareas.');
-  const [placeDate, setPlaceDate] = useState('Ciudad de México, a 24 de Agosto de 2026');
+  const [placeDate, setPlaceDate] = useState(() => `Ciudad de México, a ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}`);
 
   // Preview / actions simulation
   const [showPreview, setShowPreview] = useState(false);
@@ -43,7 +53,7 @@ export const Reports: React.FC<ReportsProps> = ({ userRole, patients, userName }
     // Registrar en auditoría
     auditLogService.addLog(
       'Generación de constancia',
-      `Generó borrador de constancia psicoterapéutica para el paciente ${activePatient?.name}.`,
+      `Generó borrador de ${CERTIFICATE_TYPES[certificateType].toLowerCase()} para el paciente ${activePatient?.name}.`,
       'reporte',
       { id: 'user-current', name: userName, role: userRole }
     );
@@ -99,10 +109,24 @@ export const Reports: React.FC<ReportsProps> = ({ userRole, patients, userName }
         <form onSubmit={handleGenerate} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 text-xs text-slate-600">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <FileText className="w-5 h-5 text-clinical-accent" />
-            <h3 className="text-sm font-bold text-clinical-dark">Generar Constancia Psicoterapéutica</h3>
+            <h3 className="text-sm font-bold text-clinical-dark">Generar {CERTIFICATE_TYPES[certificateType]}</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-500 font-semibold mb-1">Tipo de Constancia:</label>
+              <select
+                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none font-semibold text-clinical-dark"
+                value={certificateType}
+                onChange={(e) => setCertificateType(e.target.value as PhysicalCertificateType)}
+              >
+                <option value="psicoterapeutica">Constancia Psicoterapéutica</option>
+                <option value="psiquiatrica">Constancia Psiquiátrica / Farmacológica</option>
+                <option value="asistencia">Constancia de Asistencia a Citas</option>
+                <option value="informe_pericial">Informe Pericial</option>
+                <option value="justificante">Justificante</option>
+              </select>
+            </div>
             <div>
               <label className="block text-slate-500 font-semibold mb-1">Paciente Asignado:</label>
               <select
@@ -300,7 +324,7 @@ export const Reports: React.FC<ReportsProps> = ({ userRole, patients, userName }
 
                 {/* Título constancia */}
                 <div className="text-center font-sans">
-                  <h2 className="text-xs font-bold text-clinical-dark uppercase tracking-widest">Constancia Psicoterapéutica</h2>
+                  <h2 className="text-xs font-bold text-clinical-dark uppercase tracking-widest">{CERTIFICATE_TYPES[certificateType]}</h2>
                 </div>
 
                 {/* Cuerpo texto */}

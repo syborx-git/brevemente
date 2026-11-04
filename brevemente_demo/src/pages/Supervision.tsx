@@ -6,6 +6,7 @@ import {
 import { Role, Patient, SupervisionLog } from '../types/clinical';
 import { auditLogService } from '../services/auditLogService';
 import { mockRecordingAnnotations, mockRecordingTranscript } from '../services/academicData';
+import { daysAgoISO } from '../utils/dates';
 
 interface SupervisionProps {
   userRole: Role;
@@ -14,20 +15,20 @@ interface SupervisionProps {
 }
 
 export const Supervision: React.FC<SupervisionProps> = ({ userRole, patients, userName }) => {
-  const [selectedPatientId, setSelectedPatientId] = useState('patient-1');
+  const [selectedPatientId, setSelectedPatientId] = useState('pac-002');
   const activePatient = patients.find(p => p.id === selectedPatientId);
 
   // Historial de supervisión
   const [logs, setLogs] = useState<SupervisionLog[]>([
     {
       id: 'sup-1',
-      date: '2026-08-18',
+      date: daysAgoISO(76),
       supervisorName: 'Dra. Isabel Cárdenas',
       supervisorLicense: 'CED-9988221-MX',
-      patientId: 'patient-1',
-      patientName: 'Sofía Martínez',
-      therapistId: 'therapist-1',
-      therapistName: 'Dr. Alejandro Silva',
+      patientId: 'pac-002',
+      patientName: 'Valeria Gómez Fuentes',
+      therapistId: 'ter-001',
+      therapistName: 'Dra. Sofía Ramírez Lozano',
       sessionNumber: 2,
       problemDefinition: 'Ataques de pánico agudos. Solución intentada dominante de evitación y demanda de compañía.',
       currentSituation: 'Favorable, disminución de crisis agudas tras diario de abordo.',
@@ -107,8 +108,8 @@ export const Supervision: React.FC<SupervisionProps> = ({ userRole, patients, us
       supervisorLicense: license,
       patientId: selectedPatientId,
       patientName: activePatient.name,
-      therapistId: 'therapist-1',
-      therapistName: 'Dr. Alejandro Silva',
+      therapistId: 'ter-001',
+      therapistName: 'Dra. Sofía Ramírez Lozano',
       sessionNumber,
       problemDefinition,
       currentSituation,
@@ -443,12 +444,12 @@ export const Supervision: React.FC<SupervisionProps> = ({ userRole, patients, us
                 <div className="space-y-2 font-semibold">
                   <div className="flex justify-between items-center bg-red-50/30 p-2 border border-red-150 rounded">
                     <div>
-                      <span className="font-bold text-clinical-dark block">Sofía Martínez (Sesión 3)</span>
+                      <span className="font-bold text-clinical-dark block">Valeria Gómez Fuentes (Sesión 3)</span>
                       <span className="text-[9px] text-red-700 font-bold block uppercase mt-0.5">⚠️ Riesgo Elevado</span>
                     </div>
                     <button 
                       onClick={() => {
-                        setSelectedPatientId('patient-1');
+                        setSelectedPatientId('pac-002');
                         setActiveTab('grabaciones');
                       }}
                       className="text-[#75AFBC] hover:underline text-[9px] font-bold font-sans"
@@ -485,7 +486,7 @@ export const Supervision: React.FC<SupervisionProps> = ({ userRole, patients, us
                 <Clock className="w-5 h-5 text-[#75AFBC]" />
                 Auditoría de Audio y Transcripción Clínica (HITL)
               </h3>
-              <p className="text-slate-400 font-semibold mt-0.5">Paciente: {activePatient?.name || 'Sofía Martínez'} • Consentimiento firmado para grabación con IA (Sí)</p>
+              <p className="text-slate-400 font-semibold mt-0.5">Paciente: {activePatient?.name || 'Valeria Gómez Fuentes'} • Consentimiento firmado para grabación con IA (Sí)</p>
             </div>
             <div className="flex items-center gap-1.5 font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg">
               <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />

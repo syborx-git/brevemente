@@ -17,6 +17,7 @@ import { SecurityAudit } from './pages/SecurityAudit';
 import { IntakeForm } from './pages/IntakeForm';
 import { Campus } from './pages/Campus';
 import { MiConsulta } from './pages/MiConsulta';
+import { Configuracion } from './pages/Configuracion';
 
 // Componentes Demo y LEVA
 import { DemoLauncher } from './components/DemoLauncher';
@@ -35,16 +36,13 @@ import { recordService } from './services/recordService';
 import { sessionService } from './services/sessionService';
 import { hasPermission } from './utils/permissions';
 
-
-import { therapistSettingsService } from './services/therapistSettingsService';
-
 const USER_NAMES: Record<Role, string> = {
   admin_platform: 'Ing. Rodrigo Pérez',
-  admin_clinical: 'Dra. Patricia Ortiz',
-  therapist: 'Dr. Alejandro Silva',
+  admin_clinical: 'Mtro. Alejandro Mendoza Garza',
+  therapist: 'Dra. Sofía Ramírez Lozano',
   assistant: 'Marta Gómez',
   supervisor: 'Dra. Isabel Cárdenas',
-  patient: 'Sofía Martínez',
+  patient: 'Valeria Gómez Fuentes',
   student: 'Carlos Mendoza'
 };
 
@@ -52,10 +50,9 @@ function App() {
   const [currentRole, setCurrentRole] = useState<Role>('therapist');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [edadMinimaConfig, setEdadMinimaConfig] = useState<number>(0);
   // Paciente actualmente simulado en la vista de demo de paciente
-  const [currentPatientId, setCurrentPatientId] = useState<string>('patient-1');
-  const [currentTherapistId, setCurrentTherapistId] = useState<string>('therapist-1');
+  const [currentPatientId, setCurrentPatientId] = useState<string>('pac-002');
+  const [currentTherapistId, setCurrentTherapistId] = useState<string>('ter-001');
 
   // Estados de la Demo y LEVA
   const [activeTour, setActiveTour] = useState<'executiva' | 'clinica' | 'academic' | 'none'>('none');
@@ -67,7 +64,6 @@ function App() {
   const loadLocalData = async () => {
     setPatients(await patientService.getAll());
     setAppointments(await appointmentService.getAll());
-    setEdadMinimaConfig(therapistSettingsService.getEdadMinimaAtencion());
   };
 
   useEffect(() => {
@@ -85,7 +81,7 @@ function App() {
 
     // Si no existen o si provienen de la versión anterior sin capacidadConsentimiento, sin múltiples terapeutas
     // o sin sessionFrequency, actualizar con mockPatients
-    if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento) || !parsedPatients.some(p => p.therapistId === 'therapist-2') || !parsedPatients.some(p => p.sessionFrequency)) {
+    if (!localPatients || parsedPatients.length === 0 || !parsedPatients.some(p => p.capacidadConsentimiento) || !parsedPatients.some(p => p.therapistId === 'ter-002') || !parsedPatients.some(p => p.sessionFrequency) || !parsedPatients.some(p => p.id.startsWith('pac-'))) {
       localStorage.setItem('brevemente_patients', JSON.stringify(mockPatients));
     }
 
@@ -94,7 +90,7 @@ function App() {
     if (localAppointments) {
       try { parsedAppointments = JSON.parse(localAppointments); } catch { parsedAppointments = []; }
     }
-    if (!localAppointments || parsedAppointments.length === 0 || !parsedAppointments.some(a => a.paymentStatus) || !parsedAppointments.some(a => a.status === 'no_presentado') || !parsedAppointments.some(a => a.status === 'solicita_reagendar')) {
+    if (!localAppointments || parsedAppointments.length === 0 || !parsedAppointments.some(a => a.paymentStatus) || !parsedAppointments.some(a => a.status === 'no_presentado') || !parsedAppointments.some(a => a.status === 'solicita_reagendar') || !parsedAppointments.some(a => a.patientId.startsWith('pac-'))) {
       localStorage.setItem('brevemente_appointments', JSON.stringify(mockAppointments));
     }
     loadLocalData();
@@ -170,7 +166,7 @@ function App() {
     setCurrentRole(role);
     // El terapeuta y su asistente parten con el caseload de Dr. Silva.
     if (role === 'therapist' || role === 'assistant') {
-      setCurrentTherapistId('therapist-1');
+      setCurrentTherapistId('ter-001');
     }
     auditLogService.addLog(
       'Cambio de Rol (Demo)',
@@ -512,53 +508,10 @@ function App() {
                       path="/configuracion"
                       element={
                         hasPermission(currentRole, 'configuracion') ? (
-                          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-xs text-slate-650 space-y-6">
-                            <div>
-                              <h3 className="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">
-                                Configuración General de BreveMente
-                              </h3>
-                              <p className="text-slate-400 mt-1">
-                                Parámetros del terapeuta, reglas de admisión y resguardo legal.
-                              </p>
-                            </div>
-
-                            {/* Parámetros del Terapeuta */}
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
-                              <span className="font-bold text-clinical-dark text-xs uppercase tracking-wider block border-b border-slate-200 pb-2">
-                                Parámetros de Atención y Criterio Clínico
-                              </span>
-
-                              <div className="max-w-md space-y-2">
-                                <label className="block font-bold text-clinical-dark text-xs">
-                                  Edad mínima por criterio de consulta (años cumplidos):
-                                </label>
-                                <p className="text-[11px] text-slate-500">
-                                  Define el umbral de edad de atención preferente. Si un paciente registrado tiene una edad menor a este parámetro, el sistema emitirá una advertencia no bloqueante en el paso 1 de creación.
-                                </p>
-                                <div className="flex items-center gap-3 pt-1">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={99}
-                                    value={edadMinimaConfig}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value, 10) || 0;
-                                      setEdadMinimaConfig(val);
-                                      therapistSettingsService.setEdadMinimaAtencion(val);
-                                    }}
-                                    className="w-24 px-3 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-clinical-dark focus:ring-1 focus:ring-clinical-accent focus:outline-none"
-                                  />
-                                  <span className="text-[11px] font-semibold text-slate-600">
-                                    {edadMinimaConfig === 0 ? '(0 = Sin límite de edad mínima)' : `Aviso si menor a ${edadMinimaConfig} años`}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-clinical-accent">
-                              Esta sección sincroniza en tiempo real los parámetros del clínico en almacenamiento seguro de sesión.
-                            </div>
-                          </div>
+                          <Configuracion
+                            userRole={currentRole}
+                            userName={USER_NAMES[currentRole]}
+                          />
                         ) : (
                           <Navigate to="/" replace />
                         )
@@ -583,7 +536,7 @@ function App() {
                     onClose={() => setIsLevaOpen(false)}
                     userRole={currentRole}
                     userName={USER_NAMES[currentRole]}
-                    patientName="Sofía Martínez"
+                    patientName="Valeria Gómez Fuentes"
                     activeProtocol="Ataque de Pánico"
                     onAcceptSuggestion={(text) => {
                       // Dispara evento global de inyección para ClinicalRecord

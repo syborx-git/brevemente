@@ -13,7 +13,7 @@ interface IntakeFormProps {
 export const IntakeForm: React.FC<IntakeFormProps> = ({ patients, onUpdatePatient }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const patientId = searchParams.get('id') || 'patient-2'; // Default a Carlos Mendoza si no hay ID
+  const patientId = searchParams.get('id') || 'pac-001'; // Default a Mateo Herrera Santos si no hay ID
   const patient = patients.find(p => p.id === patientId);
 
   // Form states

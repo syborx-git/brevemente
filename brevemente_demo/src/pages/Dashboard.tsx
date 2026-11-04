@@ -15,8 +15,10 @@ import { auditLogService } from '../services/auditLogService';
 import { riskSimulationService } from '../services/riskSimulationService';
 import { mockStudentProfile } from '../services/academicData';
 import { therapistService } from '../services/therapistService';
+import { sedesService } from '../services/sedesService';
 import { checkAgingMinorPatients } from '../utils/legalConsent';
 import { sessionMinutes } from '../utils/sessionDuration';
+import { todayISO, startOfWeekISO, endOfWeekISO } from '../utils/dates';
 
 interface DashboardProps {
   userRole: Role;
@@ -27,7 +29,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, patients, userName }) => {
   const navigate = useNavigate();
-  const todayStr = '2026-08-24'; // Simulado hoy
+  const todayStr = todayISO();
 
   // --- FILTROS DE CABECERA ---
   const [selectedSede, setSelectedSede] = useState<string>('all');
@@ -73,22 +75,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   // --- ASIGNACIÓN DE SEDES Y PERIODO A LOS DATOS DE DEMO ---
   // Para que sede y periodo filtren de verdad los datos:
   const getPatientSede = (patientId: string): string => {
-    if (patientId === 'patient-1') return 'centro';
-    if (patientId === 'patient-2') return 'centro';
-    if (patientId === 'patient-3') return 'norte';
-    return 'sur'; // patient-4 u otros
+    return sedesService.getSedeIdByPatientId(patientId);
   };
 
   const getPatientModality = (patientId: string): string => {
-    if (patientId === 'patient-1' || patientId === 'patient-2') return 'online';
+    if (patientId === 'pac-002') return 'online';
     return 'presencial';
   };
 
   const getPatientProtocol = (patientId: string): string => {
-    if (patientId === 'patient-1') return 'Ataque de Pánico';
-    if (patientId === 'patient-3') return 'TOC Control';
-    if (patientId === 'patient-5') return 'Fobia Escolar';
-    return 'Fobia Social';
+    if (patientId === 'pac-001') return 'Fobia de rendimiento';
+    if (patientId === 'pac-002') return 'Ataque de Pánico';
+    if (patientId === 'pac-003') return 'Fobia de rendimiento';
+    return 'Conflicto de pareja';
   };
 
   // Filtrar pacientes
@@ -117,8 +116,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
       return app.date === todayStr;
     }
     if (selectedPeriod === 'semana') {
-      // Semana del 24 de agosto al 28 de agosto
-      return app.date >= '2026-08-24' && app.date <= '2026-08-28';
+      return app.date >= startOfWeekISO() && app.date <= endOfWeekISO();
     }
     return true; // mes/trimestre/año muestra todo el set de demo
   });
@@ -161,17 +159,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
 
       // Escalar alerta de contingencia a supervisores y registrar en auditoría
       riskSimulationService.escalateRisk(
-        'patient-1',
-        'Sofía Martínez',
+        'pac-002',
+        'Valeria Gómez Fuentes',
         'ALERTA ROJA: El paciente pulsó el Botón de Crisis de emergencia desde su dashboard principal.',
-        { id: 'patient-1', name: 'Sofía Martínez', role: 'patient' }
+        { id: 'pac-002', name: 'Valeria Gómez Fuentes', role: 'patient' }
       );
 
       auditLogService.addLog(
         'Botón de Crisis activado',
         'El paciente activó el Botón de Crisis. Teléfonos de auxilio mostrados y alerta enviada a supervisión.',
         'seguridad',
-        { id: 'patient-1', name: 'Sofía Martínez', role: 'patient' }
+        { id: 'pac-002', name: 'Valeria Gómez Fuentes', role: 'patient' }
       );
     };
 
@@ -182,7 +180,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           <div className="flex justify-between items-start flex-wrap gap-4">
             <div>
               <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Mi Portal de Terapia</span>
-              <h2 className="text-xl font-bold mt-1.5">¡Hola, Sofía Martínez!</h2>
+              <h2 className="text-xl font-bold mt-1.5">¡Hola, Valeria Gómez Fuentes!</h2>
               <p className="text-xs text-white/80 font-medium mt-0.5">Espacio confidencial para el seguimiento de tu proceso de salud mental.</p>
             </div>
             <button
@@ -210,13 +208,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                     <Calendar className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-clinical-dark block">Hoy, 24 de Agosto de 2026</span>
+                    <span className="text-xs font-bold text-clinical-dark block">Hoy, {todayStr}</span>
                     <span className="text-[10px] font-semibold text-slate-500 block mt-0.5">Horario: 09:00 AM — Modalidad: Presencial (Sede Centro)</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] text-slate-450 block font-bold">Terapeuta Responsable:</span>
-                  <span className="text-xs font-extrabold text-clinical-dark block">Dr. Alejandro Silva</span>
+                  <span className="text-xs font-extrabold text-clinical-dark block">Dra. Sofía Ramírez Lozano</span>
                 </div>
               </div>
             </div>
@@ -235,7 +233,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                   <p className="text-xs text-slate-600 mt-1 font-medium">
                     "Anotar en la libreta cada ataque de pánico justo en el momento en que ocurra, registrando la hora, síntomas y pensamientos."
                   </p>
-                  <span className="text-[9px] text-slate-400 block mt-2">Asignado por: <b>Dr. Alejandro Silva</b> (Sesión 1)</span>
+                  <span className="text-[9px] text-slate-400 block mt-2">Asignado por: <b>Dra. Sofía Ramírez Lozano</b> (Sesión 1)</span>
                 </div>
 
                 <div className="bg-slate-50 border-l-4 border-l-[#304768] p-4 rounded-r-xl">
@@ -246,7 +244,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                   <p className="text-xs text-slate-600 mt-1 font-medium">
                     "Elegir un horario fijo al día (ej. 18:00 hrs) para encerrarse a solas por 30 minutos y evocar voluntariamente sus peores temores hasta que la ansiedad disminuya."
                   </p>
-                  <span className="text-[9px] text-slate-400 block mt-2">Asignado por: <b>Dr. Alejandro Silva</b> (Sesión 2)</span>
+                  <span className="text-[9px] text-slate-400 block mt-2">Asignado por: <b>Dra. Sofía Ramírez Lozano</b> (Sesión 2)</span>
                 </div>
               </div>
             </div>
@@ -286,7 +284,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                 <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide">LEVA Paciente</span>
               </div>
               <p className="text-slate-600 font-semibold leading-relaxed text-xs">
-                Hola, Sofía. Soy <b>LEVA Paciente</b>. Puedo resolver dudas sobre cómo realizar tus tareas asignadas o explicarte el modelo de terapia de Arezzo.
+                Hola, Valeria. Soy <b>LEVA Paciente</b>. Puedo resolver dudas sobre cómo realizar tus tareas asignadas o explicarte el modelo de terapia de Arezzo.
               </p>
 
               <div className="bg-white p-3 rounded-lg border border-slate-100 space-y-2">
@@ -327,7 +325,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
                 <h3 className="font-extrabold text-sm uppercase tracking-wider text-red-600">Atención de Crisis Inmediata</h3>
               </div>
               <p className="font-bold text-slate-700 text-xs leading-relaxed">
-                ⚠️ Se ha notificado inmediatamente al **Dr. Alejandro Silva** y al **Supervisor de Guardia** sobre tu estado de crisis. Un profesional se comunicará contigo de forma prioritaria.
+                ⚠️ Se ha notificado inmediatamente al **Dra. Sofía Ramírez Lozano** y al **Supervisor de Guardia** sobre tu estado de crisis. Un profesional se comunicará contigo de forma prioritaria.
               </p>
 
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
@@ -406,12 +404,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
   // --- FILTRADO DE MÉTRICAS SEGÚN ACCESO ROL (DOM SEGURO) ---
   const isAssistant = userRole === 'assistant';
 
-  // Sedes Ficticias
+  // Sedes desde el catálogo de sedesService (solo lectura)
   const SEDES = [
     { id: 'all', name: 'Todas las Sedes' },
-    { id: 'centro', name: 'Sede Centro BreveMente' },
-    { id: 'norte', name: 'Sede Norte BreveMente' },
-    { id: 'sur', name: 'Sede Sur BreveMente' }
+    ...sedesService.getAll().map(s => ({ id: s.id, name: s.nombre }))
   ];
 
   return (
@@ -446,6 +442,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
               className="px-3.5 py-1.5 bg-clinical-dark hover:bg-clinical-darkLight text-white rounded-lg font-bold text-[10px] shadow-sm flex items-center gap-1 transition-colors"
             >
               LEVA
+            </button>
+            <button
+              onClick={() => navigate('/pacientes')}
+              className="px-3.5 py-1.5 bg-[#75AFBC] hover:bg-[#6099a5] text-white rounded-lg font-bold text-[10px] shadow-sm flex items-center gap-1 transition-colors"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              Nuevo Paciente
+            </button>
+            <button
+              onClick={() => navigate('/agenda')}
+              className="px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-clinical-dark font-bold text-[10px] rounded-lg shadow-sm flex items-center gap-1 transition-colors"
+            >
+              Agendar Cita
             </button>
           </div>
         </div>
@@ -493,8 +502,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             onChange={(e) => { setSelectedTherapist(e.target.value); setLastUpdated('Hace unos instantes'); }}
           >
             <option value="all">Todos los Terapeutas</option>
-            <option value="therapist-1">Dr. Alejandro Silva</option>
-            <option value="therapist-2">Dra. Patricia Ortiz</option>
+            <option value="ter-001">Dra. Sofía Ramírez Lozano</option>
+            <option value="ter-002">Mtro. Alejandro Mendoza Garza</option>
           </select>
 
           <select
@@ -503,8 +512,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
             onChange={(e) => { setSelectedProtocol(e.target.value); setLastUpdated('Hace unos instantes'); }}
           >
             <option value="all">Todos los Protocolos</option>
+            <option value="Fobia de rendimiento">Fobia de Rendimiento</option>
             <option value="Ataque de Pánico">Ataque de Pánico</option>
-            <option value="TOC Control">TOC de Verificación</option>
+            <option value="Conflicto de pareja">Conflicto de Pareja</option>
           </select>
 
           <button
@@ -516,119 +526,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
           </button>
         </div>
       </div>
-
-      {/* ZONA 5: VISIÓN CLÍNICA RESUMIDA (UNA SOLA GRÁFICA PRINCIPAL CON SELECTOR DE PERSPECTIVA) */}
-      {!isAssistant && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4" data-tour="dashboard-results">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
-            <div>
-              <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide block">Perspectiva Clínica Unificada</span>
-              <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Selecciona el ángulo analítico a visualizar en el viewport principal.</p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Selector de Doctor (solo roles superiores al terapeuta) */}
-              {['admin_clinical', 'admin_platform', 'supervisor'].includes(userRole) && (
-                <select
-                  className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
-                  value={chartTherapist}
-                  onChange={(e) => setChartTherapist(e.target.value)}
-                >
-                  <option value="all">Todos los doctores</option>
-                  {therapistService.getAll().map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              )}
-
-              {/* Selector de Perspectiva (Dropdown) */}
-              <select
-                className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
-                value={chartPerspective}
-                onChange={(e) => setChartPerspective(e.target.value)}
-              >
-                <option value="citas">Citas completadas (Histórico)</option>
-                <option value="fases">Distribución por Fase TBE</option>
-                <option value="protocolos">Casos Activos por Protocolo</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="h-64 flex items-center justify-center">
-            {chartPerspective === 'fases' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Fase 1: Admisión/Definición', value: chartPatients.filter(p => p.status === 'pendiente').length || (chartPatients.length === 0 ? 0 : 0) },
-                      { name: 'Fase 2: Desbloqueo', value: chartPatients.filter(p => p.status === 'activo' && p.riskLevel !== 'bajo').length },
-                      { name: 'Fase 3: Consolidación', value: chartPatients.filter(p => p.status === 'activo' && p.riskLevel === 'bajo').length },
-                      { name: 'Fase 4: Cierre/Alta', value: chartPatients.filter(p => p.status === 'completado' || p.status === 'archivado').length }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    <Cell fill="#304768" />
-                    <Cell fill="#75AFBC" />
-                    <Cell fill="#319795" />
-                    <Cell fill="#4A5568" />
-                  </Pie>
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 10, fontWeight: 'bold' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-
-            {chartPerspective === 'protocolos' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { name: 'Ataque Pánico', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length },
-                  { name: 'TOC Control', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'TOC Control').length },
-                  { name: 'Fobia Escolar', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Escolar').length },
-                  { name: 'Fobia Social', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Fobia Social').length }
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                  <Tooltip />
-                  <Bar dataKey="casos" fill="#75AFBC" name="Casos">
-                    <Cell fill="#304768" />
-                    <Cell fill="#75AFBC" />
-                    <Cell fill="#2C7A7B" />
-                    <Cell fill="#4A5568" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-
-            {chartPerspective === 'citas' && (() => {
-              // Agrupar citas reales por mes para reflejar diferencias entre terapeutas
-              const monthData = ['2026-07', '2026-08', '2026-09'].map((prefix, i) => {
-                const label = ['Jul', 'Ago', 'Sep'][i];
-                return {
-                  month: label,
-                  citas: chartAppointments.filter(a => a.date.startsWith(prefix)).length
-                };
-              });
-              return (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                    <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} allowDecimals={false} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="citas" name="Citas por Mes" stroke="#304768" strokeWidth={3} />
-                  </LineChart>
-                </ResponsiveContainer>
-              );
-            })()}
-          </div>
-        </div>
-      )}
 
       {/* ALERTA DE MAYORÍA DE EDAD — CUMPLIMIENTO DE 18 AÑOS */}
       {agingPatients.length > 0 && (
@@ -909,6 +806,124 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, appointments, pa
         </div>
 
       </div>
+
+      {/* ZONA 5: VISIÓN CLÍNICA RESUMIDA (UNA SOLA GRÁFICA PRINCIPAL CON SELECTOR DE PERSPECTIVA) */}
+      {!isAssistant && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4" data-tour="dashboard-results">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
+            <div>
+              <span className="font-extrabold text-clinical-dark text-xs uppercase tracking-wide block">Perspectiva Clínica Unificada</span>
+              <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Selecciona el ángulo analítico a visualizar en el viewport principal.</p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Selector de Doctor (solo roles superiores al terapeuta) */}
+              {['admin_clinical', 'admin_platform', 'supervisor'].includes(userRole) && (
+                <select
+                  className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
+                  value={chartTherapist}
+                  onChange={(e) => setChartTherapist(e.target.value)}
+                >
+                  <option value="all">Todos los doctores</option>
+                  {therapistService.getAll().map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Selector de Perspectiva (Dropdown) */}
+              <select
+                className="px-2.5 py-1.5 border border-slate-250 bg-white rounded-lg focus:outline-none text-[11px] font-bold text-slate-650"
+                value={chartPerspective}
+                onChange={(e) => setChartPerspective(e.target.value)}
+              >
+                <option value="citas">Citas completadas (Histórico)</option>
+                <option value="fases">Distribución por Fase TBE</option>
+                <option value="protocolos">Casos Activos por Protocolo</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="h-64 flex items-center justify-center">
+            {chartPerspective === 'fases' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Fase 1: Admisión/Definición', value: chartPatients.filter(p => p.status === 'pendiente').length || (chartPatients.length === 0 ? 0 : 0) },
+                      { name: 'Fase 2: Desbloqueo', value: chartPatients.filter(p => p.status === 'activo' && p.riskLevel !== 'bajo').length },
+                      { name: 'Fase 3: Consolidación', value: chartPatients.filter(p => p.status === 'activo' && p.riskLevel === 'bajo').length },
+                      { name: 'Fase 4: Cierre/Alta', value: chartPatients.filter(p => p.status === 'completado' || p.status === 'archivado').length }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    <Cell fill="#304768" />
+                    <Cell fill="#75AFBC" />
+                    <Cell fill="#319795" />
+                    <Cell fill="#4A5568" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 10, fontWeight: 'bold' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+
+            {chartPerspective === 'protocolos' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[
+                  { name: 'Fobia de rendimiento', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Fobia de rendimiento').length },
+                  { name: 'Ataque de Pánico', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Ataque de Pánico').length },
+                  { name: 'Conflicto de pareja', casos: chartPatients.filter(p => getPatientProtocol(p.id) === 'Conflicto de pareja').length }
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <Tooltip />
+                  <Bar dataKey="casos" fill="#75AFBC" name="Casos">
+                    <Cell fill="#304768" />
+                    <Cell fill="#75AFBC" />
+                    <Cell fill="#2C7A7B" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+
+            {chartPerspective === 'citas' && (() => {
+              // Últimos 3 meses reales relativos a hoy
+              const monthData = (() => {
+                const now = new Date();
+                const result: { month: string; citas: number }[] = [];
+                for (let i = 2; i >= 0; i--) {
+                  const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                  const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  const label = d.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
+                  result.push({
+                    month: label,
+                    citas: chartAppointments.filter(a => a.date.startsWith(prefix)).length
+                  });
+                }
+                return result;
+              })();
+              return (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={monthData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                    <YAxis tick={{ fontSize: 10, fontWeight: 'bold' }} allowDecimals={false} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="citas" name="Citas por Mes" stroke="#304768" strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* --- MODALES DE DRILLDOWN (PROFUNDIZACIÓN) --- */}
       {activeDrilldown && (
