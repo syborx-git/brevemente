@@ -144,6 +144,8 @@ Centro de mando global: salud operativa de toda la plataforma, sin foco en un so
 | Alertas de sistema | Consentimientos pendientes (menores), riesgos altos, citas bloqueadas por normativa. |
 | Salud de plataforma | Estado de módulos, feature flags activos, errores recientes. |
 
+> ⚠️ **SUPERADO por el SDD** (`sdd-vista-admin-plataforma-dashboard.md`, diseño final). El alcance final difiere: solo **2 KPIs** (terapeutas activos, pacientes activos), **actividad reciente sin citas ni pacientes** (solo accesos + usuarios nuevos) y **alertas únicamente administrativas/financieras** (suscripción vencida + pago recibido). Esta tabla NO debe usarse como referencia de implementación.
+
 ### 4.3 Datos backend requeridos (por confirmar)
 - `usuarios` activos por rol.
 - `terapeutas` activos.
