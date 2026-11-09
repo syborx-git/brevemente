@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import {
   LucideAngularModule,
   LayoutDashboard,
@@ -8,9 +8,11 @@ import {
   Building2,
   Settings,
   ShieldCheck,
-  BarChart3
+  BarChart3,
+  LogOut
 } from 'lucide-angular';
 import { RoleStateService } from '../../services/role-state.service';
+import { LoginRepository } from '../../../modules/login/ports/login.repository';
 
 interface AdminNavItem {
   path?: string;
@@ -65,7 +67,26 @@ export class AdminSidebarComponent {
     }
   ];
 
-  constructor(protected readonly roleService: RoleStateService) {}
+  constructor(
+    protected readonly roleService: RoleStateService,
+    private readonly loginRepo: LoginRepository,
+    private readonly router: Router
+  ) {}
+
+  readonly logOutIcon = LogOut;
+
+  logout(): void {
+    this.loginRepo.cerrarSesion().subscribe({
+      next: () => {
+        this.roleService.logout();
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.roleService.logout();
+        this.router.navigate(['/login']);
+      }
+    });
+  }
 
   getUserInitials(): string {
     const name = this.roleService.currentUserName || 'Administrador';

@@ -11,6 +11,8 @@ export interface LoginCredentials {
 export interface AuthSession {
   token: string;
   user: User;
+  /** Flag de onboarding: true mientras la contraseña temporal no haya sido reemplazada. */
+  debeCambiarPassword: boolean;
 }
 
 /**
@@ -22,4 +24,5 @@ export abstract class LoginRepository {
   abstract autenticar(credentials: LoginCredentials): Observable<AuthSession | null>;
   abstract refrescarSesion(): Observable<AuthSession | null>;
   abstract cerrarSesion(): Observable<void>;
+  abstract cambiarPassword(passwordActual: string, nuevaPassword: string): Observable<void>;
 }

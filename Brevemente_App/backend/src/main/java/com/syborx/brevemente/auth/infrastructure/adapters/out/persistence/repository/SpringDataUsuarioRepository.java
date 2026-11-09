@@ -17,6 +17,8 @@ public interface SpringDataUsuarioRepository extends JpaRepository<UsuarioJpaEnt
         Integer getTokenVersion();
 
         Boolean getActivo();
+
+        Boolean getDebeCambiarPassword();
     }
 
     /**
@@ -34,7 +36,8 @@ public interface SpringDataUsuarioRepository extends JpaRepository<UsuarioJpaEnt
             + "where u.id = :id")
     Optional<UsuarioJpaEntity> findByIdWithPermisos(@Param("id") String id);
 
-    @Query("select u.tokenVersion as tokenVersion, u.activo as activo from UsuarioJpaEntity u where u.id = :id")
+    @Query("select u.tokenVersion as tokenVersion, u.activo as activo, u.debeCambiarPassword as debeCambiarPassword "
+            + "from UsuarioJpaEntity u where u.id = :id")
     Optional<EstadoSesionView> findEstadoSesion(@Param("id") String id);
 
     /** Actualiza la marca de último acceso (login) del usuario. */
@@ -47,4 +50,17 @@ public interface SpringDataUsuarioRepository extends JpaRepository<UsuarioJpaEnt
     @Query(value = "UPDATE usuarios SET token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP "
             + "WHERE id = :usuarioId", nativeQuery = true)
     void incrementTokenVersion(@Param("usuarioId") String usuarioId);
+
+    @Modifying
+    @Query(value = "UPDATE usuarios SET password_hash = :hash, debe_cambiar_password = FALSE, "
+            + "password_temporal_vence_en = NULL, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE id = :usuarioId", nativeQuery = true)
+    void actualizarPassword(@Param("usuarioId") String usuarioId, @Param("hash") String hash);
+
+    @Modifying
+    @Query(value = "UPDATE usuarios SET password_hash = :hash, debe_cambiar_password = TRUE, "
+            + "password_temporal_vence_en = :venceEn, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE id = :usuarioId", nativeQuery = true)
+    void establecerPasswordTemporal(@Param("usuarioId") String usuarioId, @Param("hash") String hash,
+                                    @Param("venceEn") java.time.OffsetDateTime venceEn);
 }

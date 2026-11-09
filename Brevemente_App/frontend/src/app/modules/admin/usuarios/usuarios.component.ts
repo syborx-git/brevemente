@@ -1,6 +1,9 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { of, switchMap } from 'rxjs';
+import { EditarUsuarioPayload, UsuariosAdminRepository, UsuarioAdminBackend } from './ports/usuarios.repository';
+import { UsuariosHttpAdapter } from './adapters/usuarios-http.adapter';
 
 type RolPlataforma =
   | 'admin_platform'
@@ -42,10 +45,12 @@ interface EstadoOpcion {
   selector: 'app-usuarios',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  providers: [{ provide: UsuariosAdminRepository, useClass: UsuariosHttpAdapter }],
   templateUrl: './usuarios.component.html',
   styleUrl: './usuarios.component.scss'
 })
-export class UsuariosComponent {
+export class UsuariosComponent implements OnInit {
+  private readonly repo = inject(UsuariosAdminRepository);
   readonly roles: RolOpcion[] = [
     { clave: 'admin_platform', etiqueta: 'Admin Plataforma' },
     { clave: 'admin_clinical', etiqueta: 'Admin Clínico' },
@@ -98,7 +103,8 @@ export class UsuariosComponent {
     rol: 'therapist' as RolPlataforma,
     estado: 'activo' as EstadoUsuario,
     cedula: '',
-    especialidad: ''
+    especialidad: '',
+    passwordConfirmacion: ''
   };
   mensajeError = '';
 
@@ -106,6 +112,9 @@ export class UsuariosComponent {
   resetUsuario: UsuarioAdmin | null = null;
   resetResultado: string | null = null;
   resetCopiado = false;
+  resetPaso: 'confirmacion' | 'resultado' = 'confirmacion';
+  resetPasswordConfirmacion = '';
+  resetMensajeError = '';
 
   private triggerElement: HTMLElement | null = null;
 
@@ -127,7 +136,7 @@ export class UsuariosComponent {
     this.triggerElement = document.activeElement as HTMLElement;
     this.modo = 'alta';
     this.editandoId = null;
-    this.formulario = { nombre: '', email: '', rol: 'therapist', estado: 'activo', cedula: '', especialidad: '' };
+    this.formulario = { nombre: '', email: '', rol: 'therapist', estado: 'activo', cedula: '', especialidad: '', passwordConfirmacion: '' };
     this.mensajeError = '';
     this.modalAbierto = true;
   }
@@ -145,7 +154,8 @@ export class UsuariosComponent {
       rol: u.rol,
       estado: u.estado,
       cedula: u.cedula ?? '',
-      especialidad: u.especialidad ?? ''
+      especialidad: u.especialidad ?? '',
+      passwordConfirmacion: ''
     };
     this.mensajeError = '';
     this.modalAbierto = true;
@@ -166,7 +176,10 @@ export class UsuariosComponent {
     }
     this.triggerElement = document.activeElement as HTMLElement;
     this.resetUsuario = u;
-    this.resetResultado = this.generarTemporal();
+    this.resetPaso = 'confirmacion';
+    this.resetPasswordConfirmacion = '';
+    this.resetMensajeError = '';
+    this.resetResultado = null;
     this.resetCopiado = false;
     this.resetModalAbierto = true;
   }
@@ -176,6 +189,9 @@ export class UsuariosComponent {
     this.resetUsuario = null;
     this.resetResultado = null;
     this.resetCopiado = false;
+    this.resetPaso = 'confirmacion';
+    this.resetPasswordConfirmacion = '';
+    this.resetMensajeError = '';
     if (this.triggerElement) {
       this.triggerElement.focus();
       this.triggerElement = null;
@@ -194,13 +210,72 @@ export class UsuariosComponent {
     this.resetCopiado = true;
   }
 
-  private generarTemporal(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    let out = '';
-    for (let i = 0; i < 12; i++) {
-      out += chars[Math.floor(Math.random() * chars.length)];
+  confirmarReset(): void {
+    if (!this.resetUsuario) {
+      return;
     }
-    return `Bv-${out}`;
+    const pwd = this.resetPasswordConfirmacion.trim();
+    if (!pwd) {
+      this.resetMensajeError = 'Escribe tu contraseña para confirmar.';
+      return;
+    }
+    this.repo.resetPassword(this.resetUsuario.id, { passwordConfirmacion: pwd }).subscribe({
+      next: (res) => {
+        this.resetResultado = res.passwordTemporal;
+        this.resetCopiado = false;
+        this.resetPaso = 'resultado';
+      },
+      error: () => {
+        this.resetMensajeError = 'No se pudo restablecer la contraseña (verifica tu contraseña).';
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    this.cargarUsuarios();
+  }
+
+  private cargarUsuarios(): void {
+    this.repo.listar('', 'todos', 'todos', 0, 100).subscribe({
+      next: (r) => {
+        this.usuarios = r.items.map((u) => this.mapearUsuario(u));
+      },
+      error: () => {}
+    });
+  }
+
+  private mapearUsuario(u: UsuarioAdminBackend): UsuarioAdmin {
+    return {
+      id: u.id,
+      nombre: `${u.nombre} ${u.apellidos}`.trim(),
+      email: u.email,
+      rol: (u.roles[0] as RolPlataforma) ?? 'therapist',
+      estado: (u.estado as EstadoUsuario) ?? 'activo',
+      cedula: u.cedulaProfesional,
+      especialidad: u.especialidad,
+      ultimaActividad: this.formatearFecha(u.ultimoAcceso ?? u.creadoEn ?? '')
+    };
+  }
+
+  private formatearFecha(iso: string): string {
+    if (!iso) { return ''; }
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) { return iso; }
+    const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (diffMin < 1) { return 'ahora'; }
+    if (diffMin < 60) { return `hace ${diffMin} min`; }
+    const horas = Math.floor(diffMin / 60);
+    if (horas < 24) { return `hoy · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+    const dias = Math.floor(horas / 24);
+    if (dias === 1) { return 'ayer'; }
+    if (dias < 7) { return `hace ${dias} días`; }
+    return d.toLocaleDateString('es-MX');
+  }
+
+  private dividirNombre(nombreCompleto: string): { nombre: string; apellidos: string } {
+    const parts = nombreCompleto.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) { return { nombre: '', apellidos: '' }; }
+    return { nombre: parts[0], apellidos: parts.slice(1).join(' ') || 'Sin apellido' };
   }
 
   guardar(): void {
@@ -212,37 +287,76 @@ export class UsuariosComponent {
     }
 
     if (this.modo === 'alta') {
-      this.usuarios.unshift({
-        id: `u-${Date.now()}`,
-        nombre,
+      const { nombre: n, apellidos } = this.dividirNombre(nombre);
+      this.repo.crear({
+        nombre: n,
+        apellidos,
         email,
-        rol: this.formulario.rol,
+        roles: [this.formulario.rol],
         estado: this.formulario.estado,
-        cedula: this.formulario.cedula.trim() || undefined,
-        especialidad: this.formulario.especialidad.trim() || undefined,
-        ultimaActividad: 'ahora'
+        cedulaProfesional: this.formulario.cedula.trim() || undefined,
+        especialidad: this.formulario.especialidad.trim() || undefined
+      }).subscribe({
+        next: (res) => {
+          this.cerrarModal();
+          this.cargarUsuarios();
+          this.resetUsuario = this.mapearUsuario(res.usuario);
+          this.resetResultado = res.passwordTemporal;
+          this.resetCopiado = false;
+          this.resetModalAbierto = true;
+        },
+        error: () => {
+          this.mensajeError = 'No se pudo crear el usuario (revisa correo o cédula).';
+        }
       });
-    } else {
-      const u = this.usuarios.find((x) => x.id === this.editandoId);
-      if (!u) {
+      return;
+    }
+
+    // Edición conectada al backend (requiere passwordConfirmacion — D12).
+    const u = this.usuarios.find((x) => x.id === this.editandoId);
+    if (!u) {
+      return;
+    }
+    if (u.rol === 'admin_platform' && u.estado === 'activo' && this.formulario.estado !== 'activo') {
+      const adminsActivos = this.usuarios.filter((x) => x.rol === 'admin_platform' && x.estado === 'activo').length;
+      if (adminsActivos <= 1) {
+        this.mensajeError = 'No puedes suspender al último administrador activo de la plataforma.';
         return;
       }
-      // Restricción de negocio: no suspender/desactivar al último admin activo.
-      if (u.rol === 'admin_platform' && u.estado === 'activo' && this.formulario.estado !== 'activo') {
-        const adminsActivos = this.usuarios.filter((x) => x.rol === 'admin_platform' && x.estado === 'activo').length;
-        if (adminsActivos <= 1) {
-          this.mensajeError = 'No puedes suspender al último administrador activo de la plataforma.';
-          return;
-        }
-      }
-      u.nombre = nombre;
-      u.email = email;
-      u.rol = this.formulario.rol;
-      u.estado = this.formulario.estado;
-      u.cedula = this.formulario.cedula.trim() || undefined;
-      u.especialidad = this.formulario.especialidad.trim() || undefined;
     }
-    this.cerrarModal();
+    const pwd = this.formulario.passwordConfirmacion.trim();
+    if (!pwd) {
+      this.mensajeError = 'Escribe tu contraseña para confirmar los cambios.';
+      return;
+    }
+    const { nombre: n, apellidos } = this.dividirNombre(nombre);
+    const payload: EditarUsuarioPayload = {
+      nombre: n,
+      apellidos,
+      email,
+      roles: [this.formulario.rol],
+      cedulaProfesional: this.formulario.cedula.trim() || undefined,
+      especialidad: this.formulario.especialidad.trim() || undefined,
+      passwordConfirmacion: pwd
+    };
+    const id = this.editandoId as string;
+    const estadoCambiado = this.formulario.estado !== u.estado;
+
+    this.repo.editar(id, payload)
+      .pipe(
+        switchMap(() => estadoCambiado
+          ? this.repo.cambiarEstado(id, { estado: this.formulario.estado, passwordConfirmacion: pwd })
+          : of(null))
+      )
+      .subscribe({
+        next: () => {
+          this.cerrarModal();
+          this.cargarUsuarios();
+        },
+        error: () => {
+          this.mensajeError = 'No se pudo guardar (verifica tu contraseña).';
+        }
+      });
   }
 
   esTerapeuta(): boolean {

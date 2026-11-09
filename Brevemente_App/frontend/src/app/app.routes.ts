@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './core/layout/main-layout/main-layout.component';
 import { authGuard } from './core/guards/auth.guard';
+import { credentialPendingGuard } from './core/guards/credential-pending.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { pacientePortalGuard } from './core/guards/paciente-portal.guard';
 import { staffOnlyGuard } from './core/guards/staff-only.guard';
@@ -14,6 +15,12 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./modules/login/login.component').then(m => m.LoginComponent)
+  },
+  // Onboarding: reemplazo obligatorio de contraseña temporal (fuera del shell).
+  {
+    path: 'onboarding',
+    canActivate: [authGuard, credentialPendingGuard],
+    loadComponent: () => import('./modules/onboarding/onboarding.component').then(m => m.OnboardingComponent)
   },
   // Aplicación autenticada: todo lo demás vive dentro del MainLayout (sidebar + header).
   {

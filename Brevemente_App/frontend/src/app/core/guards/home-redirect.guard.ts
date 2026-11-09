@@ -11,6 +11,11 @@ export const homeRedirectGuard: CanActivateFn = () => {
   const roleService = inject(RoleStateService);
   const router = inject(Router);
 
+  // Onboarding pendiente: el usuario debe reemplazar su contraseña temporal antes de entrar.
+  if (roleService.debeCambiarPassword) {
+    return router.createUrlTree(['/onboarding']);
+  }
+
   if (roleService.hasRole('patient')) {
     return router.createUrlTree(['/mi-historial']);
   }

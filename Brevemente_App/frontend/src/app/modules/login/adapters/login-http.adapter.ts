@@ -18,6 +18,7 @@ interface TokenResponseBackend {
     terapeutaIds?: string[];
     pacienteId?: string | null;
   };
+  debeCambiarPassword: boolean;
 }
 
 const VALID_ROLES: Role[] = [
@@ -96,6 +97,12 @@ export class LoginHttpAdapter implements LoginRepository {
       );
   }
 
+  cambiarPassword(passwordActual: string, nuevaPassword: string): Observable<void> {
+    return this.http
+      .post<void>(`${this.baseUrl}/cambiar-password`, { passwordActual, nuevaPassword })
+      .pipe(map(() => undefined));
+  }
+
   private persistSession(res: TokenResponseBackend): AuthSession {
     const user: User = {
       id: res.user.id,
@@ -107,7 +114,7 @@ export class LoginHttpAdapter implements LoginRepository {
       terapeutaIds: res.user.terapeutaIds ?? [],
       pacienteId: res.user.pacienteId ?? undefined
     };
-    const session: AuthSession = { token: res.token, user };
+    const session: AuthSession = { token: res.token, user, debeCambiarPassword: res.debeCambiarPassword };
     localStorage.setItem(this.sessionKey, JSON.stringify(session));
     return session;
   }

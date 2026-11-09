@@ -209,7 +209,7 @@ Gestión global del catálogo de sedes/establecimientos (CLUES, licencia sanitar
 | ADM1-05 | DATA | `admin_platform` hereda rutas operativas (pacientes/agenda/expedientes); se conservan permisos. | **Medio** | Se integrarán en fase posterior (diseño previsto por negocio). |
 | ADM1-06 | MISSING | Sin bitácora de auditoría para gestión de usuarios/sedes. | **Medio** | Tabla `auditoria_gestion` (V27). |
 | ADM1-07 | INCORRECT | Drift de catálogo de permisos: backend **25** vs frontend **23** (faltan `MI_CONSULTA_EDITAR` y `ALERTAS_GESTIONAR`). | **Alto** | Alinear el frontend (no INSERTs en BD); V26 solo valida. |
-| ADM1-08 | MISSING | Estados de usuario (activo/suspendido/inactivo) no modelados (solo `activo BOOLEAN`). | **Alto** | Migración `estado_usuario` (V26). |
+| ADM1-08 | MISSING | Estados de usuario (activo/suspendido/inactivo) no modelados (solo `activo BOOLEAN`). | **Alto** | Migración `usuarios.estado` (V28). |
 | ADM1-09 | MISSING | Landing por rol: el admin cae en `/dashboard` del terapeuta. | **Alto** | `homeRedirectGuard` + `adminPlatformGuard` dedicado. |
 | ADM1-10 | MISSING | Invalidación de sesión al cambiar rol/estado. | **Alto** | Bump `token_version` + revocar refresh tokens (invariante del servicio de usuarios). |
 
@@ -227,7 +227,7 @@ Gestión global del catálogo de sedes/establecimientos (CLUES, licencia sanitar
 | 6 | Permisos del admin | ✅ **No se revocan**: conserva todos (incluidos pagos y operación clínica); solo no se usan en el shell de esta fase |
 | 7 | Finanzas y operación de pacientes | ✅ Se conservan permisos; su vista/integración se trabaja en fase posterior (diseño ya previsto por negocio) |
 | 8 | Fuente de verdad de permisos | ✅ La tabla `permisos` (BD, 25). El frontend se alinea a ella |
-| 9 | Autorización backend | ✅ `@PreAuthorize` en MAYÚSCULAS (`ROLE_ADMIN_PLATFORM`, `ADMIN_USUARIOS`); permisos nuevos `SEDES_LEER` (perm-026) y `SEDES_GESTIONAR` (perm-027), creados por migración y otorgados a `rol-001` |
+| 9 | Autorización backend | ✅ `@PreAuthorize` en MAYÚSCULAS (`ROLE_ADMIN_PLATFORM`, `ADMIN_USUARIOS`); permisos nuevos `ADMIN_DASHBOARD_LEER` (perm-026, V26), `SEDES_LEER` (perm-027) y `SEDES_GESTIONAR` (perm-028) creados por migración y otorgados a `rol-001` |
 | 10 | Shell por rol activo | ✅ Decisión: el shell se resolverá por `activeRole` y `switchActiveRole()` navegará al landing del rol (pendiente de implementar; hoy solo cambia `activeRoleSubject`) |
 
 ---
@@ -236,7 +236,11 @@ Gestión global del catálogo de sedes/establecimientos (CLUES, licencia sanitar
 
 1. Reconciliar el catálogo de permisos en el frontend (25 backend → agregar `MI_CONSULTA_EDITAR` y `ALERTAS_GESTIONAR`).
 2. Emitir SDD de los 3 módulos (dashboard, usuarios, sedes).
-3. Definir migraciones Flyway: V26 (`estado_usuario` + trigger de sincronía `activo` + INSERT de `SEDES_LEER`/`SEDES_GESTIONAR` (perm-026/027) otorgados a `rol-001`), V27 (`auditoria_gestion` inmutable), V28 (índice `sesiones(status='validado')` + unicidad CLUES).
+3. Definir migraciones Flyway (numeración final):
+   - V26 — Dashboard: `ADMIN_DASHBOARD_LEER` (perm-026) + índices de actividad.
+   - V27 — Credenciales: `debe_cambiar_password` + `password_temporal_vence_en` + `auditoria_gestion`.
+   - V28 — Usuarios: `usuarios.estado` + CHECK de sincronía `activo`.
+   - V29 — Sedes: `SEDES_LEER`/`SEDES_GESTIONAR` (perm-027/028) + unicidad CLUES + índice `sesiones(status='validado')`.
 4. Implementar módulo 1 → 2 → 3 (backend + frontend).
 5. Retirar del shell admin el consumo heredado del terapeuta (tras migrar lo necesario).
 6. Cerrar los hallazgos de seguridad preexistentes que afectan al módulo antes de producción.

@@ -33,6 +33,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final CredencialPendienteFilter credencialPendienteFilter;
     private final ObjectMapper objectMapper;
 
     @Bean
@@ -57,7 +58,8 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(credencialPendienteFilter, JwtAuthFilter.class);
 
         return http.build();
     }

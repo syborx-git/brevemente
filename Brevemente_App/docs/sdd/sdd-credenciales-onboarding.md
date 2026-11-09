@@ -48,7 +48,8 @@ Definir un **mecanismo único** de credenciales para todo el sistema, basado en 
 com.syborx.brevemente.auth/                    // el mecanismo vive en el contexto auth (ya posee credenciales)
   domain/model/          Usuario (+ debeCambiarPassword), PasswordTemporal
   application/
-    ports/in/            CambiarPasswordUseCase, GenerarPasswordTemporalUseCase
+    ports/in/            CambiarPasswordUseCase, GenerarPasswordTemporalUseCase, RevocarSesionesUsuarioUseCase,
+                         VerificarPasswordActualUseCase
     ports/out/           AutenticacionRepositoryPort (ampliado), AuditoriaGestionPort (nuevo)
     service/             CredencialApplicationService
   infrastructure/
@@ -67,6 +68,8 @@ com.syborx.brevemente.auth/                    // el mecanismo vive en el contex
 | :--- | :--- | :--- | :--- |
 | `CambiarPasswordUseCase` | `usuarioId`, `passwordActual`, `nuevaPassword` | `void` | valida, actualiza hash, limpia flag y anula TTL, audita |
 | `GenerarPasswordTemporalUseCase` | `usuarioId`, `actorId`, `motivo` (`ALTA` / `RESET`) | `PasswordTemporal` (valor en claro, se retorna una sola vez) | fija temporal + flag, bump token_version + revoca refresh si `RESET`, audita |
+| `RevocarSesionesUsuarioUseCase` | `usuarioId`, `motivo`, `actorId`, `ip` | `void` | `token_version++` + revoca refresh tokens + auditoría (`REVOCACION_ADMIN`). Consumido por el Módulo 2 (cambio de rol/estado). |
+| `VerificarPasswordActualUseCase` | `usuarioId`, `password` | `boolean` (o excepción) | compara con `PasswordEncoder`. Debe aplicar rate-limit/bloqueo (reutiliza `LoginAttemptPort`) para no abrir fuerza bruta. Consumido por el Módulo 2 (D12: reautenticación). |
 
 ### 3.3 Endpoints REST (context-path `/api/v1`)
 
@@ -158,7 +161,8 @@ END $$;
 CREATE TABLE IF NOT EXISTS auditoria_gestion (
     id         VARCHAR(36) PRIMARY KEY,
     actor_id   VARCHAR(36),
-    accion     VARCHAR(50) NOT NULL,          -- ALTA_USUARIO | RESET_PASSWORD | ALTA_PACIENTE
+    accion     VARCHAR(50) NOT NULL,          -- ALTA_USUARIO | EDICION_USUARIO | CAMBIO_ESTADO_USUARIO | ASIGNACION_TERAPEUTA
+                                              -- RESET_PASSWORD | ALTA_PACIENTE | REVOCACION_ADMIN
                                               -- LOGIN_TEMPORAL | CAMBIO_PASSWORD | ONBOARDING_COMPLETADO
     entidad    VARCHAR(50) NOT NULL,          -- USUARIO | PACIENTE
     entidad_id VARCHAR(36),
@@ -167,14 +171,15 @@ CREATE TABLE IF NOT EXISTS auditoria_gestion (
     CONSTRAINT fk_auditoria_gestion_actor FOREIGN KEY (actor_id)
         REFERENCES usuarios(id) ON DELETE SET NULL,
     CONSTRAINT ck_auditoria_gestion_accion CHECK (accion IN (
-        'ALTA_USUARIO','RESET_PASSWORD','ALTA_PACIENTE',
+        'ALTA_USUARIO','EDICION_USUARIO','CAMBIO_ESTADO_USUARIO','ASIGNACION_TERAPEUTA',
+        'RESET_PASSWORD','ALTA_PACIENTE','REVOCACION_ADMIN',
         'LOGIN_TEMPORAL','CAMBIO_PASSWORD','ONBOARDING_COMPLETADO')),
     CONSTRAINT ck_auditoria_gestion_entidad CHECK (entidad IN ('USUARIO','PACIENTE'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_auditoria_gestion_actor ON auditoria_gestion (actor_id);
 CREATE INDEX IF NOT EXISTS idx_auditoria_gestion_accion_fecha ON auditoria_gestion (accion, created_at);
-CREATE INDEX IF NOT EXISTS idx_auditoria_gestion_entidad_entidad ON auditoria_gestion (entidad, entidad_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_gestion_entidad_id ON auditoria_gestion (entidad, entidad_id);
 ```
 
 > - `debe_cambiar_password` empieza en `FALSE`; las cuentas existentes (semilla demo123) no se ven afectadas. ⚠️ Para entornos no-demo, considerar forzar el cambio (`debe_cambiar_password = TRUE`) en `usr-admin` y las cuentas semilla.
