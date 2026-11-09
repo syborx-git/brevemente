@@ -5,6 +5,9 @@ import { permissionGuard } from './core/guards/permission.guard';
 import { pacientePortalGuard } from './core/guards/paciente-portal.guard';
 import { staffOnlyGuard } from './core/guards/staff-only.guard';
 import { hasAnyRoleGuard } from './core/guards/has-any-role.guard';
+import { adminPlatformGuard } from './core/guards/admin-platform.guard';
+import { homeRedirectGuard } from './core/guards/home-redirect.guard';
+import { HomeRedirectComponent } from './core/components/home-redirect/home-redirect.component';
 
 export const routes: Routes = [
   // Login fuera del shell: pantalla de acceso independiente.
@@ -20,8 +23,9 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'dashboard',
-        pathMatch: 'full'
+        pathMatch: 'full',
+        canActivate: [homeRedirectGuard],
+        component: HomeRedirectComponent
       },
       {
         path: 'dashboard',
@@ -104,8 +108,15 @@ export const routes: Routes = [
       }
     ]
   },
+  // Zona de administración de plataforma (shell propio, separado del clínico).
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminPlatformGuard],
+    loadChildren: () => import('./modules/admin/admin.routes').then(m => m.ADMIN_ROUTES)
+  },
   {
     path: '**',
-    redirectTo: 'dashboard'
+    canActivate: [homeRedirectGuard],
+    component: HomeRedirectComponent
   }
 ];

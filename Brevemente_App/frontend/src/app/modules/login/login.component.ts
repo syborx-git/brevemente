@@ -46,7 +46,7 @@ export class LoginComponent {
       this.isLoading = false;
       if (session) {
         this.roleState.setUser(session.user);
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/']);
       } else {
         this.errorMessage = 'Credenciales inválidas. Verifica tu correo y contraseña.';
       }
