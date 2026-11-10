@@ -50,6 +50,13 @@ export class PacientesComponent implements OnInit {
 
   // Modal de Creación
   showCreateModal = false;
+
+  // Modal de contraseña temporal (acceso al portal del paciente)
+  tempPasswordModalAbierto = false;
+  tempPasswordResultado: string | null = null;
+  tempPasswordPaciente = '';
+  tempPasswordCopiado = false;
+
   newNombre = '';
   newCurp = '';
   newFechaNacimiento = '';
@@ -210,11 +217,47 @@ export class PacientesComponent implements OnInit {
     this.showCreateModal = false;
   }
 
+  cerrarTempPasswordModal(): void {
+    this.tempPasswordModalAbierto = false;
+    this.tempPasswordResultado = null;
+    this.tempPasswordPaciente = '';
+    this.tempPasswordCopiado = false;
+  }
+
+  async copiarTempPassword(): Promise<void> {
+    if (!this.tempPasswordResultado) return;
+    try {
+      await navigator.clipboard.writeText(this.tempPasswordResultado);
+    } catch {
+      // Entornos sin Clipboard API: la clave queda visible para copia manual.
+    }
+    this.tempPasswordCopiado = true;
+  }
+
+  restablecerAcceso(p: Patient): void {
+    this.pacienteRepo.generarPasswordTemporal(p.id).subscribe({
+      next: (res) => {
+        this.tempPasswordResultado = res.passwordTemporal;
+        this.tempPasswordPaciente = p.name;
+        this.tempPasswordCopiado = false;
+        this.tempPasswordModalAbierto = true;
+      },
+      error: (err) => {
+        alert('No se pudo generar la contraseña: ' + (err?.message || err));
+      }
+    });
+  }
+
   guardarPaciente(): void {
     const curp = (this.newCurp || '').trim().toUpperCase();
     if (!this.newNombre || !this.newFechaNacimiento) return;
     if (curp.length !== 18) {
       this.curpMismatchWarning = 'La CURP es obligatoria y debe tener exactamente 18 caracteres.';
+      return;
+    }
+    const email = (this.newEmail || '').trim();
+    if (!email) {
+      this.curpMismatchWarning = 'El correo del paciente es obligatorio para su acceso al portal.';
       return;
     }
 
@@ -284,9 +327,13 @@ export class PacientesComponent implements OnInit {
     };
 
     this.pacienteRepo.crear(nuevo).subscribe({
-      next: () => {
+      next: (res) => {
         this.cargarPacientes();
         this.closeCreateModal();
+        this.tempPasswordResultado = res.passwordTemporal;
+        this.tempPasswordPaciente = res.paciente.name;
+        this.tempPasswordCopiado = false;
+        this.tempPasswordModalAbierto = true;
       },
       error: (err) => {
         alert('No se pudo registrar el paciente: ' + (err?.message || err));

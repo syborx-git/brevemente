@@ -26,6 +26,16 @@ public class PacienteConsentimientoAdapter implements PacienteConsentimientoPort
                 .orElse(false);
     }
 
+    @Override
+    public String terapeutaIdDePaciente(String pacienteId) {
+        if (pacienteId == null) {
+            return null;
+        }
+        return pacienteRepositoryPort.findById(pacienteId)
+                .map(Paciente::getTerapeutaId)
+                .orElse(null);
+    }
+
     private static boolean esBloqueado(Paciente paciente) {
         boolean representado = paciente.getCapacidadConsentimiento() != null
                 && "REPRESENTADO_POR_EDAD".equals(paciente.getCapacidadConsentimiento().estado());

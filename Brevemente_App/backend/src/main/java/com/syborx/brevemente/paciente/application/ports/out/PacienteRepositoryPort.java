@@ -12,6 +12,13 @@ import java.util.Optional;
 
 public interface PacienteRepositoryPort {
     List<Paciente> findAll();
+
+    /**
+     * Lista pacientes restringidos a los terapeutas indicados.
+     * {@code null} = sin filtro (alcance global). Una colección vacía
+     * devuelve lista vacía (sin pacientes dentro del alcance).
+     */
+    List<Paciente> findAll(Collection<String> terapeutaIds);
     Optional<Paciente> findById(String id);
     Optional<Paciente> findByCurp(String curp);
     boolean existsByCurp(String curp);
@@ -41,7 +48,8 @@ public interface PacienteRepositoryPort {
 
     /**
      * Pacientes {@code REPRESENTADO_POR_EDAD} nacidos en o antes de {@code corteNacimiento}
-     * (= hoy - 18 años). No filtrado por rol (paridad con la demo).
+     * (= hoy - 18 años). {@code terapeutaIds} = null sin filtro (global);
+     * vacío = sin resultados (alcance restringido).
      */
-    List<AlertaMayoriaEdad> findMayoriaEdad(LocalDate corteNacimiento);
+    List<AlertaMayoriaEdad> findMayoriaEdad(LocalDate corteNacimiento, Collection<String> terapeutaIds);
 }

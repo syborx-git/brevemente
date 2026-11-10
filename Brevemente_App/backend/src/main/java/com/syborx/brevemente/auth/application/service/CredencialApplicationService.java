@@ -93,7 +93,10 @@ public class CredencialApplicationService implements
         if (reset) {
             revocar(usuarioId, motivo, actorId, null);
         }
-        auditoriaGestionPort.registrar(actorId, reset ? "RESET_PASSWORD" : "ALTA_USUARIO",
+        String accion = reset ? "RESET_PASSWORD"
+                : "ALTA_PACIENTE".equalsIgnoreCase(motivo) ? "ALTA_PACIENTE"
+                : "ALTA_USUARIO";
+        auditoriaGestionPort.registrar(actorId, accion,
                 "USUARIO", usuarioId, Map.of("motivo", motivo == null ? "" : motivo));
 
         return new PasswordTemporal(valor, venceEn);

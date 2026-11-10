@@ -58,7 +58,7 @@ public class PacientePortalApplicationService implements
     public List<Cita> listarCitas() {
         String pacienteId = resolverPacienteId();
         return listarCitasUseCase.listar(
-                new CitaFiltro(null, pacienteId, null, null, null, null, null));
+                new CitaFiltro(null, pacienteId, null, null, null, null, null, null));
     }
 
     @Override

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { PacienteRepository } from '../ports/paciente.repository';
+import { PacienteRepository, PacienteCreado } from '../ports/paciente.repository';
 import { Patient } from '../../../core/types/clinical.types';
 import { mockPatients } from '../../../core/data/mockData';
 
@@ -34,7 +34,7 @@ export class PacienteLocalStorageAdapter implements PacienteRepository {
     return of(found);
   }
 
-  crear(nuevo: Omit<Patient, 'id'>): Observable<Patient> {
+  crear(nuevo: Omit<Patient, 'id'>): Observable<PacienteCreado> {
     const items = this.getStored();
     const created: Patient = {
       ...nuevo,
@@ -42,7 +42,7 @@ export class PacienteLocalStorageAdapter implements PacienteRepository {
     };
     items.unshift(created);
     this.setStored(items);
-    return of(created);
+    return of({ paciente: created, passwordTemporal: 'Bv-demo123456' });
   }
 
   actualizar(id: string, cambios: Partial<Patient>): Observable<Patient> {
@@ -54,5 +54,9 @@ export class PacienteLocalStorageAdapter implements PacienteRepository {
       return of(items[index]);
     }
     throw new Error('Paciente no encontrado');
+  }
+
+  generarPasswordTemporal(id: string): Observable<{ passwordTemporal: string }> {
+    return of({ passwordTemporal: 'Bv-demo123456' });
   }
 }

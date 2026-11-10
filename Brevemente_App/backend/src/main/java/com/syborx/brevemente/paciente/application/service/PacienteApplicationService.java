@@ -1,20 +1,28 @@
 package com.syborx.brevemente.paciente.application.service;
 
+import com.syborx.brevemente.auth.application.ports.in.GenerarPasswordTemporalUseCase;
+import com.syborx.brevemente.auth.domain.model.PasswordTemporal;
 import com.syborx.brevemente.paciente.application.ports.in.*;
+import com.syborx.brevemente.paciente.application.ports.out.IdentidadPacientePort;
 import com.syborx.brevemente.paciente.application.ports.out.IdentidadTerapeutaPort;
 import com.syborx.brevemente.paciente.application.ports.out.PacienteRepositoryPort;
+import com.syborx.brevemente.paciente.application.ports.out.SupervisionScopePort;
 import com.syborx.brevemente.paciente.domain.exception.PacienteConflictException;
 import com.syborx.brevemente.paciente.domain.exception.PacienteNotFoundException;
 import com.syborx.brevemente.paciente.domain.exception.TerapeutaVinculoException;
 import com.syborx.brevemente.paciente.domain.model.CapacidadConsentimiento;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
+import com.syborx.brevemente.paciente.domain.model.PacienteCreado;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -23,27 +31,77 @@ public class PacienteApplicationService implements
         ListarPacientesUseCase,
         ObtenerPacienteUseCase,
         CrearPacienteUseCase,
-        ActualizarPacienteUseCase {
+        ActualizarPacienteUseCase,
+        GenerarPasswordTemporalPacienteUseCase {
 
     private final PacienteRepositoryPort pacienteRepositoryPort;
     private final IdentidadTerapeutaPort identidadTerapeutaPort;
+    private final SupervisionScopePort supervisionScopePort;
+    private final IdentidadPacientePort identidadPacientePort;
+    private final GenerarPasswordTemporalUseCase generarPasswordTemporalUseCase;
 
     @Override
     @Transactional(readOnly = true)
     public List<Paciente> listarTodos() {
-        return pacienteRepositoryPort.findAll();
+        Collection<String> terapeutaIds = resolverAlcanceTerapeutas();
+        return pacienteRepositoryPort.findAll(terapeutaIds);
+    }
+
+    /**
+     * Resuelve el alcance del directorio de pacientes:
+     * - Admin (plataforma/clínico): global ({@code null}).
+     * - Terapeuta/asistente: sus propios vínculos de terapeuta.
+     * - Supervisor: los terapeutas que supervisa.
+     * Un alcance vacío devuelve lista vacía (sin pacientes visibles).
+     */
+    private Collection<String> resolverAlcanceTerapeutas() {
+        boolean admin = identidadTerapeutaPort.tieneRol("admin_platform")
+                || identidadTerapeutaPort.tieneRol("admin_clinical");
+        if (admin) {
+            return null;
+        }
+
+        Set<String> ids = new LinkedHashSet<>();
+        if (identidadTerapeutaPort.tieneRol("therapist") || identidadTerapeutaPort.tieneRol("assistant")) {
+            ids.addAll(identidadTerapeutaPort.terapeutaIds());
+        }
+        if (identidadTerapeutaPort.tieneRol("supervisor")) {
+            String sub = identidadTerapeutaPort.sub();
+            if (sub != null && !sub.isBlank()) {
+                ids.addAll(supervisionScopePort.terapeutasSupervisados(sub));
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Verifica que el paciente esté dentro del alcance del usuario autenticado.
+     * Admin (global) omite la verificación; el resto solo accede a pacientes
+     * de sus terapeutas vinculados/supervisados (404 en caso contrario — anti-IDOR).
+     */
+    private void validarAcceso(Paciente paciente) {
+        Collection<String> terapeutaIds = resolverAlcanceTerapeutas();
+        if (terapeutaIds == null) {
+            return;
+        }
+        String terapeutaId = paciente.getTerapeutaId();
+        if (terapeutaId == null || !terapeutaIds.contains(terapeutaId)) {
+            throw new PacienteNotFoundException(paciente.getId());
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public Paciente obtenerPorId(String id) {
-        return pacienteRepositoryPort.findById(id)
+        Paciente paciente = pacienteRepositoryPort.findById(id)
                 .orElseThrow(() -> new PacienteNotFoundException(id));
+        validarAcceso(paciente);
+        return paciente;
     }
 
     @Override
     @Transactional
-    public Paciente crear(Paciente nuevoPaciente) {
+    public PacienteCreado crear(Paciente nuevoPaciente) {
         if (nuevoPaciente.getCurp() != null && !nuevoPaciente.getCurp().isBlank()) {
             if (pacienteRepositoryPort.existsByCurp(nuevoPaciente.getCurp())) {
                 throw new PacienteConflictException("Ya existe un paciente con el CURP: " + nuevoPaciente.getCurp());
@@ -88,7 +146,48 @@ public class PacienteApplicationService implements
             nuevoPaciente.setFechaRegistro(LocalDate.now());
         }
 
-        return pacienteRepositoryPort.save(nuevoPaciente);
+        // Identidad de acceso al portal (rol patient) + contraseña temporal.
+        String email = nuevoPaciente.getEmail() != null ? nuevoPaciente.getEmail().trim() : "";
+        if (email.isBlank()) {
+            throw new PacienteConflictException("El correo del paciente es obligatorio");
+        }
+        if (identidadPacientePort.existeEmail(email)) {
+            throw new PacienteConflictException("El correo ya está registrado: " + email);
+        }
+        String usuarioId = identidadPacientePort.crearIdentidad(
+                email, nuevoPaciente.getNombre(), nuevoPaciente.getApellidos());
+        nuevoPaciente.setUsuarioId(usuarioId);
+
+        Paciente guardado = pacienteRepositoryPort.save(nuevoPaciente);
+
+        PasswordTemporal temporal = generarPasswordTemporalUseCase.generarPasswordTemporal(
+                usuarioId, identidadTerapeutaPort.sub(), "ALTA_PACIENTE");
+        return new PacienteCreado(guardado, temporal.valor());
+    }
+
+    @Override
+    @Transactional
+    public PasswordTemporal generarPasswordTemporal(String pacienteId) {
+        Paciente paciente = pacienteRepositoryPort.findById(pacienteId)
+                .orElseThrow(() -> new PacienteNotFoundException(pacienteId));
+        validarAcceso(paciente);
+
+        String usuarioId = paciente.getUsuarioId();
+        if (usuarioId == null || usuarioId.isBlank()) {
+            String email = paciente.getEmail() != null ? paciente.getEmail().trim() : "";
+            if (email.isBlank()) {
+                throw new PacienteConflictException("El paciente no tiene correo registrado; no se puede generar su acceso");
+            }
+            if (identidadPacientePort.existeEmail(email)) {
+                throw new PacienteConflictException("El correo ya está registrado: " + email);
+            }
+            usuarioId = identidadPacientePort.crearIdentidad(
+                    email, paciente.getNombre(), paciente.getApellidos());
+            paciente.setUsuarioId(usuarioId);
+            pacienteRepositoryPort.save(paciente);
+        }
+        return generarPasswordTemporalUseCase.generarPasswordTemporal(
+                usuarioId, identidadTerapeutaPort.sub(), "RESET");
     }
 
     /**
@@ -115,6 +214,7 @@ public class PacienteApplicationService implements
     public Paciente actualizar(String id, Paciente cambios) {
         Paciente existente = pacienteRepositoryPort.findById(id)
                 .orElseThrow(() -> new PacienteNotFoundException(id));
+        validarAcceso(existente);
 
         if (cambios.getNombre() != null) existente.setNombre(cambios.getNombre());
         if (cambios.getApellidos() != null) existente.setApellidos(cambios.getApellidos());
