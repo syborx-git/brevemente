@@ -30,7 +30,18 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
 
     @Override
     public List<Paciente> findAll() {
-        return springDataPacienteRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
+        return findAll(null);
+    }
+
+    @Override
+    public List<Paciente> findAll(Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
+                : springDataPacienteRepository.findAllByTerapeutaIds(terapeutaIds);
+        return entities.stream()
                 .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)))
                 .toList();
     }
@@ -169,8 +180,14 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
     }
 
     @Override
-    public List<AlertaMayoriaEdad> findMayoriaEdad(LocalDate corteNacimiento) {
-        return springDataPacienteRepository.findMayoriaEdad(corteNacimiento).stream()
+    public List<AlertaMayoriaEdad> findMayoriaEdad(LocalDate corteNacimiento, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findMayoriaEdad(corteNacimiento)
+                : springDataPacienteRepository.findMayoriaEdadScoped(corteNacimiento, terapeutaIds);
+        return entities.stream()
                 .map(e -> new AlertaMayoriaEdad(
                         e.getId(),
                         nombreCompleto(e),

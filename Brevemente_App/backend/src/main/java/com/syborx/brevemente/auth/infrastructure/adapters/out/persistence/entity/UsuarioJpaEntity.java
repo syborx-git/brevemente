@@ -56,6 +56,13 @@ public class UsuarioJpaEntity {
     @Builder.Default
     private Integer tokenVersion = 1;
 
+    @Column(name = "debe_cambiar_password", nullable = false)
+    @Builder.Default
+    private Boolean debeCambiarPassword = false;
+
+    @Column(name = "password_temporal_vence_en")
+    private OffsetDateTime passwordTemporalVenceEn;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "usuario_roles",

@@ -31,6 +31,13 @@ public interface SpringDataPacienteRepository extends JpaRepository<PacienteJpaE
 
     @Query("""
             SELECT p FROM PacienteJpaEntity p
+            WHERE p.terapeuta.id IN :terapeutaIds
+            ORDER BY p.id ASC
+            """)
+    List<PacienteJpaEntity> findAllByTerapeutaIds(@Param("terapeutaIds") Collection<String> terapeutaIds);
+
+    @Query("""
+            SELECT p FROM PacienteJpaEntity p
             WHERE p.estadoConsentimiento = 'PENDIENTE_FIRMA'
                OR (p.estadoConsentimiento = 'REPRESENTADO_POR_EDAD'
                    AND p.consentimientoRepresentanteFirmado = false)
@@ -109,6 +116,16 @@ public interface SpringDataPacienteRepository extends JpaRepository<PacienteJpaE
             ORDER BY p.fechaNacimiento
             """)
     List<PacienteJpaEntity> findMayoriaEdad(@Param("corte") LocalDate corte);
+
+    @Query("""
+            SELECT p FROM PacienteJpaEntity p
+            WHERE p.estadoConsentimiento = 'REPRESENTADO_POR_EDAD'
+              AND p.fechaNacimiento <= :corte
+              AND p.terapeuta.id IN :terapeutaIds
+            ORDER BY p.fechaNacimiento
+            """)
+    List<PacienteJpaEntity> findMayoriaEdadScoped(@Param("corte") LocalDate corte,
+                                                  @Param("terapeutaIds") Collection<String> terapeutaIds);
 
     @Query(value = """
             SELECT CASE

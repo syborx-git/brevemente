@@ -28,5 +28,8 @@ public record UserResponseDTO(
         List<String> terapeutaIds,
 
         @Schema(description = "Paciente vinculado (solo patient)", example = "pac-001")
-        String pacienteId
+        String pacienteId,
+
+        @Schema(description = "El usuario debe cambiar su contraseña antes de operar")
+        boolean debeCambiarPassword
 ) {}

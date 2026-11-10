@@ -238,8 +238,13 @@ public class DashboardApplicationService implements
 
     @Override
     public List<AlertaMayoriaEdad> listarAlertasMayoriaEdad() {
+        AlcanceDashboard alcance = alcance();
+        Collection<String> ids = DashboardFiltrosResolver.terapeutaIdsEfectivos(alcance, null);
+        if (DashboardFiltrosResolver.sinResultados(alcance, ids)) {
+            return List.of();
+        }
         LocalDate corte = LocalDate.now(ZONA).minusYears(18);
-        return pacienteRepositoryPort.findMayoriaEdad(corte);
+        return pacienteRepositoryPort.findMayoriaEdad(corte, ids);
     }
 
     @Override

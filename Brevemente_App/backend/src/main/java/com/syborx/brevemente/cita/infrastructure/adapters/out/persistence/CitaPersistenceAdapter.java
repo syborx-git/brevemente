@@ -35,10 +35,20 @@ public class CitaPersistenceAdapter implements CitaRepositoryPort {
         String estado = filtro != null ? filtro.estado() : null;
         var desde = filtro != null ? filtro.desde() : null;
         var hasta = filtro != null ? filtro.hasta() : null;
+        Collection<String> terapeutaIds = filtro != null ? filtro.terapeutaIds() : null;
 
-        return springDataCitaRepository
-                .findAllByFilters(terapeutaId, pacienteId, consultorio, modalidad, estado, desde, hasta)
-                .stream()
+        List<CitaJpaEntity> entities;
+        if (terapeutaIds != null) {
+            if (terapeutaIds.isEmpty()) {
+                return List.of();
+            }
+            entities = springDataCitaRepository.findAllByFiltersIn(
+                    terapeutaIds, pacienteId, consultorio, modalidad, estado, desde, hasta);
+        } else {
+            entities = springDataCitaRepository.findAllByFilters(
+                    terapeutaId, pacienteId, consultorio, modalidad, estado, desde, hasta);
+        }
+        return entities.stream()
                 .map(e -> citaPersistenceMapper.toDomain(e, resolvePatientName(e)))
                 .toList();
     }

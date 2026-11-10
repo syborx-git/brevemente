@@ -67,7 +67,7 @@ test.describe('Módulo de Dashboard — Validación E2E de Oráculo y Regresión
 
     // Aviso normativo real: pac-001 (menor) sin firma de la persona de apoyo
     await expect(page.getByText('Aviso Normativo TBE')).toBeVisible();
-    await expect(page.getByText(/Mateo Herrera Santos.*17 años/)).toBeVisible();
+    await expect(page.getByText(/consentimiento pendiente.*Mateo Herrera Santos/)).toBeVisible();
 
     // Secciones operativas servidas por la API real del dashboard
     await expect(page.getByText('AGENDA DEL DÍA').first()).toBeVisible();

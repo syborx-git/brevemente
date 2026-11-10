@@ -8,8 +8,10 @@ import com.syborx.brevemente.cita.application.ports.out.CitaRepositoryPort;
 import com.syborx.brevemente.cita.application.ports.out.DiaNoLaborablePort;
 import com.syborx.brevemente.cita.application.ports.out.IdentidadAutenticadaPort;
 import com.syborx.brevemente.cita.application.ports.out.PacienteConsentimientoPort;
+import com.syborx.brevemente.cita.application.ports.out.SupervisionScopePort;
 import com.syborx.brevemente.cita.domain.exception.CitaNotFoundException;
 import com.syborx.brevemente.cita.domain.exception.FechaNoLaborableException;
+import com.syborx.brevemente.cita.domain.exception.PacienteAjenoAlTerapeutaException;
 import com.syborx.brevemente.cita.domain.exception.SinTerapeutaVinculadoException;
 import com.syborx.brevemente.cita.domain.exception.SolapamientoCitaException;
 import com.syborx.brevemente.cita.domain.exception.TransicionEstadoCitaInvalidaException;
@@ -21,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +42,7 @@ public class CitaApplicationService implements
     private final DiaNoLaborablePort diaNoLaborablePort;
     private final PacienteConsentimientoPort pacienteConsentimientoPort;
     private final IdentidadAutenticadaPort identidadAutenticadaPort;
+    private final SupervisionScopePort supervisionScopePort;
 
     /**
      * Máquina de estados de la cita. Los estados terminales
@@ -63,10 +68,53 @@ public class CitaApplicationService implements
                     filtro != null ? filtro.modalidad() : null,
                     filtro != null ? filtro.estado() : null,
                     filtro != null ? filtro.desde() : null,
-                    filtro != null ? filtro.hasta() : null
+                    filtro != null ? filtro.hasta() : null,
+                    null
             );
+        } else {
+            // Alcance del personal clínico: terapeuta/asistente → sus vínculos;
+            // supervisor → sus supervisados; admin → global (sin filtro).
+            Collection<String> alcance = resolverAlcanceTerapeutas();
+            if (alcance != null) {
+                efectivo = new CitaFiltro(
+                        filtro != null ? filtro.terapeutaId() : null,
+                        filtro != null ? filtro.pacienteId() : null,
+                        filtro != null ? filtro.consultorio() : null,
+                        filtro != null ? filtro.modalidad() : null,
+                        filtro != null ? filtro.estado() : null,
+                        filtro != null ? filtro.desde() : null,
+                        filtro != null ? filtro.hasta() : null,
+                        alcance
+                );
+            }
         }
         return citaRepositoryPort.findAll(efectivo);
+    }
+
+    /**
+     * Resuelve el alcance de terapeutas del personal clínico:
+     * - Admin (plataforma/clínico): {@code null} (global).
+     * - Terapeuta/asistente: sus propios vínculos.
+     * - Supervisor: los terapeutas supervisados.
+     */
+    private Collection<String> resolverAlcanceTerapeutas() {
+        boolean admin = identidadAutenticadaPort.tieneRol("admin_platform")
+                || identidadAutenticadaPort.tieneRol("admin_clinical");
+        if (admin) {
+            return null;
+        }
+
+        Set<String> ids = new LinkedHashSet<>();
+        if (identidadAutenticadaPort.tieneRol("therapist") || identidadAutenticadaPort.tieneRol("assistant")) {
+            ids.addAll(identidadAutenticadaPort.terapeutaIds());
+        }
+        if (identidadAutenticadaPort.tieneRol("supervisor")) {
+            String sub = identidadAutenticadaPort.sub();
+            if (sub != null && !sub.isBlank()) {
+                ids.addAll(supervisionScopePort.terapeutasSupervisados(sub));
+            }
+        }
+        return ids;
     }
 
     @Override
@@ -74,6 +122,7 @@ public class CitaApplicationService implements
     public Cita agendar(Cita cita) {
         String terapeutaId = resolverTerapeutaId(cita.getTerapeutaId());
         cita.setTerapeutaId(terapeutaId);
+        validarPacientePertenece(cita.getPacienteId(), terapeutaId);
 
         OffsetDateTime inicio = cita.getFechaHoraInicio();
         int duracion = cita.getDuracionMinutos() != null ? cita.getDuracionMinutos() : 30;
@@ -140,6 +189,7 @@ public class CitaApplicationService implements
 
         String terapeutaId = resolverTerapeutaId(
                 cambios.getTerapeutaId() != null ? cambios.getTerapeutaId() : existente.getTerapeutaId());
+        validarPacientePertenece(existente.getPacienteId(), terapeutaId);
         OffsetDateTime inicio = cambios.getFechaHoraInicio() != null
                 ? cambios.getFechaHoraInicio() : existente.getFechaHoraInicio();
         int duracion = cambios.getDuracionMinutos() != null
@@ -183,6 +233,21 @@ public class CitaApplicationService implements
     private void validarDiaNoLaborable(LocalDate fecha, String terapeutaId) {
         if (diaNoLaborablePort.existeDiaNoLaborable(fecha, terapeutaId)) {
             throw new FechaNoLaborableException(fecha.toString());
+        }
+    }
+
+    /**
+     * Regla de pertenencia: la cita solo puede agendarse/reprogramarse con el
+     * terapeuta dueño del paciente ({@code pacientes.terapeuta_id}).
+     */
+    private void validarPacientePertenece(String pacienteId, String terapeutaId) {
+        if (pacienteId == null || pacienteId.isBlank()) {
+            throw new PacienteAjenoAlTerapeutaException("El paciente es obligatorio para agendar la cita");
+        }
+        String dueno = pacienteConsentimientoPort.terapeutaIdDePaciente(pacienteId);
+        if (dueno == null || !dueno.equals(terapeutaId)) {
+            throw new PacienteAjenoAlTerapeutaException(
+                    "El paciente no está asignado al terapeuta de la cita");
         }
     }
 }

@@ -13,6 +13,8 @@ export const environment = {
     auditoriaBackend: true,
     configuracionBackend: true,
     miConsultaBackend: true,
-    pacientePortalBackend: true
+    pacientePortalBackend: true,
+    dashboardPlataformaBackend: true,
+    usuariosBackend: true
   }
 };

@@ -1,6 +1,7 @@
 package com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -14,6 +15,8 @@ public record PacienteCreateRequest(
         @Schema(description = "Teléfono de contacto", example = "+52 55 9876 5432")
         String phone,
 
+        @NotBlank(message = "El correo del paciente es obligatorio")
+        @Email(message = "El correo no es válido")
         @Schema(description = "Correo electrónico", example = "santiago.morales@email.com")
         String email,
 

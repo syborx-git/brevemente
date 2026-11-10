@@ -11,7 +11,9 @@ import com.syborx.brevemente.expediente.application.ports.in.ObtenerExpedienteUs
 import com.syborx.brevemente.expediente.application.ports.in.GuardarTratamientosPreviosUseCase;
 import com.syborx.brevemente.expediente.application.ports.in.ListarCategoriasPsicofarmacosUseCase;
 import com.syborx.brevemente.expediente.application.ports.in.ListarTratamientosPreviosUseCase;
+import com.syborx.brevemente.expediente.application.ports.out.PacienteAccesoPort;
 import com.syborx.brevemente.auth.infrastructure.security.UsuarioAutenticado;
+import com.syborx.brevemente.expediente.domain.exception.ExpedienteNotFoundException;
 import com.syborx.brevemente.expediente.domain.model.CriterioClinico;
 import com.syborx.brevemente.expediente.domain.model.TratamientoPrevio;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.CategoriaPsicofarmacoResponseDTO;
@@ -65,11 +67,15 @@ public class ExpedienteRestController {
     private final ListarCategoriasPsicofarmacosUseCase listarCategoriasPsicofarmacosUseCase;
     private final ExpedienteRestMapper expedienteRestMapper;
     private final SesionRestMapper sesionRestMapper;
+    private final PacienteAccesoPort pacienteAccesoPort;
 
     @GetMapping("/paciente/{pacienteId}")
     @PreAuthorize("hasAuthority('EXPEDIENTE_LEER')")
     @Operation(summary = "Consultar expediente clínico por paciente")
-    public ResponseEntity<ExpedienteResponseDTO> obtener(@PathVariable String pacienteId) {
+    public ResponseEntity<ExpedienteResponseDTO> obtener(
+            @PathVariable String pacienteId,
+            @AuthenticationPrincipal UsuarioAutenticado principal) {
+        validarAccesoPaciente(pacienteId, principal);
         return ResponseEntity.ok(
                 expedienteRestMapper.toResponse(obtenerExpedienteUseCase.obtenerPorPaciente(pacienteId)));
     }
@@ -81,6 +87,7 @@ public class ExpedienteRestController {
             @PathVariable String pacienteId,
             @Valid @RequestBody ExpedienteUpdateRequest request,
             @AuthenticationPrincipal UsuarioAutenticado principal) {
+        validarAccesoPaciente(pacienteId, principal);
         var actualizado = actualizarExpedienteUseCase.actualizar(
                 pacienteId, expedienteRestMapper.toParcial(request),
                 principal != null ? principal.sub() : null);
@@ -90,7 +97,10 @@ public class ExpedienteRestController {
     @GetMapping("/paciente/{pacienteId}/tratamientos-previos")
     @PreAuthorize("hasAuthority('EXPEDIENTE_LEER')")
     @Operation(summary = "Listar tratamientos previos del expediente")
-    public ResponseEntity<List<TratamientoPrevioResponseDTO>> tratamientosPrevios(@PathVariable String pacienteId) {
+    public ResponseEntity<List<TratamientoPrevioResponseDTO>> tratamientosPrevios(
+            @PathVariable String pacienteId,
+            @AuthenticationPrincipal UsuarioAutenticado principal) {
+        validarAccesoPaciente(pacienteId, principal);
         return ResponseEntity.ok(listarTratamientosPreviosUseCase.listar(pacienteId).stream()
                 .map(t -> new TratamientoPrevioResponseDTO(t.id(), t.enfoque(), t.duracion(), t.resultado()))
                 .toList());
@@ -103,6 +113,7 @@ public class ExpedienteRestController {
             @PathVariable String pacienteId,
             @RequestBody List<TratamientoPrevioRequest> request,
             @AuthenticationPrincipal UsuarioAutenticado principal) {
+        validarAccesoPaciente(pacienteId, principal);
         List<TratamientoPrevio> items = request == null ? List.of()
                 : request.stream().map(t -> new TratamientoPrevio(null, null, t.enfoque(), t.duracion(), t.resultado())).toList();
         return ResponseEntity.ok(guardarTratamientosPreviosUseCase.guardar(
@@ -123,7 +134,10 @@ public class ExpedienteRestController {
     @GetMapping("/paciente/{pacienteId}/sesiones")
     @PreAuthorize("hasAuthority('EXPEDIENTE_LEER')")
     @Operation(summary = "Listar sesiones del expediente de un paciente")
-    public ResponseEntity<List<SesionResponseDTO>> sesiones(@PathVariable String pacienteId) {
+    public ResponseEntity<List<SesionResponseDTO>> sesiones(
+            @PathVariable String pacienteId,
+            @AuthenticationPrincipal UsuarioAutenticado principal) {
+        validarAccesoPaciente(pacienteId, principal);
         List<SesionResponseDTO> body = listarSesionesUseCase.listarPorPaciente(pacienteId).stream()
                 .map(sesionRestMapper::toResponse)
                 .toList();
@@ -148,6 +162,7 @@ public class ExpedienteRestController {
             @PathVariable String pacienteId,
             @Valid @RequestBody SesionCreateRequest request,
             @AuthenticationPrincipal UsuarioAutenticado principal) {
+        validarAccesoPaciente(pacienteId, principal);
         var creada = agregarSesionUseCase.agregar(
                 pacienteId, sesionRestMapper.toDomain(pacienteId, request),
                 principal != null ? principal.sub() : null,
@@ -203,5 +218,26 @@ public class ExpedienteRestController {
                 .map(o -> new OpcionConductualResponseDTO(o.codigo(), o.etiqueta(), o.orden()))
                 .toList();
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Anti-IDOR: solo se accede al expediente de pacientes del propio terapeuta,
+     * de sus supervisados o de la plataforma (admin).
+     */
+    private void validarAccesoPaciente(String pacienteId, UsuarioAutenticado principal) {
+        boolean admin = tieneRol(principal, "ROLE_ADMIN_PLATFORM") || tieneRol(principal, "ROLE_ADMIN_CLINICAL");
+        boolean puede = pacienteAccesoPort.puedeAcceder(
+                pacienteId,
+                principal != null ? principal.sub() : null,
+                principal != null ? principal.terapeutaIds() : List.of(),
+                admin);
+        if (!puede) {
+            throw new ExpedienteNotFoundException(pacienteId);
+        }
+    }
+
+    private boolean tieneRol(UsuarioAutenticado principal, String authority) {
+        return principal != null && principal.authorities() != null
+                && principal.authorities().stream().anyMatch(a -> authority.equals(a.getAuthority()));
     }
 }

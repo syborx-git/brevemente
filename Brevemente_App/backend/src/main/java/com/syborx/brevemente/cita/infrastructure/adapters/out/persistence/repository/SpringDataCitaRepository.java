@@ -41,6 +41,31 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
     );
 
     @Query(value = """
+            SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
+                   c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
+                   c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
+                   c.bloqueada_por_normativa, c.created_at, c.updated_at
+            FROM citas c
+            WHERE c.terapeuta_id IN (:terapeutaIds)
+              AND (:pacienteId IS NULL OR c.paciente_id = :pacienteId)
+              AND (:consultorio IS NULL OR c.consultorio = :consultorio)
+              AND (:modalidad IS NULL OR c.modalidad = :modalidad)
+              AND (:estado IS NULL OR c.estado_cita = :estado)
+              AND (:desde IS NULL OR c.fecha_hora_inicio::date >= :desde)
+              AND (:hasta IS NULL OR c.fecha_hora_inicio::date <= :hasta)
+            ORDER BY c.fecha_hora_inicio
+            """, nativeQuery = true)
+    List<CitaJpaEntity> findAllByFiltersIn(
+            @Param("terapeutaIds") Collection<String> terapeutaIds,
+            @Param("pacienteId") String pacienteId,
+            @Param("consultorio") String consultorio,
+            @Param("modalidad") String modalidad,
+            @Param("estado") String estado,
+            @Param("desde") LocalDate desde,
+            @Param("hasta") LocalDate hasta
+    );
+
+    @Query(value = """
             SELECT COUNT(*) FROM citas c
             WHERE (c.terapeuta_id = :terapeutaId OR c.paciente_id = :pacienteId)
               AND c.fecha_hora_inicio < :fin

@@ -43,53 +43,53 @@ test.describe('Módulo de Pacientes — Validación E2E de Oráculo y Regresión
     expect(http500Errors, `Errores de servidor HTTP 500 detectados: ${http500Errors.join(' | ')}`).toHaveLength(0);
   });
 
-  test('TC-PAC-01: Carga y oráculo de datos reales desde Spring Boot/PostgreSQL', async ({ page }) => {
+  test('TC-PAC-01: Scoping por terapeuta — Sofía solo ve sus 2 pacientes', async ({ page }) => {
     await page.goto('/pacientes');
     await page.waitForLoadState('networkidle');
 
-    // Validar título clínico principal en la vista
     const title = page.locator('main h1');
     await expect(title).toHaveText('Directorio Clínico de Pacientes');
 
-    // Validar que la tabla contiene exactamente los 4 registros servidos por la API REST
+    // La terapeuta ter-001 (Sofía) solo ve pac-001 y pac-002
     const rows = page.locator('table tbody tr');
-    await expect(rows).toHaveCount(4);
+    await expect(rows).toHaveCount(2);
 
-    // Validar nombres específicos del oráculo en PostgreSQL
     const table = page.locator('table');
     await expect(table.getByText('Mateo Herrera Santos')).toBeVisible();
     await expect(table.getByText('Valeria Gómez Fuentes')).toBeVisible();
-    await expect(table.getByText('Emiliano Díaz Corona')).toBeVisible();
-    await expect(table.getByText('Roberto Valdés Garza')).toBeVisible();
 
-    // Validar visualización de minoría de edad para Mateo (17 años)
+    // pac-003 (Emiliano) y pac-004 (Roberto) son de ter-002 → fuera del scope
+    await expect(table.getByText('Emiliano Díaz Corona')).not.toBeVisible();
+    await expect(table.getByText('Roberto Valdés Garza')).not.toBeVisible();
+
     await expect(table.getByText('(Menor)')).toBeVisible();
     await expect(table.getByText('Representado por edad')).toBeVisible();
   });
 
-  test('TC-PAC-02: Búsqueda reactiva por Nombre y CURP', async ({ page }) => {
+  test('TC-PAC-02: Búsqueda reactiva por Nombre y CURP dentro del scope', async ({ page }) => {
     await page.goto('/pacientes');
     await page.waitForLoadState('networkidle');
 
     const searchInput = page.locator('input[placeholder*="Buscar por nombre"]');
     const table = page.locator('table');
-    
-    // Búsqueda por nombre
+
     await searchInput.fill('Mateo');
     await expect(page.locator('table tbody tr')).toHaveCount(1);
     await expect(table.getByText('Mateo Herrera Santos')).toBeVisible();
 
-    // Búsqueda por CURP
-    await searchInput.fill('VARR791201');
+    await searchInput.fill('GOFV950412MDFRRR03');
     await expect(page.locator('table tbody tr')).toHaveCount(1);
-    await expect(table.getByText('VARR791201HDFZZ01')).toBeVisible();
+    await expect(table.getByText('Valeria Gómez Fuentes')).toBeVisible();
 
-    // Limpieza de búsqueda
+    // CURP de un paciente fuera del scope → sin resultados
+    await searchInput.fill('VARR791201');
+    await expect(page.getByText('No se encontraron pacientes con los criterios de búsqueda.')).toBeVisible();
+
     await searchInput.fill('');
-    await expect(page.locator('table tbody tr')).toHaveCount(4);
+    await expect(page.locator('table tbody tr')).toHaveCount(2);
   });
 
-  test('TC-PAC-03: Filtrado dinámico por Estado Clínico y Consentimiento', async ({ page }) => {
+  test('TC-PAC-03: Filtrado dinámico por Estado y Consentimiento dentro del scope', async ({ page }) => {
     await page.goto('/pacientes');
     await page.waitForLoadState('networkidle');
 
@@ -97,21 +97,18 @@ test.describe('Módulo de Pacientes — Validación E2E de Oráculo y Regresión
     const consentSelect = page.locator('select').nth(1);
     const table = page.locator('table');
 
-    // Filtrar por completados
+    // Los 2 pacientes de Sofía están activos
+    await statusSelect.selectOption('activo');
+    await expect(page.locator('table tbody tr')).toHaveCount(2);
+
+    // Estado sin pacientes en su scope → sin resultados
     await statusSelect.selectOption('completado');
-    await expect(page.locator('table tbody tr')).toHaveCount(1);
-    await expect(table.getByText('completado', { exact: true })).toBeVisible();
+    await expect(page.getByText('No se encontraron pacientes con los criterios de búsqueda.')).toBeVisible();
 
-    // Filtrar por pendientes
-    await statusSelect.selectOption('pendiente');
-    await expect(page.locator('table tbody tr')).toHaveCount(1);
-    await expect(table.getByText('pendiente', { exact: true })).toBeVisible();
-
-    // Restaurar a todos
     await statusSelect.selectOption('todos');
-    await expect(page.locator('table tbody tr')).toHaveCount(4);
+    await expect(page.locator('table tbody tr')).toHaveCount(2);
 
-    // Filtrar por Representados por edad
+    // Consentimiento representado por edad → solo Mateo
     await consentSelect.selectOption('REPRESENTADO_POR_EDAD');
     await expect(page.locator('table tbody tr')).toHaveCount(1);
     await expect(table.getByText('Mateo Herrera Santos')).toBeVisible();
