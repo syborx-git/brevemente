@@ -19,8 +19,10 @@ RUN mvn clean package -DskipTests -B
 FROM eclipse-temurin:17-jre-alpine AS runner
 WORKDIR /app
 
-# Security: Run as unprivileged user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Security: Run as unprivileged user & create storage directory
+RUN mkdir -p /app/storage/corpus/original_files && \
+    addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
 USER appuser
 
 # Copy JAR from build stage
