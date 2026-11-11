@@ -80,6 +80,12 @@ public class LevaOrchestrationService implements
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<TranscriptionTask> getTaskBySessionId(String sessionId) {
+        return taskRepositoryPort.findBySessionId(sessionId);
+    }
+
+    @Override
     @Transactional
     public LevaClinicalProposal processCallback(RawTranscriptionResult rawResult) {
         log.info("[LEVA Engine] Procesando Webhook callback de transcripción para tarea: {}", rawResult.getTaskId());
@@ -104,11 +110,21 @@ public class LevaOrchestrationService implements
         // 1. Barrera de Seguridad y Detección de Riesgo (Suicidio, autolesión, violencia)
         RiskAssessment riskAssessment = evaluateRiskFromText(rawResult.getFullText());
 
+        // 1.5 Localización del Protocolo Clínico (RAG semántico / pgvector Chunks)
+        List<ClinicalCorpusChunk> relevantChunks = Collections.emptyList();
+        try {
+            relevantChunks = corpusRepositoryPort.findTopRelevantChunks(rawResult.getFullText(), 3);
+            log.info("[LEVA Engine] Recuperados {} fragmentos de protocolos TBE relevantes para la sesión.", relevantChunks.size());
+        } catch (Exception ex) {
+            log.warn("[LEVA Engine] Error al recuperar fragmentos de protocolos: {}", ex.getMessage());
+        }
+
         // 2. Extracción Estructurada con LLaMA 3.1 8B (Diagnóstico Operativo, Prescripciones, SOAP y Diálogo)
-        log.info("[LEVA Engine] Generando propuesta clínica estructurada con LLaMA 3.1...");
+        log.info("[LEVA Engine] Generando propuesta clínica estructurada con LLaMA 3.1 restringida a protocolos...");
         StructuredProposalData proposalData = localLlmPort.generateStructuredProposal(
                 rawResult.getFullText(),
-                rawResult.getSegments()
+                rawResult.getSegments(),
+                relevantChunks
         );
 
         // 3. Crear propuesta en estado PROPOSED (Human-in-the-Loop)
@@ -360,5 +376,37 @@ public class LevaOrchestrationService implements
                 .escalationSummary("Evaluación automática completada. Nivel: " + level)
                 .requiresImmediateHumanIntervention(requiresImmediateIntervention)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_CORPUS_QUERIES, CacheConfig.CACHE_CLINICAL_PROTOCOLS}, allEntries = true)
+    public ClinicalCorpusDocument saveDocument(ClinicalCorpusDocument document) {
+        log.info("[LEVA Engine] Ingestando y guardando documento en el corpus clínico: {}", document.getTitle());
+        return corpusRepositoryPort.save(document);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_CORPUS_QUERIES, CacheConfig.CACHE_CLINICAL_PROTOCOLS}, allEntries = true)
+    public ClinicalCorpusDocument saveDocumentWithChunks(ClinicalCorpusDocument document, List<ClinicalCorpusChunk> chunks) {
+        log.info("[LEVA Engine] Ingestando protocolo '{}' con {} fragmentos...", document.getTitle(), (chunks != null ? chunks.size() : 0));
+        ClinicalCorpusDocument saved = corpusRepositoryPort.save(document);
+        if (chunks != null && !chunks.isEmpty()) {
+            for (ClinicalCorpusChunk chunk : chunks) {
+                chunk.setDocumentId(saved.getId());
+                if (chunk.getProtocolCode() == null || chunk.getProtocolCode().isBlank()) {
+                    chunk.setProtocolCode(saved.getProtocolCode());
+                }
+            }
+            corpusRepositoryPort.saveChunks(saved.getId(), chunks);
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClinicalCorpusChunk> getTopRelevantChunks(String query, int limit) {
+        return corpusRepositoryPort.findTopRelevantChunks(query, limit);
     }
 }

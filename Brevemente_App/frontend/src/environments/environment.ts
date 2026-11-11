@@ -6,7 +6,7 @@ export const environment = {
     pacientesBackend: true,
     expedienteClinicoBackend: true,
     agendaBackend: true,
-    asistenteLevaBackend: false,
+    asistenteLevaBackend: true,
     supervisionBackend: true,
     pagosBackend: true,
     constanciasBackend: true,

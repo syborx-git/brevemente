@@ -39,6 +39,7 @@ app:
       bloqueo-minutos: 15
   leva:
     transcription-service-url: ${LEVA_TRANSCRIPTION_URL:http://localhost:8000}
+    doc-converter-url: ${LEVA_DOC_CONVERTER_URL:http://localhost:8005}
     internal-api-key: ${LEVA_INTERNAL_API_KEY:dev-secret-api-key-change-in-prod}
     callback-url: ${LEVA_CALLBACK_URL:http://localhost:8080/api/v1/internal/transcriptions/callback}
     ollama-url: ${LEVA_OLLAMA_URL:http://localhost:11434}

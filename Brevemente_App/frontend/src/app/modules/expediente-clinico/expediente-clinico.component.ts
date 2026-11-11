@@ -1,9 +1,12 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
+import { Subscription } from 'rxjs';
+import { AudioRecorderService } from '../../core/services/audio-recorder.service';
+import { LevaSessionService, LevaProposalResponse } from '../../core/services/leva-session.service';
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from './ports/expediente.repository';
 import { ExpedienteLocalStorageAdapter } from './adapters/expediente-localstorage.adapter';
 import { ExpedienteHttpAdapter } from './adapters/expediente-http.adapter';
@@ -41,6 +44,7 @@ import {
 } from '../../core/types/clinical.types';
 import { VcEstado, vcEstadoDeTexto, VC_ESTADO_A_TEXTO, VC_ESCALA } from '../../core/constants/vc-escala';
 import { VcSemaphoreComponent } from './components/vc-semaphore/vc-semaphore.component';
+import { LevaProposalReviewComponent } from './components/leva-proposal-review/leva-proposal-review.component';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
 
@@ -198,10 +202,12 @@ const EXAMEN_SINTESIS_ITEMS: Array<{ clave: string; etiqueta: string }> = [
   { clave: 'nombreFirmaEvaluador', etiqueta: 'Nombre y firma del evaluador' }
 ];
 
+export type AudioRecordingUiState = 'IDLE' | 'GRABANDO' | 'ENVIANDO_AUDIO' | 'PROCESANDO_IA' | 'COMPLETADO' | 'ERROR';
+
 @Component({
   selector: 'app-expediente-clinico',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus, VcSemaphoreComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus, VcSemaphoreComponent, LevaProposalReviewComponent],
   providers: [
     {
       provide: ExpedienteRepository,
@@ -216,7 +222,7 @@ const EXAMEN_SINTESIS_ITEMS: Array<{ clave: string; etiqueta: string }> = [
   templateUrl: './expediente-clinico.component.html',
   styleUrl: './expediente-clinico.component.scss'
 })
-export class ExpedienteClinicoComponent implements OnInit {
+export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   pacienteId: string = 'patient-1';
   patient: Patient | null = null;
   record: ClinicalRecord | null = null;
@@ -379,20 +385,40 @@ export class ExpedienteClinicoComponent implements OnInit {
     recommendations: 'Prescribir simulacros voluntarios en trayectos cortos sin anunciar a los familiares. Monitorear adherencia en la siguiente sesión.'
   };
 
-  // Audio Simulator State
+  // Real Audio Recording & LEVA Copilot State
+  recordingState: AudioRecordingUiState = 'IDLE';
   isRecording = false;
+  isPaused = false;
   recordingSeconds = 0;
-  private recordingInterval: any = null;
+  audioLevel = 0; // 0 - 100%
+  recordingErrorMessage: string | null = null;
   transcriptText = '';
   levaAdvice = '';
+  currentProposal: LevaProposalResponse | null = null;
+  private audioSubs: Subscription[] = [];
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly expedienteRepo: ExpedienteRepository,
-    public readonly roleService: RoleStateService
+    public readonly roleService: RoleStateService,
+    private readonly audioRecorder: AudioRecorderService,
+    private readonly levaSessionService: LevaSessionService
   ) {}
 
   ngOnInit(): void {
+    this.audioSubs.push(
+      this.audioRecorder.isRecording$.subscribe(rec => this.isRecording = rec),
+      this.audioRecorder.isPaused$.subscribe(p => this.isPaused = p),
+      this.audioRecorder.recordingTime$.subscribe(sec => this.recordingSeconds = sec),
+      this.audioRecorder.audioLevel$.subscribe(lvl => this.audioLevel = lvl),
+      this.audioRecorder.error$.subscribe(err => {
+        if (err) {
+          this.recordingErrorMessage = err;
+          this.recordingState = 'ERROR';
+        }
+      })
+    );
+
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
@@ -406,6 +432,14 @@ export class ExpedienteClinicoComponent implements OnInit {
         this.cargarDatos();
       });
     });
+  }
+
+  ngOnDestroy(): void {
+    this.audioSubs.forEach(s => s.unsubscribe());
+    this.audioSubs = [];
+    if (this.isRecording) {
+      this.audioRecorder.cancelRecording();
+    }
   }
 
   cargarDatos(): void {
@@ -443,6 +477,7 @@ export class ExpedienteClinicoComponent implements OnInit {
       this.sessions = s;
       if (!this.selectedSession && s.length > 0) {
         this.selectedSession = s[0];
+        this.cargarPropuestaDeSesion(s[0].id);
       }
       this.newConstancia.sessionsCount = s.length > 0 ? s.length : 1;
       this.newBitacora.sessionNumber = s.length > 0 ? s.length : 1;
@@ -632,22 +667,197 @@ export class ExpedienteClinicoComponent implements OnInit {
     });
   }
 
-  // Audio recording simulation
-  toggleRecording(): void {
-    if (this.isRecording) {
-      clearInterval(this.recordingInterval);
-      this.isRecording = false;
-      this.transcriptText = "Transcripción completada: 'El paciente refiere que al salir a la calle siente opresión torácica y busca inmediatamente el contacto de su madre. Intenta calmar la respiración pero el intento genera mayor hiperventilación.'";
-      this.levaAdvice = "LEVA detectó la tentativa de solución redundante: 'Intentar controlar conscientemente las reacciones espontáneas'. Sugerencia TBE: Prescribir la Peor Fantasía o Declaración del Miedo.";
-    } else {
-      this.isRecording = true;
-      this.recordingSeconds = 0;
-      this.transcriptText = 'Grabando y transcribiendo en tiempo real...';
-      this.levaAdvice = '';
-      this.recordingInterval = setInterval(() => {
-        this.recordingSeconds++;
-      }, 1000);
+  // Real Audio Recording with MediaRecorder API & LEVA Copilot
+  async startRealRecording(): Promise<void> {
+    this.recordingErrorMessage = null;
+    this.transcriptText = '';
+    this.levaAdvice = '';
+    this.currentProposal = null;
+
+    try {
+      this.recordingState = 'GRABANDO';
+      await this.audioRecorder.startRecording();
+    } catch (err: any) {
+      this.recordingErrorMessage = err.message || 'No se pudo iniciar la captura de audio.';
+      this.recordingState = 'ERROR';
     }
+  }
+
+  pauseRecording(): void {
+    this.audioRecorder.pauseRecording();
+  }
+
+  resumeRecording(): void {
+    this.audioRecorder.resumeRecording();
+  }
+
+  cancelRecording(): void {
+    this.audioRecorder.cancelRecording();
+    this.recordingState = 'IDLE';
+    this.recordingErrorMessage = null;
+  }
+
+  async stopAndTranscribe(): Promise<void> {
+    if (!this.isRecording) return;
+
+    this.recordingState = 'ENVIANDO_AUDIO';
+    this.recordingErrorMessage = null;
+
+    try {
+      const recordingResult = await this.audioRecorder.stopRecording();
+      const sessionId = this.selectedSession?.id || (this.pacienteId + '-s' + (this.sessions.length + 1));
+
+      this.levaSessionService.uploadSessionAudio(sessionId, recordingResult.blob, 'sesion_clinica.webm', 'es')
+        .subscribe({
+          next: (task) => {
+            if (task.status === 'FAILED') {
+              this.recordingErrorMessage = task.errorMessage || 'El motor de transcripción no pudo iniciar.';
+              this.recordingState = 'ERROR';
+              return;
+            }
+
+            this.recordingState = 'PROCESANDO_IA';
+
+            // Polling hacia Spring Boot para esperar transcripción + propuesta LLM
+            this.levaSessionService.pollSessionAnalysis(sessionId, 2500, 90).subscribe({
+              next: (pollResult) => {
+                if (pollResult.completed) {
+                  this.recordingState = 'COMPLETADO';
+                  if (pollResult.proposal) {
+                    this.currentProposal = pollResult.proposal;
+                    const sp = pollResult.proposal.structuredProposal;
+                    if (sp) {
+                      this.transcriptText = pollResult.task?.rawResult?.fullText
+                        || (sp.dialogue && sp.dialogue.length > 0 ? sp.dialogue.map(d => `${d.speaker}: ${d.text}`).join('\n') : '')
+                        || 'Transcripción completada por Whisper.';
+
+                      const adviceParts: string[] = [];
+                      if (sp.diagnosticoOperativo) adviceParts.push(`Dx Operativo: ${sp.diagnosticoOperativo}`);
+                      if (sp.sistemaPerceptivoReactivo) adviceParts.push(`SPR: ${sp.sistemaPerceptivoReactivo}`);
+                      if (sp.tentativasSolucionRedundantes?.length) adviceParts.push(`Tentativas redundantes: ${sp.tentativasSolucionRedundantes.join(', ')}`);
+                      if (sp.prescripcionesEstrategicas?.length) adviceParts.push(`Prescripciones TBE: ${sp.prescripcionesEstrategicas.join(', ')}`);
+                      this.levaAdvice = adviceParts.join(' | ');
+                    }
+                  } else if (pollResult.task?.rawResult?.fullText) {
+                    this.transcriptText = pollResult.task.rawResult.fullText;
+                    this.levaAdvice = 'Transcripción generada correctamente. Pendiente de propuesta clínica.';
+                  }
+                }
+              },
+              error: (pollErr) => {
+                this.recordingErrorMessage = pollErr.message || 'Error durante el procesamiento inteligente de la sesión.';
+                this.recordingState = 'ERROR';
+              }
+            });
+          },
+          error: (uploadErr) => {
+            this.recordingErrorMessage = uploadErr.error?.message || uploadErr.message || 'Error al subir el audio de la sesión a Spring Boot.';
+            this.recordingState = 'ERROR';
+          }
+        });
+    } catch (err: any) {
+      this.recordingErrorMessage = err.message || 'Error al detener y procesar la grabación.';
+      this.recordingState = 'ERROR';
+    }
+  }
+
+  toggleRecording(): void {
+    if (this.recordingState === 'GRABANDO') {
+      this.stopAndTranscribe();
+    } else {
+      this.startRealRecording();
+    }
+  }
+
+  aplicarPropuestaAlExpediente(): void {
+    if (!this.currentProposal?.structuredProposal) return;
+    const sp = this.currentProposal.structuredProposal;
+
+    if (this.record) {
+      if (sp.diagnosticoOperativo && !this.record.dxOpInicial) {
+        this.record.dxOpInicial = sp.diagnosticoOperativo;
+      }
+      if (sp.sistemaPerceptivoReactivo && !this.record.sprInicial) {
+        this.record.sprInicial = sp.sistemaPerceptivoReactivo;
+      }
+      this.guardarDx();
+    }
+
+    if (this.selectedSession) {
+      if (sp.diagnosticoOperativo) this.selectedSession.dxOp = sp.diagnosticoOperativo;
+      if (sp.sistemaPerceptivoReactivo) this.selectedSession.spr = sp.sistemaPerceptivoReactivo;
+      if (sp.prescripcionesEstrategicas?.length) this.selectedSession.px = [...sp.prescripcionesEstrategicas];
+      if (sp.notaEvolucionSoap) this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + sp.notaEvolucionSoap;
+    }
+  }
+
+  onProposalApproved(approvedProposal: LevaProposalResponse): void {
+    this.currentProposal = approvedProposal;
+    const approvedData = approvedProposal.approvedData || approvedProposal.structuredProposal;
+    if (!approvedData) return;
+
+    if (this.record) {
+      if (approvedData.diagnosticoOperativo) {
+        this.record.dxOpInicial = approvedData.diagnosticoOperativo;
+      }
+      if (approvedData.sistemaPerceptivoReactivo) {
+        this.record.sprInicial = approvedData.sistemaPerceptivoReactivo;
+      }
+      this.guardarDx();
+    }
+
+    if (this.selectedSession) {
+      if (approvedData.diagnosticoOperativo) this.selectedSession.dxOp = approvedData.diagnosticoOperativo;
+      if (approvedData.sistemaPerceptivoReactivo) this.selectedSession.spr = approvedData.sistemaPerceptivoReactivo;
+      if (approvedData.prescripcionesEstrategicas?.length) {
+        this.selectedSession.px = [...approvedData.prescripcionesEstrategicas];
+      }
+      if (approvedData.notaEvolucionSoap) {
+        const headerFirma = `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n`;
+        this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + headerFirma + approvedData.notaEvolucionSoap;
+      }
+
+      this.expedienteRepo.actualizarSesion(this.selectedSession.id, {
+        dxOp: this.selectedSession.dxOp,
+        spr: this.selectedSession.spr,
+        px: this.selectedSession.px,
+        add: this.selectedSession.add,
+        status: 'validado'
+      }).subscribe({
+        next: () => this.cargarDatos(),
+        error: () => this.cargarDatos()
+      });
+    }
+  }
+
+  onProposalRejected(proposalId: string): void {
+    this.currentProposal = null;
+    this.recordingState = 'IDLE';
+  }
+
+  seleccionarSesion(s: Session): void {
+    this.selectedSession = s;
+    this.cargarPropuestaDeSesion(s.id);
+  }
+
+  cargarPropuestaDeSesion(sessionId: string): void {
+    this.levaSessionService.getProposal(sessionId).subscribe({
+      next: (proposal) => {
+        this.currentProposal = proposal;
+      },
+      error: () => {
+        this.currentProposal = null;
+      }
+    });
+  }
+
+  resetRecordingState(): void {
+    this.recordingState = 'IDLE';
+    this.recordingErrorMessage = null;
+  }
+
+  mathMax(a: number, b: number): number {
+    return Math.max(a, b);
   }
 
   openSessionModal(): void {

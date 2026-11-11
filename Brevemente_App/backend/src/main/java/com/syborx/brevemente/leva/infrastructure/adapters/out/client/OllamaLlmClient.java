@@ -114,9 +114,37 @@ public class OllamaLlmClient implements LocalLlmPort {
 
     @Override
     public StructuredProposalData generateStructuredProposal(String fullText, List<TranscriptSegment> segments) {
-        log.info("[LEVA LLM] Generando propuesta clínica estructurada (Few-Shot) con modelo local: {}", modelName);
+        return generateStructuredProposal(fullText, segments, Collections.emptyList());
+    }
 
-        String userPrompt = "Transcripción de la sesión:\n\"\"\"\n" + fullText + "\n\"\"\"";
+    @Override
+    public StructuredProposalData generateStructuredProposal(
+            String fullText,
+            List<TranscriptSegment> segments,
+            List<ClinicalCorpusChunk> relevantChunks) {
+        int chunkCount = (relevantChunks != null) ? relevantChunks.size() : 0;
+        log.info("[LEVA LLM] Generando propuesta clínica estructurada (Few-Shot) con {} fragmentos de protocolo RAG y modelo local: {}",
+                chunkCount, modelName);
+
+        StringBuilder protocolContext = new StringBuilder();
+        if (chunkCount > 0) {
+            protocolContext.append("FRAGMENTOS DE PROTOCOLO CLÍNICO RECUPERADOS (REGLAS OBLIGATORIAS):\n");
+            for (ClinicalCorpusChunk chunk : relevantChunks) {
+                String protoCode = (chunk.getProtocolCode() != null && !chunk.getProtocolCode().isBlank())
+                        ? chunk.getProtocolCode() : "PROTOCOLO-TBE";
+                protocolContext.append("--- [").append(protoCode).append("] ");
+                if (chunk.getTitle() != null && !chunk.getTitle().isBlank()) {
+                    protocolContext.append("(").append(chunk.getTitle()).append(")");
+                }
+                protocolContext.append(" ---\n")
+                        .append(chunk.getContent())
+                        .append("\n\n");
+            }
+        }
+
+        String userPrompt = (protocolContext.length() > 0 ? protocolContext.toString() : "")
+                + "Transcripción de la sesión:\n\"\"\"\n" + fullText + "\n\"\"\""
+                + (protocolContext.length() > 0 ? "\n\nINSTRUCCIÓN ESTRICTA: Basa el diagnóstico operativo (DX.OP) y las prescripciones estratégicas (PX) estrictamente en los fragmentos de protocolo clínico arriba indicados." : "");
 
         try {
             Map<String, Object> requestPayload = Map.of(

@@ -38,6 +38,14 @@ public class LevaSessionController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(task);
     }
 
+    @GetMapping("/{sessionId}/task")
+    @Operation(summary = "Consultar estado de la tarea de transcripción", description = "Retorna el estado de transcripción y procesamiento de la sesión (PROCESSING, COMPLETED, FAILED)")
+    public ResponseEntity<TranscriptionTask> getSessionTask(@PathVariable String sessionId) {
+        return startTranscriptionUseCase.getTaskBySessionId(sessionId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/{sessionId}/proposal")
     @Operation(summary = "Obtener propuesta clínica LEVA", description = "Obtiene los campos sugeridos por LEVA para el autollenado del expediente")
     public ResponseEntity<LevaProposalResponse> getProposal(@PathVariable String sessionId) {
