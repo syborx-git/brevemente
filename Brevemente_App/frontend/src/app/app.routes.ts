@@ -109,6 +109,16 @@ export const routes: Routes = [
         pathMatch: 'full'
       },
       {
+        path: 'protocolos',
+        redirectTo: 'admin/educar-leva',
+        pathMatch: 'full'
+      },
+      {
+        path: 'educar-leva',
+        redirectTo: 'admin/educar-leva',
+        pathMatch: 'full'
+      },
+      {
         path: 'admin/educar-leva',
         canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical')],
         loadComponent: () => import('./modules/educar-leva/educar-leva.component').then(m => m.EducarLevaComponent)
