@@ -93,6 +93,16 @@ export const routes: Routes = [
         loadComponent: () => import('./modules/auditoria-seguridad/auditoria-seguridad.component').then(m => m.AuditoriaSeguridadComponent)
       },
       {
+        path: 'admin/protocolos',
+        redirectTo: 'admin/educar-leva',
+        pathMatch: 'full'
+      },
+      {
+        path: 'admin/educar-leva',
+        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical')],
+        loadComponent: () => import('./modules/educar-leva/educar-leva.component').then(m => m.EducarLevaComponent)
+      },
+      {
         path: 'mi-consulta',
         canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical', 'therapist', 'supervisor')],
         loadComponent: () => import('./modules/mi-consulta/mi-consulta.component').then(m => m.MiConsultaComponent)

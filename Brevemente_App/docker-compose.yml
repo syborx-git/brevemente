@@ -80,7 +80,27 @@ services:
       retries: 3
       start_period: 30s
 
-  # 5. Backend de Spring Boot (LEVA Engine + SDOP)
+  # 5. Microservicio de Conversión Documental: Python FastAPI (PyMuPDF4LLM + Mammoth)
+  document-engine:
+    build:
+      context: ./document_engine_python
+      dockerfile: Dockerfile
+    container_name: brevemente-document-engine
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+      - HOST=0.0.0.0
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-dev-secret-api-key-change-in-prod}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/v1/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # 6. Backend de Spring Boot (LEVA Engine + SDOP)
   backend:
     build:
       context: ./backend
@@ -95,6 +115,8 @@ services:
         condition: service_healthy
       transcript-engine:
         condition: service_started
+      document-engine:
+        condition: service_started
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - DATABASE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-brevemente_db}
@@ -103,6 +125,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-only-secret-brevemente-demo-2026-syborx-clinical-engineering-change-me}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:3000,http://188.245.203.48,https://188.245.203.48}
       - LEVA_TRANSCRIPTION_URL=http://transcript-engine:8000
+      - LEVA_DOC_CONVERTER_URL=http://document-engine:8005
       - LEVA_INTERNAL_API_KEY=${INTERNAL_API_KEY:-dev-secret-api-key-change-in-prod}
       - LEVA_CALLBACK_URL=http://backend:8080/api/v1/internal/transcriptions/callback
       - LEVA_OLLAMA_URL=http://ollama:11434

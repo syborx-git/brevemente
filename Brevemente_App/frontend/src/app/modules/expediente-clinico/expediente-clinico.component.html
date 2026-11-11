@@ -849,7 +849,7 @@
           </div>
           <div
             *ngFor="let s of sessions"
-            (click)="selectedSession = s"
+            (click)="seleccionarSesion(s)"
             class="p-3.5 cursor-pointer text-xs transition-all flex items-center justify-between"
             [ngClass]="selectedSession?.id === s.id ? 'bg-blue-50/50 border-l-4 border-clinical-accent font-semibold' : 'hover:bg-slate-50'">
             <div>
@@ -952,39 +952,191 @@
           </div>
         </div>
 
-        <!-- Simulador de Audio & LEVA -->
+        <!-- Grabación de Audio Real & Copiloto LEVA -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 class="text-sm font-bold text-clinical-textDark">Grabación Asistida por LEVA (Modo Clínico)</h3>
-              <p class="text-xs text-slate-500">Transcribe en tiempo real y detecta intentos de solución redundantes</p>
-            </div>
-            <button (click)="toggleRecording()"
-              class="px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs"
-              [ngClass]="isRecording ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' : 'bg-clinical-teal hover:bg-clinical-tealHover text-white'">
-              <span>{{ isRecording ? 'Detener Grabación' : 'Iniciar Grabación Simulada' }}</span>
-              <span *ngIf="isRecording" class="font-mono text-xs">({{ recordingSeconds }}s)</span>
-            </button>
-          </div>
-          <div *ngIf="isRecording" class="h-16 bg-slate-900 rounded-xl flex items-center justify-center gap-1.5 px-4">
-            <span class="w-1.5 h-8 bg-clinical-accent rounded-full animate-bounce"></span>
-            <span class="w-1.5 h-12 bg-clinical-teal rounded-full animate-bounce [animation-delay:0.1s]"></span>
-            <span class="w-1.5 h-6 bg-clinical-accent rounded-full animate-bounce [animation-delay:0.2s]"></span>
-            <span class="w-1.5 h-10 bg-clinical-teal rounded-full animate-bounce [animation-delay:0.3s]"></span>
-            <span class="w-1.5 h-14 bg-clinical-accent rounded-full animate-bounce [animation-delay:0.15s]"></span>
-            <span class="text-xs font-mono text-white ml-3">Captura de audio en progreso...</span>
-          </div>
-          <div *ngIf="transcriptText" class="space-y-3">
-            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Transcripción Automática</p>
-              <p class="text-xs text-slate-800 leading-relaxed font-mono">{{ transcriptText }}</p>
-            </div>
-            <div *ngIf="levaAdvice" class="p-4 bg-clinical-accent/10 border border-clinical-accent/30 rounded-xl">
-              <div class="flex items-center gap-2 mb-1.5">
-                <p class="text-xs font-bold text-clinical-textDark">Análisis Clínico Estratégico (LEVA):</p>
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full"
+                  [ngClass]="{
+                    'bg-slate-300': recordingState === 'IDLE',
+                    'bg-red-500 animate-ping': recordingState === 'GRABANDO' && !isPaused,
+                    'bg-amber-400': recordingState === 'GRABANDO' && isPaused,
+                    'bg-blue-500 animate-pulse': recordingState === 'ENVIANDO_AUDIO' || recordingState === 'PROCESANDO_IA',
+                    'bg-emerald-500': recordingState === 'COMPLETADO',
+                    'bg-rose-500': recordingState === 'ERROR'
+                  }"></span>
+                <h3 class="text-sm font-bold text-clinical-textDark">Grabación Asistida por LEVA (Modo Clínico Real)</h3>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold uppercase tracking-wider">
+                  {{ recordingState }}
+                </span>
               </div>
-              <p class="text-xs text-clinical-dark leading-relaxed font-medium">{{ levaAdvice }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">Captura de audio real del micrófono, transcripción Whisper y propuesta estratégica LEVA</p>
             </div>
+
+            <!-- Botones de Acción según Estado -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Estado IDLE -->
+              <button *ngIf="recordingState === 'IDLE'" (click)="startRealRecording()"
+                class="px-4 py-2 rounded-xl font-bold text-xs bg-clinical-teal hover:bg-clinical-tealHover text-white transition-all flex items-center gap-2 cursor-pointer shadow-xs">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+                <span>Iniciar Grabación Real</span>
+              </button>
+
+              <!-- Estado GRABANDO -->
+              <ng-container *ngIf="recordingState === 'GRABANDO'">
+                <button (click)="isPaused ? resumeRecording() : pauseRecording()"
+                  class="px-3 py-2 rounded-xl font-medium text-xs border border-slate-300 hover:bg-slate-50 text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer">
+                  <span>{{ isPaused ? '▶ Reanudar' : '⏸ Pausar' }}</span>
+                </button>
+                <button (click)="cancelRecording()"
+                  class="px-3 py-2 rounded-xl font-medium text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer">
+                  Descartar
+                </button>
+                <button (click)="stopAndTranscribe()"
+                  class="px-4 py-2 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white transition-all flex items-center gap-2 cursor-pointer shadow-xs animate-pulse">
+                  <span class="w-2 h-2 rounded-full bg-white"></span>
+                  <span>Detener y Transcribir</span>
+                  <span class="font-mono text-xs">({{ recordingSeconds }}s)</span>
+                </button>
+              </ng-container>
+
+              <!-- Estado ENVIANDO_AUDIO -->
+              <div *ngIf="recordingState === 'ENVIANDO_AUDIO'" class="flex items-center gap-2 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
+                <svg class="animate-spin h-3.5 w-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Subiendo sesión clínica...</span>
+              </div>
+
+              <!-- Estado PROCESANDO_IA -->
+              <div *ngIf="recordingState === 'PROCESANDO_IA'" class="flex items-center gap-2 text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 animate-pulse">
+                <svg class="animate-spin h-3.5 w-3.5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Whisper & LEVA procesando...</span>
+              </div>
+
+              <!-- Estado COMPLETADO -->
+              <ng-container *ngIf="recordingState === 'COMPLETADO'">
+                <button (click)="aplicarPropuestaAlExpediente()" *ngIf="currentProposal?.structuredProposal"
+                  class="px-3 py-2 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-xs">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Aplicar al Expediente</span>
+                </button>
+                <button (click)="startRealRecording()"
+                  class="px-3 py-2 rounded-xl font-medium text-xs border border-slate-300 hover:bg-slate-50 text-slate-700 transition-all cursor-pointer">
+                  Grabar Otra Sesión
+                </button>
+              </ng-container>
+
+              <!-- Estado ERROR -->
+              <ng-container *ngIf="recordingState === 'ERROR'">
+                <button (click)="startRealRecording()"
+                  class="px-3 py-2 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer">
+                  Reintentar Grabación
+                </button>
+                <button (click)="resetRecordingState()"
+                  class="px-2.5 py-2 rounded-xl text-xs text-slate-500 hover:bg-slate-100 transition-all cursor-pointer">
+                  Cerrar
+                </button>
+              </ng-container>
+            </div>
+          </div>
+
+          <!-- Visualizador Dinámico de Nivel de Entrada de Audio (Web Audio API) -->
+          <div *ngIf="recordingState === 'GRABANDO'" class="bg-slate-950 rounded-xl p-4 flex flex-col gap-2.5 border border-slate-800 shadow-inner">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full" [ngClass]="isPaused ? 'bg-amber-400' : 'bg-red-500 animate-ping'"></span>
+                <span class="text-white font-medium">{{ isPaused ? 'Grabación en pausa' : 'Capturando micrófono en vivo...' }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-slate-400 font-mono text-[11px]">Nivel: <strong class="text-clinical-teal font-mono">{{ audioLevel }}%</strong></span>
+                <span class="text-white font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+                  {{ (recordingSeconds / 60 | number:'2.0-0') || '00' }}:{{ (recordingSeconds % 60 < 10 ? '0' : '') + (recordingSeconds % 60) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Barras Ecualizadoras Reactivas a Web Audio API -->
+            <div class="h-14 bg-slate-900/90 rounded-lg flex items-center justify-center gap-1.5 px-4 overflow-hidden border border-slate-800/80">
+              <span class="w-2 bg-clinical-teal rounded-full transition-all duration-75"
+                [style.height.px]="mathMax(6, (audioLevel * 0.45))" [style.opacity]="mathMax(0.3, audioLevel / 100)"></span>
+              <span class="w-2 bg-clinical-accent rounded-full transition-all duration-75"
+                [style.height.px]="mathMax(6, (audioLevel * 0.55))" [style.opacity]="mathMax(0.3, audioLevel / 100)"></span>
+              <span class="w-2 bg-clinical-teal rounded-full transition-all duration-75"
+                [style.height.px]="mathMax(8, (audioLevel * 0.65))" [style.opacity]="mathMax(0.3, audioLevel / 100)"></span>
+              <span class="w-2 bg-emerald-400 rounded-full transition-all duration-75"
+                [style.height.px]="mathMax(10, (audioLevel * 0.85))" [style.opacity]="mathMax(0.4, audioLevel / 100)"></span>
+              <span class="w-2 bg-clinical-accent rounded-full transition-all duration-75"
+                [style.height.px]="mathMax(8, (audioLevel * 0.70))" [style.opacity]="mathMax(0.3, audioLevel / 100)"></span>
+              <span class="w-2 bg-clinical-teal rounded-full transition-all duration-75"
+                [style.height.px]="mathMax(6, (audioLevel * 0.50))" [style.opacity]="mathMax(0.3, audioLevel / 100)"></span>
+              <span class="w-2 bg-emerald-400 rounded-full transition-all duration-75"
+                [style.height.px]="mathMax(6, (audioLevel * 0.40))" [style.opacity]="mathMax(0.3, audioLevel / 100)"></span>
+            </div>
+          </div>
+
+          <!-- Banner Informativo: Enviando Audio -->
+          <div *ngIf="recordingState === 'ENVIANDO_AUDIO'" class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3">
+            <svg class="animate-spin h-5 w-5 text-blue-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div>
+              <p class="text-xs font-bold text-blue-900">Subiendo sesión clínica...</p>
+              <p class="text-[11px] text-blue-700">Enviando paquete de audio multipart a Spring Boot (<code>/api/v1/leva/sessions/transcribe</code>).</p>
+            </div>
+          </div>
+
+          <!-- Banner Informativo: Procesando IA -->
+          <div *ngIf="recordingState === 'PROCESANDO_IA'" class="p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center gap-3">
+            <svg class="animate-spin h-5 w-5 text-indigo-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div>
+              <p class="text-xs font-bold text-indigo-950">Whisper transcribiendo y LEVA evaluando riesgos...</p>
+              <p class="text-[11px] text-indigo-700">Diarizando diálogo Terapeuta-Paciente, verificando barreras de seguridad y extrayendo propuesta diagnóstica TBE.</p>
+            </div>
+          </div>
+
+          <!-- Banner de Error -->
+          <div *ngIf="recordingState === 'ERROR'" class="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
+            <svg class="w-5 h-5 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="flex-1">
+              <p class="text-xs font-bold text-rose-900">Ocurrió un error en la grabación o procesamiento</p>
+              <p class="text-[11px] text-rose-700 mt-0.5 leading-relaxed">{{ recordingErrorMessage }}</p>
+            </div>
+          </div>
+
+          <!-- Componente Human-in-the-Loop: Revisión y Aprobación Médica Oficial -->
+          <div *ngIf="currentProposal" class="pt-2">
+            <app-leva-proposal-review
+              [proposal]="currentProposal"
+              [sessionId]="selectedSession?.id || (pacienteId + '-s' + (sessions.length || 1))"
+              [therapistName]="patient?.therapistName || 'Dr. Carlos Mendoza'"
+              (approved)="onProposalApproved($event)"
+              (rejected)="onProposalRejected($event)">
+            </app-leva-proposal-review>
+          </div>
+
+          <!-- Transcripción en bruto si aún no se genera propuesta estructurada -->
+          <div *ngIf="transcriptText && !currentProposal" class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Transcripción Automática (Whisper)</p>
+              <span class="text-[10px] font-mono text-slate-400">Audio Procesado</span>
+            </div>
+            <p class="text-xs text-slate-800 leading-relaxed font-mono whitespace-pre-line bg-white p-3 rounded-lg border border-slate-200/80">{{ transcriptText }}</p>
           </div>
         </div>
       </div>

@@ -76,6 +76,7 @@ export class SidebarComponent {
       title: 'ADMINISTRACIÓN',
       items: [
         { path: '/configuracion', label: 'Configuración', icon: Settings, roles: ['admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor'] },
+        { path: '/admin/educar-leva', label: 'Entrenar LEVA', icon: BookOpen, subtitle: 'Corpus Clínico RAG', roles: ['admin_platform', 'admin_clinical'] },
         { path: '/auditoria', label: 'Auditoría y Seguridad', icon: ShieldAlert, roles: ['admin_platform', 'admin_clinical', 'supervisor'] }
       ]
     }

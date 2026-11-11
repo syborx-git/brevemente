@@ -1,0 +1,350 @@
+<div class="max-w-7xl mx-auto space-y-6 select-none pb-12">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+    <div>
+      <div class="flex items-center gap-2.5">
+        <h1 class="text-xl font-bold text-clinical-textDark tracking-tight">Gestión de Protocolos Clínicos & Ingesta a LEVA</h1>
+        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 uppercase">
+          Módulo Admin / Protocolos
+        </span>
+      </div>
+      <p class="text-xs text-clinical-textMuted mt-1">
+        Conversión determinista de manuales y protocolos (PDF/Word) a Markdown estructurado con tablas mediante <strong>PyMuPDF4LLM</strong>. Cero alucinaciones de IA.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button 
+        (click)="limpiarCache()"
+        [disabled]="evictingCache"
+        class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-2xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50">
+        <span>{{ evictingCache ? 'Invalidando...' : 'Limpiar Caché de LEVA' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Alertas de estado -->
+  <div *ngIf="mensajeExito" class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex justify-between items-center shadow-xs">
+    <div class="flex items-center gap-2">
+      <span class="font-bold">✓ Éxito:</span>
+      <span>{{ mensajeExito }}</span>
+    </div>
+    <button (click)="mensajeExito = ''" class="font-bold text-xs hover:text-emerald-950 cursor-pointer">✕</button>
+  </div>
+
+  <div *ngIf="mensajeError" class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex justify-between items-center shadow-xs">
+    <div class="flex items-center gap-2">
+      <span class="font-bold">⚠ Atención:</span>
+      <span>{{ mensajeError }}</span>
+    </div>
+    <button (click)="mensajeError = ''" class="font-bold text-xs hover:text-red-950 cursor-pointer">✕</button>
+  </div>
+
+  <!-- MODO 1: Selección y Carga del Documento (Si no está en modo revisión) -->
+  <div *ngIf="!modoRevision" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Tarjeta de Carga Drag & Drop -->
+    <div class="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+      <div class="border-b border-slate-100 pb-3">
+        <h2 class="text-xs font-bold text-clinical-dark uppercase tracking-wider">
+          Subir Protocolo o Manual Clínico
+        </h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">Soporta Word (.doc, .docx) y PDF con tablas y fórmulas</p>
+      </div>
+
+      <!-- Drag & Drop Area -->
+      <div 
+        (dragover)="onDragOver($event)"
+        (drop)="onDrop($event)"
+        class="border-2 border-dashed border-slate-300 hover:border-clinical-accent rounded-2xl p-8 text-center bg-slate-50/60 hover:bg-slate-50 transition-all cursor-pointer relative overflow-hidden group">
+        <input 
+          type="file" 
+          #fileInput 
+          (change)="onFileSelected($event)" 
+          accept=".pdf,.docx,.doc,.txt,.md" 
+          class="hidden" />
+        
+        <div (click)="fileInput.click()" class="space-y-3">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-clinical-accent/15 flex items-center justify-center text-clinical-accent text-2xl group-hover:scale-110 transition-transform">
+            📄
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-800">
+              {{ nombreArchivo || 'Arrastra tu archivo aquí o haz clic para examinar' }}
+            </p>
+            <p class="text-[10px] text-slate-400 mt-1">Formatos: PDF, Word DOCX/DOC, TXT o Markdown</p>
+          </div>
+          <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-slate-200/80 text-slate-700">
+            Extractor PyMuPDF4LLM
+          </span>
+        </div>
+      </div>
+
+      <!-- Spinner durante la conversión -->
+      <div *ngIf="convirtiendo" class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 text-xs text-blue-900 font-semibold">
+        <svg class="animate-spin h-5 w-5 text-blue-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <div>
+          <p>Convirtiendo a Markdown estructurado...</p>
+          <p class="text-[10px] text-blue-700 font-normal">Extrayendo tablas, columnas y encabezados clínicos sin IA.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guía y Garantía de Integridad Clínica -->
+    <div class="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-clinical-teal"></span>
+        <h2 class="text-xs font-bold text-clinical-dark uppercase tracking-wider">
+          Garantía de Integridad Clínica (Air-Gap & Determinismo)
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600">
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>🛡</span> Extracción Determinista (Sin IA)
+          </h3>
+          <p class="text-[11px] leading-relaxed">
+            El archivo no es resumido ni interpretado por un modelo generativo. El convertidor en Python traduce fielmente las tablas de intervención, fases y aforismos directamente a sintaxis Markdown.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>👁</span> Humano al Mando (Split-Screen)
+          </h3>
+          <p class="text-[11px] leading-relaxed">
+            Antes de que cualquier texto pase al corpus de LEVA, la plataforma abre un panel de revisión comparativa para que el doctor audite y valide el Markdown extraído.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>🧩</span> Fragmentación Semántica
+          </h3>
+          <p class="text-[11px] leading-relaxed">
+            El protocolo se segmenta en bloques de 300 a 600 palabras respetando las secciones (# y ##), evitando cortes abruptos a mitad de una prescripción o tabla diagnóstica.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>🔒</span> Aislamiento Local (Air-Gap)
+          </h3>
+          <p class="text-[11px] leading-relaxed">
+            Todo el procesamiento ocurre dentro del servidor local. Tus manuales propietarios y documentos nunca son enviados a nubes públicas ni utilizados para reentrenar modelos ajenos.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODO 2: Revisión Comparativa SPLIT-SCREEN (Humano al Mando) -->
+  <div *ngIf="modoRevision" class="bg-white border-2 border-clinical-accent/40 rounded-2xl shadow-sm overflow-hidden space-y-0">
+
+    <!-- Barra de Estado de Revisión -->
+    <div class="p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="w-3 h-3 rounded-full bg-amber-400 animate-pulse"></span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-bold text-white">Revisión de Protocolo Clínico Extraído</h2>
+            <span class="text-[10px] font-mono font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full uppercase">
+              Validación Previa
+            </span>
+          </div>
+          <p class="text-xs text-slate-300 mt-0.5">
+            Verifica que la estructura, tablas y abreviaturas médicas sean fieles al documento original antes de publicar.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button (click)="descartarRevision()"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer">
+          ✕ Descartar
+        </button>
+        <button (click)="publicarProtocolo()" [disabled]="publicando"
+          class="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60">
+          <svg *ngIf="publicando" class="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>{{ publicando ? 'Publicando en LEVA...' : '✔ Aprobar y Publicar en Base de Conocimiento' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenedor Split-Screen (2 Columnas) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+
+      <!-- Panel Izquierdo: Ficha del Documento y Metadatos (4 Columnas) -->
+      <div class="lg:col-span-4 p-5 space-y-4 bg-slate-50/50 text-xs">
+        <div>
+          <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Metadatos del Archivo</h3>
+          <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Archivo:</span>
+              <span class="font-bold text-slate-800 truncate max-w-[180px]">{{ previewData?.filename }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Páginas estimadas:</span>
+              <span class="font-mono font-bold text-slate-800">{{ previewData?.pageCount }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Palabras totales:</span>
+              <span class="font-mono font-bold text-slate-800">{{ previewData?.wordCount }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Bloques lógicos (Chunks):</span>
+              <span class="font-mono font-bold text-clinical-teal">{{ previewData?.chunkCount }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulario de Identificación Clínica -->
+        <div class="space-y-3 pt-2">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Título del Protocolo *</label>
+            <input type="text" [(ngModel)]="title" placeholder="ej. Protocolo TBE para Ataques de Pánico"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:border-clinical-accent bg-white text-xs font-medium" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Código Único de Protocolo *</label>
+            <input type="text" [(ngModel)]="protocolCode" placeholder="ej. TBE-PANICO-01"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:border-clinical-accent bg-white uppercase font-mono text-xs font-bold" />
+            <p class="text-[10px] text-slate-400 mt-0.5">Identificador con el que LEVA citará la regla clínica</p>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Categoría Clínica *</label>
+            <select [(ngModel)]="category"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:border-clinical-accent bg-white text-xs">
+              <option *ngFor="let cat of categorias" [value]="cat.value">{{ cat.label }}</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Referencia o Fuente</label>
+            <input type="text" [(ngModel)]="sourceReference" placeholder="ej. Arezzo / Nardone (2020)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:border-clinical-accent bg-white text-xs" />
+          </div>
+        </div>
+
+        <!-- Secciones Detectadas -->
+        <div *ngIf="previewData?.sections?.length" class="pt-2">
+          <h4 class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Secciones Detectadas (#)</h4>
+          <div class="flex flex-wrap gap-1">
+            <span *ngFor="let sec of previewData?.sections"
+              class="px-2 py-0.5 bg-slate-200/80 text-slate-700 rounded text-[10px] font-medium truncate max-w-[200px]">
+              {{ sec }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel Derecho: Editor y Visualizador Markdown (8 Columnas) -->
+      <div class="lg:col-span-8 p-5 space-y-3 bg-white">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <button (click)="tabVisualizacion = 'editor'"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              [ngClass]="tabVisualizacion === 'editor' ? 'bg-clinical-teal text-white' : 'text-slate-600 hover:bg-slate-100'">
+              Editor Markdown (.md)
+            </button>
+            <button (click)="tabVisualizacion = 'chunks'"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              [ngClass]="tabVisualizacion === 'chunks' ? 'bg-clinical-teal text-white' : 'text-slate-600 hover:bg-slate-100'">
+              Fragmentos Semánticos ({{ previewData?.chunkCount || 0 }} Chunks)
+            </button>
+          </div>
+
+          <span class="text-[10px] text-slate-400 font-mono">
+            {{ markdownEditado.length }} caracteres
+          </span>
+        </div>
+
+        <!-- Pestaña 1: Editor de Texto Markdown -->
+        <div *ngIf="tabVisualizacion === 'editor'" class="space-y-1">
+          <textarea [(ngModel)]="markdownEditado"
+            rows="18"
+            class="w-full p-4 font-mono text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-clinical-teal focus:border-clinical-teal outline-hidden bg-slate-900 text-emerald-400 leading-relaxed resize-y selection:bg-emerald-800"
+            placeholder="Contenido Markdown extraído..."></textarea>
+          <p class="text-[10px] text-slate-400">
+            Puedes editar libremente cualquier término, agregar prescripciones o ajustar las tablas Markdown antes de publicar.
+          </p>
+        </div>
+
+        <!-- Pestaña 2: Fragmentos Semánticos (Chunks de 300-600 palabras) -->
+        <div *ngIf="tabVisualizacion === 'chunks'" class="space-y-3 max-h-[480px] overflow-y-auto pr-2">
+          <div *ngFor="let chunk of previewData?.chunks"
+            class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800">Chunk #{{ chunk.chunkIndex + 1 }}: {{ chunk.title }}</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-600 font-semibold">
+                {{ chunk.wordCount }} palabras
+              </span>
+            </div>
+            <p class="text-slate-600 font-mono text-[11px] whitespace-pre-line bg-white p-2.5 rounded-lg border border-slate-200/80 max-h-36 overflow-y-auto">
+              {{ chunk.content }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Listado de Protocolos Actualmente en Base de Conocimiento -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <h2 class="text-sm font-bold text-slate-800">Protocolos Publicados en el Corpus de LEVA</h2>
+        <p class="text-xs text-slate-500">Documentos activos que el copiloto consulta en tiempo real durante las sesiones</p>
+      </div>
+      <span class="px-2.5 py-1 bg-slate-100 rounded-full font-mono text-xs font-bold text-slate-600">
+        {{ documentos.length }} disponibles
+      </span>
+    </div>
+
+    <div *ngIf="cargando" class="p-8 text-center text-xs text-slate-400">
+      Cargando base de conocimiento...
+    </div>
+
+    <div *ngIf="!cargando && documentos.length === 0" class="p-8 text-center text-xs text-slate-400">
+      No hay protocolos cargados todavía. Sube el primer documento arriba.
+    </div>
+
+    <div *ngIf="!cargando && documentos.length > 0" class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+      <div *ngFor="let doc of documentos" class="p-4 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-4 text-xs">
+        <div class="space-y-1 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-clinical-teal/10 text-clinical-teal border border-clinical-teal/20">
+              {{ doc.protocolCode }}
+            </span>
+            <span class="font-bold text-slate-800 text-sm">{{ doc.title }}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+              {{ doc.category }}
+            </span>
+          </div>
+          <p class="text-slate-500 line-clamp-1 text-[11px] font-mono">
+            {{ doc.content }}
+          </p>
+        </div>
+
+        <div class="text-right shrink-0">
+          <span class="text-[10px] text-slate-400 font-mono block">
+            {{ doc.createdAt ? (doc.createdAt | date:'shortDate') : 'Activo' }}
+          </span>
+          <span class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 justify-end">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Indexado
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

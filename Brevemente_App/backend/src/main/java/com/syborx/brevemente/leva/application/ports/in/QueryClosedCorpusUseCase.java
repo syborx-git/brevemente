@@ -1,5 +1,6 @@
 package com.syborx.brevemente.leva.application.ports.in;
 
+import com.syborx.brevemente.leva.domain.model.ClinicalCorpusChunk;
 import com.syborx.brevemente.leva.domain.model.ClinicalCorpusDocument;
 import com.syborx.brevemente.leva.domain.model.ClosedCorpusQueryResult;
 
@@ -11,5 +12,8 @@ public interface QueryClosedCorpusUseCase {
     SseEmitter streamQueryCorpus(String query, String protocolFilter);
     List<ClinicalCorpusDocument> listAvailableProtocols();
     void evictCorpusCache();
+    ClinicalCorpusDocument saveDocument(ClinicalCorpusDocument document);
+    ClinicalCorpusDocument saveDocumentWithChunks(ClinicalCorpusDocument document, List<ClinicalCorpusChunk> chunks);
+    List<ClinicalCorpusChunk> getTopRelevantChunks(String query, int limit);
 }
 
