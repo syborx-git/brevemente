@@ -287,7 +287,10 @@ public class LevaOrchestrationService implements
 
         // 2. Si no se encontró por código o no había filtro, buscar por palabras clave
         if (contextDocuments.isEmpty()) {
-            contextDocuments = corpusRepositoryPort.searchByKeywordsOrProtocol(query, protocolFilter);
+            List<ClinicalCorpusDocument> found = corpusRepositoryPort.searchByKeywordsOrProtocol(query, protocolFilter);
+            if (found != null && !found.isEmpty()) {
+                contextDocuments.addAll(found);
+            }
         }
 
         // 3. Fallback clínico: Seleccionar el documento más afín en vez de sobrecargar la CPU con todos
