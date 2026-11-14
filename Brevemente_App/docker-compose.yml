@@ -119,6 +119,7 @@ services:
         condition: service_started
     environment:
       - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_FLYWAY_OUT_OF_ORDER=true
       - DATABASE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-brevemente_db}
       - DATABASE_USERNAME=${POSTGRES_USER:-postgres}
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-admin}
