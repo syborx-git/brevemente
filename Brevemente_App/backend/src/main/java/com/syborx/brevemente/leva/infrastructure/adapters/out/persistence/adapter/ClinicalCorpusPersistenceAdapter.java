@@ -33,9 +33,16 @@ public class ClinicalCorpusPersistenceAdapter implements ClinicalCorpusRepositor
 
     @Override
     public List<ClinicalCorpusDocument> searchByKeywordsOrProtocol(String query, String protocolFilter) {
-        String filter = (protocolFilter != null && !protocolFilter.isBlank()) ? protocolFilter : null;
-        String q = (query != null && !query.isBlank()) ? query : "";
-        return repository.searchByQueryAndProtocol(q, filter).stream().map(this::toDomain).toList();
+        String filter = (protocolFilter != null && !protocolFilter.isBlank()) ? protocolFilter.trim() : null;
+        String q = (query != null && !query.isBlank()) ? query.trim() : "";
+
+        if (filter != null && !filter.isEmpty()) {
+            return repository.searchByQueryAndProtocol(q, filter).stream().map(this::toDomain).toList();
+        } else if (!q.isEmpty()) {
+            return repository.searchByQuery(q).stream().map(this::toDomain).toList();
+        } else {
+            return repository.findAll().stream().map(this::toDomain).toList();
+        }
     }
 
     @Override
