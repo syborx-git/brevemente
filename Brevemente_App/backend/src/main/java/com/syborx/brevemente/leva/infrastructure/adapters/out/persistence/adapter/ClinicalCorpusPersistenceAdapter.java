@@ -38,11 +38,38 @@ public class ClinicalCorpusPersistenceAdapter implements ClinicalCorpusRepositor
 
         if (filter != null && !filter.isEmpty()) {
             return repository.searchByQueryAndProtocol(q, filter).stream().map(this::toDomain).toList();
-        } else if (!q.isEmpty()) {
-            return repository.searchByQuery(q).stream().map(this::toDomain).toList();
-        } else {
-            return repository.findAll().stream().map(this::toDomain).toList();
         }
+
+        if (!q.isEmpty()) {
+            List<ClinicalCorpusJpaEntity> exactMatches = repository.searchByQuery(q);
+            if (!exactMatches.isEmpty()) {
+                return exactMatches.stream().map(this::toDomain).toList();
+            }
+
+            // Búsqueda semántica granular en chunks si la frase completa no coincide textualmente
+            List<String> keywords = Arrays.stream(q.toLowerCase().split("[^\\p{L}\\p{Nd}]+"))
+                    .filter(w -> w.length() >= 4)
+                    .filter(w -> !Set.of("para", "como", "cual", "cuales", "donde", "sobre", "entre", "este", "esta", "estos", "estas", "consiste", "indica", "enumera", "explica", "segun", "tiene", "hacer", "hace").contains(w))
+                    .toList();
+
+            Set<String> matchedDocIds = new LinkedHashSet<>();
+            for (String kw : keywords) {
+                List<ClinicalCorpusChunkJpaEntity> chunks = chunkRepository.searchByKeyword(kw, org.springframework.data.domain.PageRequest.of(0, 5));
+                for (ClinicalCorpusChunkJpaEntity chunk : chunks) {
+                    matchedDocIds.add(chunk.getDocumentId());
+                }
+            }
+
+            if (!matchedDocIds.isEmpty()) {
+                List<ClinicalCorpusDocument> matchedDocs = new ArrayList<>();
+                for (String docId : matchedDocIds) {
+                    repository.findById(docId).map(this::toDomain).ifPresent(matchedDocs::add);
+                }
+                return matchedDocs;
+            }
+        }
+
+        return Collections.emptyList();
     }
 
     @Override
