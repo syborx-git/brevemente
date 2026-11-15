@@ -36,6 +36,13 @@ public class SupervisionSolicitudPersistenceAdapter implements SupervisionSolici
     }
 
     @Override
+    public List<SupervisionSolicitud> findPendientes() {
+        return solicitudRepository.findByEstadoOrderByCreatedAtDesc("pendiente").stream()
+                .map(e -> mapper.toDomain(e, pacienteNombre(e.getPacienteId()), terapeutaNombre(e.getTerapeutaId())))
+                .toList();
+    }
+
+    @Override
     public SupervisionSolicitud save(SupervisionSolicitud solicitud) {
         SupervisionSolicitudJpaEntity saved = solicitudRepository.save(mapper.toJpaEntity(solicitud));
         return mapper.toDomain(saved, pacienteNombre(saved.getPacienteId()), terapeutaNombre(saved.getTerapeutaId()));

@@ -40,6 +40,15 @@ public class TranscriptionTaskJpaEntity {
     @Column(name = "audio_file_name", length = 255)
     private String audioFileName;
 
+    @Column(name = "audio_storage_path", columnDefinition = "TEXT")
+    private String audioStoragePath;
+
+    @Column(name = "audio_content_type", length = 100)
+    private String audioContentType;
+
+    @Column(name = "audio_size_bytes")
+    private Long audioSizeBytes;
+
     @Column(name = "duration_seconds", precision = 10, scale = 2)
     private java.math.BigDecimal durationSeconds;
 

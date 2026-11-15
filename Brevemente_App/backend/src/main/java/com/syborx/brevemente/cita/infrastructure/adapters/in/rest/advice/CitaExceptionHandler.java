@@ -2,6 +2,7 @@ package com.syborx.brevemente.cita.infrastructure.adapters.in.rest.advice;
 
 import com.syborx.brevemente.cita.domain.exception.CitaNotFoundException;
 import com.syborx.brevemente.cita.domain.exception.FechaNoLaborableException;
+import com.syborx.brevemente.cita.domain.exception.PacienteAjenoAlTerapeutaException;
 import com.syborx.brevemente.cita.domain.exception.SinTerapeutaVinculadoException;
 import com.syborx.brevemente.cita.domain.exception.SolapamientoCitaException;
 import com.syborx.brevemente.cita.domain.exception.TransicionEstadoCitaInvalidaException;
@@ -28,6 +29,11 @@ public class CitaExceptionHandler {
 
     @ExceptionHandler(SinTerapeutaVinculadoException.class)
     public ResponseEntity<Map<String, Object>> handleForbidden(SinTerapeutaVinculadoException ex) {
+        return body(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(PacienteAjenoAlTerapeutaException.class)
+    public ResponseEntity<Map<String, Object>> handlePacienteAjeno(PacienteAjenoAlTerapeutaException ex) {
         return body(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 

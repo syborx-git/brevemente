@@ -5,6 +5,7 @@ import com.syborx.brevemente.expediente.application.ports.out.ExpedienteReposito
 import com.syborx.brevemente.expediente.application.ports.out.SesionRepositoryPort;
 import com.syborx.brevemente.expediente.domain.exception.ExpedienteNotFoundException;
 import com.syborx.brevemente.expediente.domain.exception.SesionInvalidaException;
+import com.syborx.brevemente.expediente.domain.exception.SesionNotFoundException;
 import com.syborx.brevemente.expediente.domain.model.Expediente;
 import com.syborx.brevemente.expediente.domain.model.Sesion;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,11 +52,12 @@ class SesionApplicationServiceTest {
         when(expedienteRepositoryPort.findByPacienteId("pac-001")).thenReturn(Optional.of(expediente()));
         when(sesionRepositoryPort.save(any(Sesion.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Sesion resultado = service.agregar("pac-001", sesion, "usr-001");
+        Sesion resultado = service.agregar("pac-001", sesion, "usr-001", List.of("ter-001"));
 
         assertEquals(3, resultado.getNumero());
         assertEquals("pac-001", resultado.getPacienteId());
         assertEquals("exp-001", resultado.getExpedienteId());
+        assertEquals("ter-001", resultado.getCreadoPorId());
         verify(sesionRepositoryPort).save(sesion);
         verify(auditoriaExpedientePort).registrar(
                 eq("pac-001"), eq("usr-001"), eq("Registro de sesión TBE"),
@@ -70,7 +72,7 @@ class SesionApplicationServiceTest {
         when(sesionRepositoryPort.ultimoNumero("exp-001")).thenReturn(Optional.of(5));
         when(sesionRepositoryPort.save(any(Sesion.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Sesion resultado = service.agregar("pac-001", sesion, "usr-001");
+        Sesion resultado = service.agregar("pac-001", sesion, "usr-001", List.of("ter-001"));
 
         assertEquals(6, resultado.getNumero());
         verify(auditoriaExpedientePort).registrar(
@@ -84,7 +86,7 @@ class SesionApplicationServiceTest {
         Sesion sesion = Sesion.builder().numero(0).build();
         when(expedienteRepositoryPort.findByPacienteId("pac-001")).thenReturn(Optional.of(expediente()));
 
-        assertThrows(SesionInvalidaException.class, () -> service.agregar("pac-001", sesion, "usr-001"));
+        assertThrows(SesionInvalidaException.class, () -> service.agregar("pac-001", sesion, "usr-001", List.of()));
         verify(sesionRepositoryPort, never()).save(any());
         verifyNoInteractions(auditoriaExpedientePort);
     }
@@ -95,7 +97,7 @@ class SesionApplicationServiceTest {
         when(expedienteRepositoryPort.findByPacienteId("pac-999")).thenReturn(Optional.empty());
 
         assertThrows(ExpedienteNotFoundException.class,
-                () -> service.agregar("pac-999", Sesion.builder().build(), "usr-001"));
+                () -> service.agregar("pac-999", Sesion.builder().build(), "usr-001", List.of()));
         verifyNoInteractions(sesionRepositoryPort);
         verifyNoInteractions(auditoriaExpedientePort);
     }
@@ -111,5 +113,40 @@ class SesionApplicationServiceTest {
 
         assertEquals(1, resultado.size());
         assertSame(sesion, resultado.get(0));
+    }
+
+    @Test
+    @DisplayName("Actualizar sesión fusiona solo campos no nulos")
+    void actualizarFusionaCamposNoNulos() {
+        Sesion existente = Sesion.builder().id("ses-001").numero(1).fase("Definición").build();
+        when(sesionRepositoryPort.findById("ses-001")).thenReturn(Optional.of(existente));
+        when(sesionRepositoryPort.save(any(Sesion.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Sesion parcial = Sesion.builder().significado("Miedo al conflicto").spr("SPR Fóbico").build();
+        Sesion resultado = service.actualizar("ses-001", parcial, "usr-001");
+
+        assertEquals("Miedo al conflicto", resultado.getSignificado());
+        assertEquals("SPR Fóbico", resultado.getSpr());
+        assertEquals("Definición", resultado.getFase());
+    }
+
+    @Test
+    @DisplayName("Actualizar sesión con estado inválido lanza SesionInvalidaException")
+    void actualizarEstadoInvalido() {
+        Sesion existente = Sesion.builder().id("ses-001").numero(1).build();
+        when(sesionRepositoryPort.findById("ses-001")).thenReturn(Optional.of(existente));
+
+        assertThrows(SesionInvalidaException.class,
+                () -> service.actualizar("ses-001", Sesion.builder().status("en_proceso").build(), "usr-001"));
+        verify(sesionRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Actualizar sesión inexistente lanza SesionNotFoundException")
+    void actualizarSesionInexistente() {
+        when(sesionRepositoryPort.findById("ses-999")).thenReturn(Optional.empty());
+
+        assertThrows(SesionNotFoundException.class,
+                () -> service.actualizar("ses-999", Sesion.builder().build(), "usr-001"));
     }
 }

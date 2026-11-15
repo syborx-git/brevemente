@@ -14,7 +14,10 @@ import {
 
 import {
   Role, Patient, ClinicalRecord as ClinicalRecordType, Session, AuditLog, Payment,
-  SupervisionLog, PhysicalCertificateLog, CounterReferral
+  SupervisionLog, PhysicalCertificateLog, CounterReferral,
+  Antecedentes, ExamenMental, HábitoPresente, HistorialFarmaco, HistorialPsicofarmaco, HistorialDroga,
+  TratamientoPrevio, RiesgoSuicida, RiesgoHeteroagresivo, FuenteReferencia, CriterioCategoria, CriterioClinico,
+  Drug, CodigoCategoriaPsicofarmaco, Domicilio, ContactoEmergencia
 } from '../types/clinical';
 import { ProtocolDecisionPanel } from '../components/ProtocolDecisionPanel';
 import { RiskAlertBanner } from '../components/RiskAlertBanner';
@@ -26,13 +29,19 @@ import { physicalCertificateService } from '../services/physicalCertificateServi
 import { counterReferralService, COUNTER_REFERRAL_CHANGED, canCreateCounterReferral } from '../services/counterReferralService';
 import { recordService } from '../services/recordService';
 import { sessionService } from '../services/sessionService';
+import { mockSessions } from '../data/mockData';
 import { patientService } from '../services/patientService';
 import { paymentService } from '../services/paymentService';
 import { therapistService } from '../services/therapistService';
+import { tratamientoPrevioService } from '../services/tratamientoPrevioService';
+import { CATEGORIAS_PSICOFARMACOS, OPCIONES_CONDUCTUALES, GRUPOS_PSICOFARMACOS } from '../services/catalogosClinicos';
+import { EXAMEN_SECCIONES, EXAMEN_RIESGO_ITEMS, EXAMEN_SINTESIS_ITEMS } from '../services/examenMentalCatalog';
+import { sedesService } from '../services/sedesService';
 import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP, checkAgingMinorPatients } from '../utils/legalConsent';
 import { SupervisionLogModal } from '../components/SupervisionLogModal';
 import { RegisterPhysicalCertificateModal } from '../components/RegisterPhysicalCertificateModal';
 import { PhysicalCertificateDetailModal } from '../components/PhysicalCertificateDetailModal';
+import { VcSemaphore, VcChip } from '../components/VcSemaphore';
 
 interface ClinicalRecordProps {
   userRole: Role;
@@ -42,12 +51,35 @@ interface ClinicalRecordProps {
   derivedPatientIds?: string[];
 }
 
+const EMPTY_ANTECEDENTES: Antecedentes = {
+  personalesPatológicos: { médicos: '', quirúrgicos: '', traumáticos: '', alérgicos: '', transfusionales: '', hospitalizaciones: '' },
+  personalesNoPatológicos: {
+    tabaquismo: { presente: false }, alcoholismo: { presente: false }, toxicomanías: { presente: false },
+    actividadFísica: '', alimentación: ''
+  },
+  heredoFamiliares: { enfermedadesMentales: '', enfermedadesCrónicas: '', suicidiosIntentos: '', adicciones: '' }
+};
+
+const EXAMEN_MENTAL_SECTIONS: { key: Exclude<keyof ExamenMental, 'evaluaciónRiesgo'>; label: string }[] = [
+  { key: 'aparienciaConducta', label: 'Apariencia y Conducta' },
+  { key: 'concienciaSensorio', label: 'Conciencia y Sensorio' },
+  { key: 'lenguajeHabla', label: 'Lenguaje y Habla' },
+  { key: 'afectividad', label: 'Afectividad' },
+  { key: 'pensamiento', label: 'Pensamiento' },
+  { key: 'sensopercepción', label: 'Sensopercepción' },
+  { key: 'funcionesCognoscitivas', label: 'Funciones Cognoscitivas' },
+  { key: 'juicioIntrospección', label: 'Juicio e Introspección' },
+  { key: 'funcionesFisiológicas', label: 'Funciones Fisiológicas' },
+  { key: 'síntesis', label: 'Síntesis / Impresión Diagnóstica' }
+];
+
 export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patients, userName, derivedPatientIds }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const patientId = searchParams.get('id') || 'patient-1'; // Por defecto Sofía Martínez
+  const patientId = searchParams.get('id') || 'pac-002'; // Por defecto Valeria Gómez Fuentes
   const activePatient = patients.find(p => p.id === patientId);
+  const sedeActual = sedesService.getSedeByPatientId(patientId);
 
   // Verificación de bloqueo legal de grabación
   const legalBlockCheck = isActionBlockedByLegalConsent(activePatient);
@@ -70,8 +102,9 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   // Estados locales para simular persistencia
   const [clinicalRecord, setClinicalRecord] = useState<ClinicalRecordType | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos' | 'supervision' | 'constancias' | 'contrareferencia'>('datos');
-  const [tbeSubTab, setTbeSubTab] = useState<'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'>('sesiones');
+  const [activeTab, setActiveTab] = useState<'datos' | 'tbe' | 'psiquiatria' | 'auditoria' | 'pagos' | 'supervision' | 'constancias' | 'contrareferencia'>('tbe');
+  const [tbeSubTab, setTbeSubTab] = useState<'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' | 'criterios'>('sesiones');
+  const [datosSubTab, setDatosSubTab] = useState<'generales' | 'historia' | 'ficha'>('generales');
   const [activeSessionDetail, setActiveSessionDetail] = useState<Session | null>(null);
   // Prescripción seleccionada para ver su compliance (EFF, ADD, OSS, RSS)
   const [selectedPrescription, setSelectedPrescription] = useState<string | null>(null);
@@ -375,72 +408,192 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
   const [newVgDemas, setNewVgDemas] = useState(false);
   const [newVgMundo, setNewVgMundo] = useState(false);
 
-  // DX Psiquiátrico / Farmacológico local
-  const [psyDxNosologico, setPsyDxNosologico] = useState('Trastorno de Pánico [F41.0]');
-  const [psyDsm5, setPsyDsm5] = useState('300.01 Trastorno de Pánico');
-  const [psyCie11, setPsyCie11] = useState('6B01 Trastorno de Pánico');
-  const [psyPrognosis, setPsyPrognosis] = useState<'excelente' | 'bueno' | 'reservado' | 'malo'>('bueno');
-  const [psyPlan, setPsyPlan] = useState('Monitoreo de fármacos y co-tratamiento psicoterapéutico.');
-  const [drugs, setDrugs] = useState<Array<{ id: string; name: string; doseMorning: string; doseAfternoon: string; doseNight: string; eff: string; notes: string }>>([
-    { id: 'drug-1', name: 'Sertralina 50mg', doseMorning: '1 tableta', doseAfternoon: '0', doseNight: '0', eff: 'Bueno', notes: 'Ligera cefalea los primeros días.' },
-    { id: 'drug-2', name: 'Alprazolam 0.25mg', doseMorning: '0', doseAfternoon: '0', doseNight: '1 tableta', eff: 'Excelente inductor sueño', notes: 'Uso condicionado a crisis agudas.' }
-  ]);
+  // Sub-tabs del Tratamiento Psiquiátrico (paridad fullstack)
+  const [psiquiatriaSubTab, setPsiquiatriaSubTab] = useState<'expediente' | 'esquema'>('expediente');
+  // Edición inline de sesión (TBE)
+  const [editingField, setEditingField] = useState<'fase' | 'significado' | 'dxOp' | 'spr' | null>(null);
+  const catalogoFases = ['Definición del problema', 'Desbloqueo', 'Consolidación', 'Cierre'];
+  const catalogoSpr = ['SPR Fóbico', 'SPR Obsesivo-Compulsivo', 'SPR Paranoide', 'SPR Depresivo', 'SPR Dismórfico', 'SPR Hipocondríaco'];
+
+  const updateSessionField = async (patch: Partial<Session>) => {
+    if (!activeSessionDetail) return;
+    const updated = sessions.map(s => s.id === activeSessionDetail.id ? { ...s, ...patch } : s);
+    setSessions(updated);
+    setActiveSessionDetail({ ...activeSessionDetail, ...patch });
+    await sessionService.saveByPatientId(patientId, updated);
+  };
+  // Examen Mental
+  const [showExamenModal, setShowExamenModal] = useState(false);
+  const [showResultadosModal, setShowResultadosModal] = useState(false);
+  // Borrador editable de datos del paciente (sub-tab generales)
+  const [patientDraft, setPatientDraft] = useState<Patient | null>(null);
+
+  // ── Historia clínica y ficha (sub-tabs del expediente) ─────────────────────
+  const [historiaDraft, setHistoriaDraft] = useState<Antecedentes>(EMPTY_ANTECEDENTES);
+  const [examenDraft, setExamenDraft] = useState<ExamenMental>({});
+  const [tratamientosPrevios, setTratamientosPrevios] = useState<TratamientoPrevio[]>([]);
+
+  const updateRecord = (patch: Partial<ClinicalRecordType>) => {
+    setClinicalRecord(prev => (prev ? { ...prev, ...patch } : prev));
+  };
+
+  const handleSaveHistoria = async () => {
+    if (blockIfReadOnly()) return;
+    if (!clinicalRecord) return;
+    const merged: ClinicalRecordType = {
+      ...clinicalRecord,
+      antecedentes: historiaDraft,
+      examenMental: examenDraft,
+      fechaExamenMental: new Date().toISOString().slice(0, 10)
+    };
+    setClinicalRecord(merged);
+    await recordService.saveByPatientId(patientId, merged);
+  };
+
+  const handleSaveFicha = async () => {
+    if (blockIfReadOnly()) return;
+    if (!clinicalRecord) return;
+    setClinicalRecord(clinicalRecord);
+    await recordService.saveByPatientId(patientId, clinicalRecord);
+    await tratamientoPrevioService.guardarByPatientId(patientId, tratamientosPrevios);
+  };
+
+  // Entradas de lista (ficha)
+  const [newFarmacoNombre, setNewFarmacoNombre] = useState('');
+  const [newPsicofarmacoNombre, setNewPsicofarmacoNombre] = useState('');
+  const [newPsicofarmacoDuracion, setNewPsicofarmacoDuracion] = useState('');
+  const [newDrogaNombre, setNewDrogaNombre] = useState('');
+  const [newTratamientoEnfoque, setNewTratamientoEnfoque] = useState('');
+  const [newTratamientoDuracion, setNewTratamientoDuracion] = useState('');
+
+  // Setters anidados (historia)
+  const setPatologico = (key: keyof Antecedentes['personalesPatológicos'], value: string) =>
+    setHistoriaDraft(prev => ({ ...prev, personalesPatológicos: { ...prev.personalesPatológicos, [key]: value } }));
+  const setNoPatologico = (key: 'actividadFísica' | 'alimentación', value: string) =>
+    setHistoriaDraft(prev => ({ ...prev, personalesNoPatológicos: { ...prev.personalesNoPatológicos, [key]: value } }));
+  const setHabito = (key: 'tabaquismo' | 'alcoholismo' | 'toxicomanías', patch: Partial<HábitoPresente>) =>
+    setHistoriaDraft(prev => ({ ...prev, personalesNoPatológicos: { ...prev.personalesNoPatológicos, [key]: { ...prev.personalesNoPatológicos[key], ...patch } } }));
+  const setHeredo = (key: keyof Antecedentes['heredoFamiliares'], value: string) =>
+    setHistoriaDraft(prev => ({ ...prev, heredoFamiliares: { ...prev.heredoFamiliares, [key]: value } }));
+  const setExamen = (key: Exclude<keyof ExamenMental, 'evaluaciónRiesgo'>, value: string) =>
+    setExamenDraft(prev => ({ ...prev, [key]: { observaciones: value } }));
+
+  // Examen Mental estructurado (paridad fullstack)
+  const hallazgo = (section: string, param: string): string =>
+    ((examenDraft as any)[section]?.[param] as string) ?? '';
+  const setHallazgo = (section: string, param: string, value: string) =>
+    setExamenDraft(prev => {
+      const base = prev as Record<string, any>;
+      const seccion = base[section] ?? {};
+      return { ...prev, [section]: { ...seccion, [param]: value } } as ExamenMental;
+    });
+  const riesgoItem = (clave: string) =>
+    examenDraft.evaluaciónRiesgo?.[clave] ?? { nivel: '', hallazgo: '' };
+  const setRiesgoNivel = (clave: string, value: string) =>
+    setExamenDraft(prev => ({
+      ...prev,
+      evaluaciónRiesgo: { ...(prev.evaluaciónRiesgo ?? {}), [clave]: { nivel: value, hallazgo: prev.evaluaciónRiesgo?.[clave]?.hallazgo ?? '' } }
+    }));
+  const setRiesgoHallazgo = (clave: string, value: string) =>
+    setExamenDraft(prev => ({
+      ...prev,
+      evaluaciónRiesgo: { ...(prev.evaluaciónRiesgo ?? {}), [clave]: { nivel: prev.evaluaciónRiesgo?.[clave]?.nivel ?? '', hallazgo: value } }
+    }));
+  const sintesisTexto = (clave: string): string => examenDraft.síntesis?.[clave] ?? '';
+  const setSintesisTexto = (clave: string, value: string) =>
+    setExamenDraft(prev => ({ ...prev, síntesis: { ...(prev.síntesis ?? {}), [clave]: value } }));
+
+  // Datos generales del paciente (sub-tab generales)
+  const setPatientField = (patch: Partial<Patient>) =>
+    setPatientDraft(prev => (prev ? { ...prev, ...patch } : prev));
+  const setDomicilioField = (patch: Partial<Domicilio>) =>
+    setPatientDraft(prev => (prev ? { ...prev, domicilio: { ...(prev.domicilio ?? ({} as Domicilio)), ...patch } } : prev));
+  const setContactoField = (patch: Partial<ContactoEmergencia>) =>
+    setPatientDraft(prev => (prev ? { ...prev, contactoEmergencia: { ...(prev.contactoEmergencia ?? ({} as ContactoEmergencia)), ...patch } } : prev));
+
+  const handleSaveDatosGenerales = async () => {
+    if (blockIfReadOnly()) return;
+    if (!patientDraft) return;
+    await patientService.update(patientDraft);
+    window.dispatchEvent(new CustomEvent('brevemente_patients_changed'));
+    alert('Datos generales guardados.');
+  };
+
+  const addHistorialFarmaco = () => {
+    if (!newFarmacoNombre.trim()) return;
+    updateRecord({ historialFarmacos: [...(clinicalRecord?.historialFarmacos ?? []), { nombre: newFarmacoNombre.trim() }] });
+    setNewFarmacoNombre('');
+  };
+  const addHistorialPsicofarmaco = () => {
+    if (!newPsicofarmacoNombre.trim()) return;
+    updateRecord({ historialPsicofarmacos: [...(clinicalRecord?.historialPsicofarmacos ?? []), { nombre: newPsicofarmacoNombre.trim(), duracion: newPsicofarmacoDuracion.trim() }] });
+    setNewPsicofarmacoNombre('');
+    setNewPsicofarmacoDuracion('');
+  };
+  const addHistorialDroga = () => {
+    if (!newDrogaNombre.trim()) return;
+    updateRecord({ historialDrogas: [...(clinicalRecord?.historialDrogas ?? []), { nombre: newDrogaNombre.trim() }] });
+    setNewDrogaNombre('');
+  };
+  const addTratamiento = () => {
+    if (!newTratamientoEnfoque.trim()) return;
+    setTratamientosPrevios(prev => [...prev, { id: `tp-${Date.now()}`, enfoque: newTratamientoEnfoque.trim(), duracion: newTratamientoDuracion.trim(), resultado: 'mejorado' }]);
+    setNewTratamientoEnfoque('');
+    setNewTratamientoDuracion('');
+  };
+
+  // Psicofármacos del esquema (drugsList)
+  const addDrug = () => {
+    updateRecord({ drugsList: [...(clinicalRecord?.drugsList ?? []), { id: `drug-${Date.now()}`, name: '', doseMorning: '', doseAfternoon: '', doseNight: '', eff: '', notes: '', categoria: 'otros' as CodigoCategoriaPsicofarmaco }] });
+  };
+  const updateDrug = (id: string, patch: Partial<Drug>) => {
+    updateRecord({ drugsList: (clinicalRecord?.drugsList ?? []).map(d => d.id === id ? { ...d, ...patch } : d) });
+  };
+  const removeDrug = (id: string) => {
+    updateRecord({ drugsList: (clinicalRecord?.drugsList ?? []).filter(d => d.id !== id) });
+  };
+
+  // Criterios clínicos (sub-tab TBE)
+  const [criterioCategoria, setCriterioCategoria] = useState<CriterioCategoria>('conductual');
+  const [criterioValor, setCriterioValor] = useState('');
+
+  const addCriterio = async (sessionId: string) => {
+    if (blockIfReadOnly()) return;
+    if (!criterioValor.trim()) return;
+    const updated = sessions.map(s => s.id === sessionId
+      ? { ...s, criterios: [...(s.criterios ?? []), { id: `c-${Date.now()}`, categoria: criterioCategoria, valor: criterioValor.trim() } as CriterioClinico] }
+      : s);
+    setSessions(updated);
+    await sessionService.saveByPatientId(patientId, updated);
+    setCriterioValor('');
+  };
+
+  const removeCriterio = async (sessionId: string, criterioId?: string) => {
+    if (blockIfReadOnly()) return;
+    const updated = sessions.map(s => s.id === sessionId
+      ? { ...s, criterios: (s.criterios ?? []).filter(c => c.id !== criterioId) }
+      : s);
+    setSessions(updated);
+    await sessionService.saveByPatientId(patientId, updated);
+  };
 
   // Cargar datos del paciente
   useEffect(() => {
     // Cargar historial de sesiones a través del servicio
     sessionService.getByPatientId(patientId).then((sessions) => {
       if (sessions.length === 0) {
-        // No hay sesiones guardadas: usar mocks iniciales (solo demo)
-        const initialSess = [
-          {
-            id: 'session-1-1',
-            patientId: 'patient-1',
-            number: 1,
-            date: '2026-08-10',
-            phase: 'Definición del problema',
-            protocol: 'Ataque de Pánico',
-            dxOp: 'SPR Fóbico',
-            px: ['Diario de abordo', 'Cómo empeorar'],
-            f1: 'Redefinición del control: "Quien busca el control, lo pierde; quien lo entrega, lo gana."',
-            f2: 'Evitación que confirma el peligro.',
-            oss: 'Paciente muy receptiva. Se identificó la solución intentada de pedir ayuda a su madre y esposo.',
-            add: '100%',
-            rss: 'Mejoría leve',
-            eff: 'Bueno',
-            notes: 'La paciente reporta que escribir en el diario de abordo redujo la duración de la crisis de 20 a 5 minutos.',
-            observationsNextSession: 'Profundizar en la maniobra de "cómo empeorar" para bloquear el control voluntario.',
-            situation: 'Estable con crisis de menor intensidad.',
-            status: 'validado' as const
-          },
-          {
-            id: 'session-1-2',
-            patientId: 'patient-1',
-            number: 2,
-            date: '2026-08-17',
-            phase: 'Desbloqueo',
-            protocol: 'Ataque de Pánico',
-            dxOp: 'SPR Fóbico',
-            px: ['Diario de abordo', 'WF 30 min'],
-            f1: 'La fantasía del peor escenario: "Míralo a los ojos y el fantasma desaparecerá."',
-            f2: 'Prescribir el síntoma en un horario fijo.',
-            oss: 'Se prescribe la Peor Fantasía (Worry-Time / WF 30 min) de 30 minutos diarios a las 18:00.',
-            add: '80%',
-            rss: 'Mejoría significativa',
-            eff: 'Excelente',
-            notes: 'Al colocarse voluntariamente en el peor escenario durante 30 minutos, la paciente reporta que le costaba sentir miedo y terminaba relajándose.',
-            observationsNextSession: 'Evaluar autonomía al salir sola a la calle sin pedir ayuda.',
-            situation: 'Muy mejorada. Solo reporta un amago de crisis en la semana.',
-            status: 'validado' as const
-          }
-        ];
-
-        const sess = patientId === 'patient-1' ? initialSess : [];
+        // No hay sesiones guardadas: usar la semilla de la demo (mockSessions)
+        const sess = mockSessions[patientId] ?? [];
         setSessions(sess);
         if (sess.length > 0) setActiveSessionDetail(sess[sess.length - 1]);
       } else {
         setSessions(sessions);
         if (sessions.length > 0) setActiveSessionDetail(sessions[sessions.length - 1]);
+        // Reconstruir VC/VG desde las sesiones persistidas (si existen)
+        const persistedVc = sessions.filter(s => s.valoracionCambio).map(s => ({ ...s.valoracionCambio!, sessionNum: s.number }));
+        const persistedVg = sessions.filter(s => s.valoracionGlobal).map(s => ({ ...s.valoracionGlobal!, sessionNum: s.number }));
+        if (persistedVc.length > 0) setVcHistory(persistedVc);
+        if (persistedVg.length > 0) setVgHistory(persistedVg);
       }
     });
 
@@ -449,34 +602,38 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       const mockRecord: ClinicalRecordType = {
         patientId: patientId,
         patientName: activePatient?.name || 'Paciente',
-        folio: patientId === 'patient-1' ? 'EXP-8849' : 'EXP-9012',
-        startDate: activePatient?.registrationDate || '2026-08-20',
-        age: patientId === 'patient-1' ? 28 : 35,
-        therapistName: 'Dr. Alejandro Silva',
+        folio: patientId === 'pac-001' ? 'EXP-0001' : patientId === 'pac-002' ? 'EXP-0002' : patientId === 'pac-003' ? 'EXP-0003' : 'EXP-0004',
+        startDate: activePatient?.registrationDate || '',
+        age: activePatient?.edadCalculada ?? 0,
+        therapistName: activePatient?.therapistName || 'Dra. Sofía Ramírez Lozano',
         status: 'Activo - En Tratamiento',
         riskLevel: activePatient?.riskLevel || 'bajo',
-        modality: patientId === 'patient-1' ? 'online' : 'presencial',
+        modality: patientId === 'pac-002' ? 'online' : 'presencial',
         motif: activePatient?.motif || 'Motivo de consulta inicial.',
-        description: patientId === 'patient-1'
-          ? 'Paciente femenina de 28 años que refiere inicio de crisis de angustia súbitas hace 3 meses. Asocia síntomas con miedo a desmayarse en público y perder el control. Ha evitado lugares concurridos.'
-          : 'Paciente masculino de 35 años que reporta bloqueos de habla al exponer en público.',
-        trastornoEstrategico: patientId === 'patient-1' ? 'Ataque de Pánico' : 'Miedo a hablar en público',
-        firstAppearance: 'Hace 3 meses tras periodo de alto estrés.',
-        precipitatingFactors: 'Alta demanda y discusiones de trabajo.',
+        description: activePatient?.motif || 'Sin descripción.',
+        trastornoEstrategico: activePatient?.motif || '',
+        firstAppearance: '',
+        precipitatingFactors: '',
         evolutionType: 'episódico',
         dxOpInicial: 'SPR Fóbico',
         sprInicial: 'Marcador de inicio',
-        objectivePatient: 'Poder salir a trabajar y estar sola en su casa sin temor.',
-        objectiveTherapist: 'Reestructurar la percepción de peligro físico, disolver la paradoja del control que hace perder el control.'
+        objectivePatient: '',
+        objectiveTherapist: ''
       };
 
-      setClinicalRecord(record || mockRecord);
+      const loaded = record || mockRecord;
+      setClinicalRecord(loaded);
+      setHistoriaDraft(loaded.antecedentes ?? EMPTY_ANTECEDENTES);
+      setExamenDraft(loaded.examenMental ?? {});
     });
+
+    tratamientoPrevioService.getByPatientId(patientId).then(setTratamientosPrevios);
 
     // Cargar modo inicial
     if (activePatient) {
       setSessionMode(activePatient.registryMode);
     }
+    setPatientDraft(activePatient ?? null);
   }, [patientId, activePatient]);
 
   // Temporizador para grabación de audio
@@ -606,7 +763,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         activePatient.id,
         activePatient.name,
         activeRiskAlert.message,
-        { id: 'therapist-1', name: userName, role: userRole }
+        { id: 'ter-001', name: userName, role: userRole }
       );
       alert('⚠️ ALERTA: Caso escalado con éxito al supervisor clínico de guardia y registrado en auditoría.');
       setActiveRiskAlert(null);
@@ -663,7 +820,23 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       observationsNextSession: newSessObsNext,
       situation: newSessSituation,
       status: 'validado',
-      audioDuration: audioBlobUrl ? `${recordingSeconds}s` : undefined
+      audioDuration: audioBlobUrl ? `${recordingSeconds}s` : undefined,
+      valoracionCambio: {
+        sessionNum: newSessionNumber,
+        percepcion: newVcPercepcion,
+        pensamientos: newVcPensamientos,
+        sensaciones: newVcSensaciones,
+        reacciones: newVcReacciones,
+        sintomas: newVcSintomas,
+        crisis: newVcCrisis
+      },
+      valoracionGlobal: {
+        sessionNum: newSessionNumber,
+        yo: newVgYo,
+        demas: newVgDemas,
+        mundo: newVgMundo
+      },
+      criterios: []
     };
 
     // Actualizar historial local de sesiones
@@ -741,19 +914,8 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
     if (blockIfReadOnly()) return;
     if (!clinicalRecord) return;
 
-    const updatedRecord = {
-      ...clinicalRecord,
-      dxNosologico: psyDxNosologico,
-      dsm5: psyDsm5,
-      cie11: psyCie11,
-      prognosis: psyPrognosis,
-      treatmentPlan: psyPlan,
-      drugsList: drugs
-    };
-
-    setClinicalRecord(updatedRecord);
-
-    await recordService.saveByPatientId(patientId, updatedRecord);
+    setClinicalRecord(clinicalRecord);
+    await recordService.saveByPatientId(patientId, clinicalRecord);
 
     // Registrar en auditoría
     auditLogService.addLog(
@@ -913,7 +1075,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                     activePatient.id,
                     activePatient.name,
                     'Caso que requiere revisión del supervisor clínico.',
-                    { id: 'therapist-1', name: userName, role: userRole }
+                    { id: 'ter-001', name: userName, role: userRole }
                   );
                   alert('✓ Solicitud de supervisión enviada al supervisor clínico y registrada en la bitácora de auditoría.');
                 }}
@@ -1075,13 +1237,13 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
       {/* Tabs Principales */}
       <div className="border-b border-slate-200 flex gap-2">
         <button
-          onClick={() => setActiveTab('datos')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'datos'
+          onClick={() => setActiveTab('tbe')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'tbe'
             ? 'border-clinical-accent text-clinical-accent'
             : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
         >
-          Datos de Admisión e Historia Clínica
+          Tratamiento Psicoterapéutico TBE
         </button>
         <button
           onClick={() => setActiveTab('psiquiatria')}
@@ -1093,13 +1255,13 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
           Tratamiento Psiquiátrico
         </button>
         <button
-          onClick={() => setActiveTab('tbe')}
-          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'tbe'
+          onClick={() => setActiveTab('datos')}
+          className={`px-4 py-2 border-b-2 font-bold text-xs transition-all ${activeTab === 'datos'
             ? 'border-clinical-accent text-clinical-accent'
             : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
         >
-          Tratamiento Psicoterapéutico TBE
+          Datos de Admisión e Historia Clínica
         </button>
 
         <button
@@ -1129,7 +1291,7 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
             : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
         >
-          <span>Bitacoras Supervisión</span>
+          <span>Bitácoras Supervisión</span>
           {supervisionLogs.length > 0 && (
             <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${activeTab === 'supervision' ? 'bg-clinical-accent/15 text-clinical-accent' : 'bg-slate-100 text-slate-500'}`}>
               {supervisionLogs.length}
@@ -1202,6 +1364,12 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               className={`px-3 py-1.5 rounded-md transition-all ${tbeSubTab === 'rst' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
             >
               Reestructuraciones (RST)
+            </button>
+            <button
+              onClick={() => { setTbeSubTab('criterios'); setIsCreatingSession(false); }}
+              className={`px-3 py-1.5 rounded-md transition-all ${tbeSubTab === 'criterios' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Criterios Clínicos
             </button>
           </div>
 
@@ -1644,82 +1812,27 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <div>
                               <label className="block text-slate-500 font-semibold mb-0.5">Percepción:</label>
-                              <select
-                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVcPercepcion}
-                                onChange={(e) => setNewVcPercepcion(e.target.value)}
-                              >
-                                <option value="Sin cambios">Sin cambios</option>
-                                <option value="Mejoría leve">Mejoría leve</option>
-                                <option value="Mejoría significativa">Mejoría significativa</option>
-                                <option value="Nuevo patrón">Nuevo patrón</option>
-                                <option value="Empeoramiento">Empeoramiento</option>
-                              </select>
+                              <VcSemaphore value={newVcPercepcion} onChange={setNewVcPercepcion} />
                             </div>
                             <div>
                               <label className="block text-slate-500 font-semibold mb-0.5">Pensamientos:</label>
-                              <select
-                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVcPensamientos}
-                                onChange={(e) => setNewVcPensamientos(e.target.value)}
-                              >
-                                <option value="Sin cambios">Sin cambios</option>
-                                <option value="Mejoría leve">Mejoría leve</option>
-                                <option value="Mejoría significativa">Mejoría significativa</option>
-                                <option value="Empeoramiento">Empeoramiento</option>
-                              </select>
+                              <VcSemaphore value={newVcPensamientos} onChange={setNewVcPensamientos} />
                             </div>
                             <div>
                               <label className="block text-slate-500 font-semibold mb-0.5">Sensaciones:</label>
-                              <select
-                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVcSensaciones}
-                                onChange={(e) => setNewVcSensaciones(e.target.value)}
-                              >
-                                <option value="Sin cambios">Sin cambios</option>
-                                <option value="Mejoría leve">Mejoría leve</option>
-                                <option value="Mejoría significativa">Mejoría significativa</option>
-                                <option value="Empeoramiento">Empeoramiento</option>
-                              </select>
+                              <VcSemaphore value={newVcSensaciones} onChange={setNewVcSensaciones} />
                             </div>
                             <div>
                               <label className="block text-slate-500 font-semibold mb-0.5">Reacciones:</label>
-                              <select
-                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVcReacciones}
-                                onChange={(e) => setNewVcReacciones(e.target.value)}
-                              >
-                                <option value="Sin cambios">Sin cambios</option>
-                                <option value="Mejoría leve">Mejoría leve</option>
-                                <option value="Mejoría significativa">Mejoría significativa</option>
-                                <option value="Empeoramiento">Empeoramiento</option>
-                              </select>
+                              <VcSemaphore value={newVcReacciones} onChange={setNewVcReacciones} />
                             </div>
                             <div>
                               <label className="block text-slate-500 font-semibold mb-0.5">Síntomas:</label>
-                              <select
-                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVcSintomas}
-                                onChange={(e) => setNewVcSintomas(e.target.value)}
-                              >
-                                <option value="Sin cambios">Sin cambios</option>
-                                <option value="Mejoría leve">Mejoría leve</option>
-                                <option value="Mejoría significativa">Mejoría significativa</option>
-                                <option value="Empeoramiento">Empeoramiento</option>
-                              </select>
+                              <VcSemaphore value={newVcSintomas} onChange={setNewVcSintomas} />
                             </div>
                             <div>
                               <label className="block text-slate-500 font-semibold mb-0.5">Crisis:</label>
-                              <select
-                                className="w-full px-2 py-1.5 border border-slate-200 bg-white rounded-lg focus:outline-none"
-                                value={newVcCrisis}
-                                onChange={(e) => setNewVcCrisis(e.target.value)}
-                              >
-                                <option value="Sin cambios">Sin cambios</option>
-                                <option value="Mejoría leve">Mejoría leve</option>
-                                <option value="Mejoría significativa">Mejoría significativa</option>
-                                <option value="Empeoramiento">Empeoramiento</option>
-                              </select>
+                              <VcSemaphore value={newVcCrisis} onChange={setNewVcCrisis} />
                             </div>
                           </div>
                         </div>
@@ -1822,15 +1935,59 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                         </div>
                       </div>
 
+                      {/* Edición inline de sesión (Fase, Significado, DX, SPR) */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-b border-slate-100 pb-3 mb-3 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Fase</span>
+                          {editingField !== 'fase' ? (
+                            <button type="button" onClick={() => setEditingField('fase')} className="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 hover:border-clinical-accent">
+                              {activeSessionDetail.phase || '—'}
+                            </button>
+                          ) : (
+                            <select autoFocus value={activeSessionDetail.phase} onChange={(e) => { updateSessionField({ phase: e.target.value }); setEditingField(null); }} onBlur={() => setEditingField(null)} className="w-full px-2 py-1 border border-slate-200 rounded-md">
+                              {catalogoFases.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Significado</span>
+                          {editingField !== 'significado' ? (
+                            <button type="button" onClick={() => setEditingField('significado')} className="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 hover:border-clinical-accent">
+                              {activeSessionDetail.significado || '—'}
+                            </button>
+                          ) : (
+                            <input autoFocus type="text" value={activeSessionDetail.significado ?? ''} onChange={(e) => updateSessionField({ significado: e.target.value })} onBlur={() => setEditingField(null)} onKeyDown={(e) => { if (e.key === 'Enter') setEditingField(null); }} className="w-full px-2 py-1 border border-slate-200 rounded-md" />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">DX operativo</span>
+                          {editingField !== 'dxOp' ? (
+                            <button type="button" onClick={() => setEditingField('dxOp')} className="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 hover:border-clinical-accent">
+                              {activeSessionDetail.dxOp || '—'}
+                            </button>
+                          ) : (
+                            <input autoFocus type="text" value={activeSessionDetail.dxOp} onChange={(e) => updateSessionField({ dxOp: e.target.value })} onBlur={() => setEditingField(null)} onKeyDown={(e) => { if (e.key === 'Enter') setEditingField(null); }} className="w-full px-2 py-1 border border-slate-200 rounded-md" />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">SPR</span>
+                          {editingField !== 'spr' ? (
+                            <button type="button" onClick={() => setEditingField('spr')} className="w-full text-left text-[11px] px-2 py-1 bg-slate-100 text-slate-600 rounded border border-slate-200 hover:border-clinical-accent">
+                              {activeSessionDetail.spr || '—'}
+                            </button>
+                          ) : (
+                            <select autoFocus value={activeSessionDetail.spr ?? ''} onChange={(e) => { updateSessionField({ spr: e.target.value }); setEditingField(null); }} onBlur={() => setEditingField(null)} className="w-full px-2 py-1 border border-slate-200 rounded-md">
+                              {catalogoSpr.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          )}
+                        </div>
+                      </div>
+
                       {/* Info de TBE asignado */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-lg border border-slate-100">
                         <div>
                           <span className="text-[10px] text-slate-400 font-bold uppercase block">Protocolo Clínico TBE:</span>
                           <span className="text-sm font-bold text-clinical-dark block">{activeSessionDetail.protocol}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Diagnóstico Operativo (Dx.OP):</span>
-                          <span className="text-sm font-bold text-clinical-dark block">{activeSessionDetail.dxOp}</span>
                         </div>
                         {activeSessionDetail.trastorno && (
                           <div className="sm:col-span-2">
@@ -1975,12 +2132,12 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                       {vcHistory.map((vc, idx) => (
                         <tr key={idx} className="hover:bg-slate-50">
                           <td className="p-3 font-bold text-clinical-dark">Sesión {vc.sessionNum}</td>
-                          <td className="p-3">{vc.percepcion}</td>
-                          <td className="p-3">{vc.pensamientos}</td>
-                          <td className="p-3">{vc.sensaciones}</td>
-                          <td className="p-3">{vc.reacciones}</td>
-                          <td className="p-3">{vc.sintomas}</td>
-                          <td className="p-3">{vc.crisis}</td>
+                          <td className="p-3"><VcChip value={vc.percepcion} /></td>
+                          <td className="p-3"><VcChip value={vc.pensamientos} /></td>
+                          <td className="p-3"><VcChip value={vc.sensaciones} /></td>
+                          <td className="p-3"><VcChip value={vc.reacciones} /></td>
+                          <td className="p-3"><VcChip value={vc.sintomas} /></td>
+                          <td className="p-3"><VcChip value={vc.crisis} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -2068,123 +2225,294 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
               </div>
             </div>
           )}
+
+          {/* CRITERIOS CLÍNICOS */}
+          {tbeSubTab === 'criterios' && (
+            <div className="space-y-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-xs font-bold text-clinical-dark uppercase">Criterios Clínicos por Sesión</h3>
+                  <span className="text-[10px] text-slate-400 font-semibold">Categorías: conductual, racionalizaciones, comparaciones, imágenes intrusivas</span>
+                </div>
+                {sessions.length === 0 && <p className="text-slate-400 italic">Sin sesiones registradas.</p>}
+                {sessions.map((s) => (
+                  <div key={s.id} className="border border-slate-200 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-clinical-dark">Sesión {s.number} — {s.date}</span>
+                      <span className="text-[10px] text-slate-400">{s.protocol}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {(s.criterios ?? []).map((c) => (
+                        <div key={c.id} className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-100 rounded px-3 py-1.5">
+                          <span className="text-slate-700">
+                            <span className="font-bold text-clinical-accent">{c.categoria}:</span> {c.valor}
+                          </span>
+                          <button onClick={() => removeCriterio(s.id, c.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ))}
+                      {(s.criterios ?? []).length === 0 && <p className="text-slate-400 italic text-[10px]">Sin criterios registrados.</p>}
+                    </div>
+                    {activeSessionDetail?.id === s.id && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <select className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none" value={criterioCategoria} onChange={(e) => { const cat = e.target.value as CriterioCategoria; setCriterioCategoria(cat); if (cat === 'conductual') setCriterioValor(OPCIONES_CONDUCTUALES[0].etiqueta); else setCriterioValor(''); }}>
+                          <option value="conductual">Conductual</option>
+                          <option value="racionalizaciones_intelectualizaciones">Racionalizaciones/Intelectualizaciones</option>
+                          <option value="comparaciones">Comparaciones</option>
+                          <option value="imagenes_intrusivas">Imágenes Intrusivas</option>
+                          <option value="otro">Otro</option>
+                        </select>
+                        {criterioCategoria === 'conductual' ? (
+                          <select className="px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1" value={criterioValor} onChange={(e) => setCriterioValor(e.target.value)}>
+                            {OPCIONES_CONDUCTUALES.map(o => <option key={o.codigo} value={o.etiqueta}>{o.etiqueta}</option>)}
+                          </select>
+                        ) : (
+                          <input type="text" placeholder="Descripción del criterio" className="px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1" value={criterioValor} onChange={(e) => setCriterioValor(e.target.value)} />
+                        )}
+                        <button onClick={() => addCriterio(s.id)} className="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold flex items-center gap-1"><Plus className="w-4 h-4" /> Agregar</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* PESTAÑA: PSIQUIATRÍA */}
       {activeTab === 'psiquiatria' && (
-        <form onSubmit={handleSavePsychiatry} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-6 text-xs text-slate-600">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <ShieldAlert className="w-5 h-5 text-clinical-accent" />
-            <h3 className="text-sm font-bold text-clinical-dark">Expediente Médico Psiquiátrico</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-slate-500 font-semibold mb-1">Diagnóstico Nosológico Clínico:</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
-                value={psyDxNosologico}
-                onChange={(e) => setPsyDxNosologico(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-slate-500 font-semibold mb-1">Criterio DSM-5TR:</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
-                value={psyDsm5}
-                onChange={(e) => setPsyDsm5(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-slate-500 font-semibold mb-1">Criterio CIE-11:</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
-                value={psyCie11}
-                onChange={(e) => setPsyCie11(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-slate-500 font-semibold mb-1">Pronóstico de Evolución:</label>
-              <select
-                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none font-semibold text-clinical-dark"
-                value={psyPrognosis}
-                onChange={(e) => setPsyPrognosis(e.target.value as any)}
-              >
-                <option value="excelente">Excelente</option>
-                <option value="bueno">Bueno</option>
-                <option value="reservado">Reservado</option>
-                <option value="malo">Malo</option>
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-slate-500 font-semibold mb-1">Plan de Tratamiento Farmacológico:</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
-                value={psyPlan}
-                onChange={(e) => setPsyPlan(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Fármacos Prescritos por Sesión */}
-          <div className="space-y-3">
-            <span className="font-bold text-clinical-dark block border-b border-slate-100 pb-2">Esquema Psicotrópico Farmacológico</span>
-
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
-                    <th className="p-3">Psicofármaco</th>
-                    <th className="p-3 text-center">Mañana</th>
-                    <th className="p-3 text-center">Tarde</th>
-                    <th className="p-3 text-center">Noche</th>
-                    <th className="p-3">Efecto Secundario (EFF)</th>
-                    <th className="p-3">Observaciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">
-                  {drugs.map((d) => (
-                    <tr key={d.id}>
-                      <td className="p-3 font-bold text-clinical-dark">{d.name}</td>
-                      <td className="p-3 text-center">{d.doseMorning}</td>
-                      <td className="p-3 text-center">{d.doseAfternoon}</td>
-                      <td className="p-3 text-center">{d.doseNight}</td>
-                      <td className="p-3 text-clinical-risk">{d.eff}</td>
-                      <td className="p-3 text-slate-500">{d.notes}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Simulación IA Resumen de Fármacos */}
-            <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex items-start gap-2.5">
-              <Sparkles className="w-5 h-5 text-clinical-accent shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-clinical-dark block">Análisis Clínico de Adherencia Farmacológica (Sugerencia IA)</span>
-                <p className="mt-1 leading-relaxed text-slate-600">
-                  La paciente mantiene estabilidad y adherencia alta al tratamiento psicotrópico. La disminución de dosis nocturnas de Benzodiazepinas (Alprazolam) en un 25% correlaciona favorablemente con la realización exitosa de las prescripciones conductuales (Peor Fantasía) y disminución del pánico basal.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+        <div className="space-y-5">
+          {/* Sub-pestañas */}
+          <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold w-fit">
             <button
-              type="submit"
-              disabled={readOnly}
-              className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 disabled:opacity-50"
+              type="button"
+              onClick={() => setPsiquiatriaSubTab('expediente')}
+              className={`px-4 py-1.5 rounded-md transition-all ${psiquiatriaSubTab === 'expediente' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
             >
-              <Save className="w-4 h-4" />
-              Guardar Expediente Psiquiátrico
+              Expediente Médico Psiquiátrico
+            </button>
+            <button
+              type="button"
+              onClick={() => setPsiquiatriaSubTab('esquema')}
+              className={`px-4 py-1.5 rounded-md transition-all ${psiquiatriaSubTab === 'esquema' ? 'bg-white text-clinical-dark shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Esquema Psico Farmacológico
             </button>
           </div>
-        </form>
+
+          {/* SUB: Expediente Médico Psiquiátrico (SDD-EMP-1) */}
+          {psiquiatriaSubTab === 'expediente' && (
+            <form onSubmit={handleSavePsychiatry} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-clinical-dark">Expediente Médico Psiquiátrico</h3>
+              </div>
+
+              {/* 1. Motivo de Consulta (Textual del paciente) */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Motivo de Consulta (Textual del paciente)</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3">
+                  <textarea rows={3} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent resize-y" value={clinicalRecord?.motif ?? ''} onChange={(e) => updateRecord({ motif: e.target.value })} />
+                </div>
+              </section>
+
+              {/* 2. DX. Nosológico */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">DX. Nosológico</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div><label className="block text-slate-500 font-semibold mb-1">Diagnóstico Nosológico:</label><input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.dxNosologico ?? ''} onChange={(e) => updateRecord({ dxNosologico: e.target.value })} /></div>
+                  <div><label className="block text-slate-500 font-semibold mb-1">Criterio DSM-5-TR:</label><input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.dsm5 ?? ''} onChange={(e) => updateRecord({ dsm5: e.target.value })} /></div>
+                  <div><label className="block text-slate-500 font-semibold mb-1">Criterio CIE-11:</label><input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.cie11 ?? ''} onChange={(e) => updateRecord({ cie11: e.target.value })} /></div>
+                  <div><label className="block text-slate-500 font-semibold mb-1">Primera Aparición:</label><input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.firstAppearance ?? ''} onChange={(e) => updateRecord({ firstAppearance: e.target.value })} /></div>
+                  <div><label className="block text-slate-500 font-semibold mb-1">Factores Precipitantes:</label><input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.precipitatingFactors ?? ''} onChange={(e) => updateRecord({ precipitatingFactors: e.target.value })} /></div>
+                  <div><label className="block text-slate-500 font-semibold mb-1">Evolución Temporal:</label>
+                    <select className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none" value={clinicalRecord?.evolutionType ?? 'episódico'} onChange={(e) => updateRecord({ evolutionType: e.target.value as any })}>
+                      <option value="progresivo">Progresivo</option><option value="agudo">Agudo</option><option value="crónico">Crónico</option><option value="episódico">Episódico</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              {/* 3. DX.DIF */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">DX.DIF</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3">
+                  <textarea rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent resize-y" value={clinicalRecord?.differentialDx ?? ''} onChange={(e) => updateRecord({ differentialDx: e.target.value })} />
+                </div>
+              </section>
+
+              {/* 4. Plan de tratamiento */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Plan de tratamiento</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3">
+                  <textarea rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent resize-y" value={clinicalRecord?.treatmentPlan ?? ''} onChange={(e) => updateRecord({ treatmentPlan: e.target.value })} />
+                </div>
+              </section>
+
+              {/* 5. Pronóstico */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Pronóstico</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div><label className="block text-slate-500 font-semibold mb-1">Pronóstico de Evolución:</label>
+                    <select className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none font-semibold text-clinical-dark" value={clinicalRecord?.prognosis ?? 'bueno'} onChange={(e) => updateRecord({ prognosis: e.target.value as any })}>
+                      <option value="excelente">Excelente</option><option value="bueno">Bueno</option><option value="reservado">Reservado</option><option value="malo">Malo</option>
+                    </select>
+                  </div>
+                  <div><label className="block text-slate-500 font-semibold mb-1">Factores Favorables:</label><input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.favorableFactors ?? ''} onChange={(e) => updateRecord({ favorableFactors: e.target.value })} /></div>
+                  <div><label className="block text-slate-500 font-semibold mb-1">Factores Desfavorables:</label><input type="text" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.unfavorableFactors ?? ''} onChange={(e) => updateRecord({ unfavorableFactors: e.target.value })} /></div>
+                </div>
+              </section>
+
+              {/* 6. Fármacos */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Fármacos</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3">
+                  <div role="radiogroup" aria-label="Fármacos" className="flex gap-4 mb-2">
+                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="emp-farmacos" checked={clinicalRecord?.drugsUsage !== 'SI'} onChange={() => updateRecord({ drugsUsage: 'NO', farmacosEsquema: [] })} /> No</label>
+                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="emp-farmacos" checked={clinicalRecord?.drugsUsage === 'SI'} onChange={() => updateRecord({ drugsUsage: 'SI' })} /> Sí</label>
+                  </div>
+                  {clinicalRecord?.drugsUsage === 'SI' && (
+                    <div className="space-y-2">
+                      {(clinicalRecord?.farmacosEsquema ?? []).map((f, i) => (
+                        <div key={`${f.nombre}-${i}`} className="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
+                          <div><label className="text-slate-400 block text-[10px] uppercase font-bold">Fármaco {i + 1}</label><input type="text" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" value={f.nombre} onChange={(e) => updateRecord({ farmacosEsquema: (clinicalRecord?.farmacosEsquema ?? []).map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) })} /></div>
+                          <button type="button" onClick={() => updateRecord({ farmacosEsquema: (clinicalRecord?.farmacosEsquema ?? []).filter((_, j) => j !== i) })} className="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+                        </div>
+                      ))}
+                      {(clinicalRecord?.farmacosEsquema ?? []).length < 3 && (
+                        <div className="flex gap-2">
+                          <input type="text" placeholder="Nombre del fármaco" className="px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1" value={newFarmacoNombre} onChange={(e) => setNewFarmacoNombre(e.target.value)} />
+                          <button type="button" onClick={() => { if (newFarmacoNombre.trim()) { updateRecord({ farmacosEsquema: [...(clinicalRecord?.farmacosEsquema ?? []), { nombre: newFarmacoNombre.trim() }] }); setNewFarmacoNombre(''); } }} className="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* 7. Psicofármacos */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Psicofármacos</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3 space-y-3">
+                  {GRUPOS_PSICOFARMACOS.map(g => {
+                    const grupo = (clinicalRecord?.drugsList ?? []).filter(d => g.categorias.includes((d.categoria ?? 'otros') as CodigoCategoriaPsicofarmaco));
+                    return (
+                      <div key={g.grupo}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-clinical-dark">{g.grupo}</span>
+                          <button type="button" onClick={() => updateRecord({ drugsList: [...(clinicalRecord?.drugsList ?? []), { id: `drug-${Date.now()}`, name: '', doseMorning: '', doseAfternoon: '', doseNight: '', eff: '', notes: '', categoria: g.categorias[0] }] })} className="px-2 py-1 text-clinical-accent border border-clinical-accent rounded-lg text-[10px] font-semibold">+ Agregar</button>
+                        </div>
+                        {grupo.length === 0 && <div className="text-slate-400 italic text-[11px]">Sin registros</div>}
+                        {grupo.map(d => (
+                          <div key={d.id} className="border-b border-slate-50 pb-2 mb-2 space-y-2">
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                              <div className="col-span-2"><label className="text-slate-400 block text-[10px] uppercase font-bold">Psicofármaco</label><input type="text" value={d.name} onChange={(e) => updateDrug(d.id, { name: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                              <div><label className="text-slate-400 block text-[10px] uppercase font-bold">Mañana</label><input type="text" value={d.doseMorning} onChange={(e) => updateDrug(d.id, { doseMorning: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                              <div><label className="text-slate-400 block text-[10px] uppercase font-bold">Tarde</label><input type="text" value={d.doseAfternoon} onChange={(e) => updateDrug(d.id, { doseAfternoon: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                              <div><label className="text-slate-400 block text-[10px] uppercase font-bold">Noche</label><input type="text" value={d.doseNight} onChange={(e) => updateDrug(d.id, { doseNight: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                              <div><label className="text-slate-400 block text-[10px] uppercase font-bold">EFF</label><input type="text" value={d.eff} onChange={(e) => updateDrug(d.id, { eff: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+                              <div className="col-span-1 md:col-span-5"><label className="text-slate-400 block text-[10px] uppercase font-bold">Observaciones</label><input type="text" value={d.notes} onChange={(e) => updateDrug(d.id, { notes: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></div>
+                              <button type="button" onClick={() => removeDrug(d.id)} className="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* 8. Drogas */}
+              <section>
+                <div className="bg-slate-100 px-3 py-2 font-bold text-clinical-dark uppercase text-[11px] rounded-t-lg border border-slate-200">Drogas</div>
+                <div className="border border-t-0 border-slate-200 rounded-b-lg p-3">
+                  <div role="radiogroup" aria-label="Drogas" className="flex gap-4 mb-2">
+                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="emp-drogas" checked={clinicalRecord?.usoDrogas !== 'SI'} onChange={() => updateRecord({ usoDrogas: 'NO', drogasEsquema: [] })} /> No</label>
+                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="emp-drogas" checked={clinicalRecord?.usoDrogas === 'SI'} onChange={() => updateRecord({ usoDrogas: 'SI' })} /> Sí</label>
+                  </div>
+                  {clinicalRecord?.usoDrogas === 'SI' && (
+                    <div className="space-y-2">
+                      {(clinicalRecord?.drogasEsquema ?? []).map((d, i) => (
+                        <div key={`${d.nombre}-${i}`} className="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
+                          <div><label className="text-slate-400 block text-[10px] uppercase font-bold">Droga {i + 1}</label><input type="text" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" value={d.nombre} onChange={(e) => updateRecord({ drogasEsquema: (clinicalRecord?.drogasEsquema ?? []).map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) })} /></div>
+                          <button type="button" onClick={() => updateRecord({ drogasEsquema: (clinicalRecord?.drogasEsquema ?? []).filter((_, j) => j !== i) })} className="px-2 py-1.5 text-red-600 border border-red-200 rounded-lg w-fit">Eliminar</button>
+                        </div>
+                      ))}
+                      {(clinicalRecord?.drogasEsquema ?? []).length < 4 && (
+                        <div className="flex gap-2">
+                          <input type="text" placeholder="Nombre de la droga" className="px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1" value={newDrogaNombre} onChange={(e) => setNewDrogaNombre(e.target.value)} />
+                          <button type="button" onClick={() => { if (newDrogaNombre.trim()) { updateRecord({ drogasEsquema: [...(clinicalRecord?.drogasEsquema ?? []), { nombre: newDrogaNombre.trim() }] }); setNewDrogaNombre(''); } }} className="px-3 py-1.5 bg-clinical-accent text-white rounded-lg text-xs font-semibold">Agregar</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button
+                  type="submit"
+                  disabled={readOnly}
+                  className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  Guardar Expediente Psiquiátrico
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* SUB: Esquema Psico Farmacológico */}
+          {psiquiatriaSubTab === 'esquema' && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-clinical-dark">Esquema Psicotrópico Farmacológico</h3>
+                <button type="button" onClick={addDrug} className="px-3 py-1.5 bg-clinical-accent text-white rounded-lg font-semibold">Agregar</button>
+              </div>
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                      <th className="p-2">Psicofármaco</th>
+                      <th className="p-2">Categoría</th>
+                      <th className="p-2 text-center">Mañana</th>
+                      <th className="p-2 text-center">Tarde</th>
+                      <th className="p-2 text-center">Noche</th>
+                      <th className="p-2">Efecto Secundario (EFF)</th>
+                      <th className="p-2">Observaciones</th>
+                      <th className="p-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">
+                    {(clinicalRecord?.drugsList ?? []).map(d => (
+                      <tr key={d.id}>
+                        <td className="p-2"><input type="text" value={d.name} onChange={(e) => updateDrug(d.id, { name: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg font-bold text-clinical-dark" /></td>
+                        <td className="p-2">
+                          <select value={d.categoria ?? 'otros'} onChange={(e) => updateDrug(d.id, { categoria: e.target.value as CodigoCategoriaPsicofarmaco })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white">
+                            {CATEGORIAS_PSICOFARMACOS.map(c => <option key={c.codigo} value={c.codigo}>{c.etiqueta}</option>)}
+                          </select>
+                        </td>
+                        <td className="p-2"><input type="text" value={d.doseMorning} onChange={(e) => updateDrug(d.id, { doseMorning: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center" /></td>
+                        <td className="p-2"><input type="text" value={d.doseAfternoon} onChange={(e) => updateDrug(d.id, { doseAfternoon: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center" /></td>
+                        <td className="p-2"><input type="text" value={d.doseNight} onChange={(e) => updateDrug(d.id, { doseNight: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center" /></td>
+                        <td className="p-2"><input type="text" value={d.eff} onChange={(e) => updateDrug(d.id, { eff: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-clinical-risk" /></td>
+                        <td className="p-2"><input type="text" value={d.notes} onChange={(e) => updateDrug(d.id, { notes: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg" /></td>
+                        <td className="p-2"><button type="button" onClick={() => removeDrug(d.id)} className="px-2 py-1 text-red-600 border border-red-200 rounded-lg">Eliminar</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-end border-t border-slate-100 pt-4">
+                <button type="button" onClick={handleSavePsychiatry} disabled={readOnly} className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 disabled:opacity-50">
+                  <Save className="w-4 h-4" />
+                  Guardar Esquema
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* PESTAÑA: DATOS GENERALES */}
@@ -2192,62 +2520,460 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6 text-xs text-slate-600 leading-relaxed">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <Clipboard className="w-5 h-5 text-clinical-accent" />
-            <h3 className="text-sm font-bold text-clinical-dark">Ficha de Admisión e Historia Clínica Completa</h3>
+            <h3 className="text-sm font-bold text-clinical-dark">Expediente Clínico</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Nombre Completo:</span>
-              <span className="text-xs font-bold text-clinical-dark block mt-0.5">{activePatient.name}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">CURP:</span>
-              <span className="text-xs font-mono font-bold text-slate-600 block mt-0.5">{activePatient.curp}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Contacto Móvil:</span>
-              <span className="text-xs font-medium text-slate-700 block mt-0.5">{activePatient.phone}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Correo Electrónico:</span>
-              <span className="text-xs font-medium text-slate-700 block mt-0.5">{activePatient.email}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Fecha de Registro en BreveMente:</span>
-              <span className="text-xs font-medium text-slate-700 block mt-0.5">{activePatient.registrationDate}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Fecha de Nacimiento:</span>
-              <span className="text-xs font-medium text-slate-700 block mt-0.5">{activePatient.birthDate}</span>
-            </div>
+          {/* Sub-tabs del expediente */}
+          <div className="flex items-center gap-1 border-b border-slate-100">
+            {(['generales', 'historia', 'ficha'] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => setDatosSubTab(st)}
+                className={`px-3 py-1.5 -mb-px font-bold text-[11px] transition-colors border-b-2 ${datosSubTab === st ? 'text-clinical-dark border-clinical-accent' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+              >
+                {st === 'generales' ? 'Generales' : st === 'historia' ? 'Historia Clínica' : 'Ficha de Identificación'}
+              </button>
+            ))}
           </div>
 
-          <div className="border-t border-slate-100 pt-4 space-y-2">
-            <span className="text-clinical-dark font-bold block">Motivo Inicial de Consulta Reportado:</span>
-            <div className="bg-slate-50 p-3.5 border border-slate-100 rounded-lg">
-              {activePatient.motif}
-            </div>
-          </div>
-
-          {/* Estatus Consentimiento */}
-          <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-100">
-                <Check className="w-5 h-5" />
+          {/* ── SUB-TAB: GENERALES ── */}
+          {datosSubTab === 'generales' && (
+            <div className="space-y-4">
+              {/* Establecimiento */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                <h3 className="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Establecimiento</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600">
+                  <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Establecimiento</span>{sedeActual?.nombre || '—'}</div>
+                  <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Clave CLUES</span>{sedeActual?.clues || '—'}</div>
+                  <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Licencia Sanitaria</span>{sedeActual?.licenciaSanitaria || '—'}</div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Tipo de Establecimiento</span>
+                    <span className="inline-flex flex-wrap gap-3 mt-1 text-slate-700">
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={sedeActual?.tipoEstablecimiento === 'publico'} className="accent-clinical-accent" /> Público</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={sedeActual?.tipoEstablecimiento === 'privado'} className="accent-clinical-accent" /> Privado</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={sedeActual?.tipoEstablecimiento === 'social'} className="accent-clinical-accent" /> Social</label>
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="font-bold text-clinical-dark block">Consentimiento Informado Aceptado</span>
-                <span className="text-[10px] text-slate-400">Firmado digitalmente el {activePatient.registrationDate}</span>
+
+              {/* Datos del Expediente */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                <h3 className="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Datos del Expediente</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div><label className="text-slate-500 block mb-1">Número de Expediente</label><input type="text" value={clinicalRecord?.folio ?? ''} readOnly className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+                  <div><label className="text-slate-500 block mb-1">Fecha de Apertura</label><input type="date" value={clinicalRecord?.fechaApertura ?? clinicalRecord?.startDate ?? ''} onChange={(e) => updateRecord({ fechaApertura: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Tipo de Expediente</label>
+                    <select value={clinicalRecord?.tipoExpediente ?? ''} onChange={(e) => updateRecord({ tipoExpediente: e.target.value as any })} className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white">
+                      <option value="">—</option>
+                      <option value="fisico">Físico</option>
+                      <option value="electronico">Electrónico</option>
+                      <option value="mixto">Mixto</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Datos del Paciente */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                <h3 className="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Datos del Paciente</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div><label className="text-slate-500 block mb-1">Nombre Completo</label><input type="text" value={patientDraft?.name ?? ''} readOnly className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+                  <div><label className="text-slate-500 block mb-1">CURP</label><input type="text" value={patientDraft?.curp ?? ''} readOnly className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+                  <div><label className="text-slate-500 block mb-1">RFC</label><input type="text" value={patientDraft?.rfc ?? ''} onChange={(e) => setPatientField({ rfc: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Fecha de Nacimiento</label><input type="text" value={patientDraft?.fechaNacimiento ?? ''} readOnly className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+                  <div><label className="text-slate-500 block mb-1">Edad</label><input type="text" value={patientDraft?.edadCalculada ?? ''} readOnly className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50" /></div>
+                  <div><label className="text-slate-500 block mb-1">Sexo</label>
+                    <select value={patientDraft?.sexo ?? ''} onChange={(e) => setPatientField({ sexo: e.target.value as any })} className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white">
+                      <option value="">—</option><option value="M">M</option><option value="F">F</option><option value="LGTB+">LGTB+</option>
+                    </select>
+                  </div>
+                  <div><label className="text-slate-500 block mb-1">Lugar de Nacimiento</label><input type="text" value={patientDraft?.lugarNacimiento ?? ''} onChange={(e) => setPatientField({ lugarNacimiento: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Estado Civil</label><input type="text" value={patientDraft?.estadoCivil ?? ''} onChange={(e) => setPatientField({ estadoCivil: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Escolaridad</label><input type="text" value={patientDraft?.escolaridad ?? ''} onChange={(e) => setPatientField({ escolaridad: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Ocupación</label><input type="text" value={patientDraft?.ocupacion ?? ''} onChange={(e) => setPatientField({ ocupacion: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Religión</label><input type="text" value={patientDraft?.religion ?? ''} onChange={(e) => setPatientField({ religion: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                </div>
+
+                <h4 className="text-xs font-bold text-clinical-dark pt-1">Domicilio</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="md:col-span-2"><label className="text-slate-500 block mb-1">Calle y Número</label><input type="text" value={patientDraft?.domicilio?.calleNumero ?? ''} onChange={(e) => setDomicilioField({ calleNumero: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Colonia</label><input type="text" value={patientDraft?.domicilio?.colonia ?? ''} onChange={(e) => setDomicilioField({ colonia: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">C.P.</label><input type="text" value={patientDraft?.domicilio?.codigoPostal ?? ''} onChange={(e) => setDomicilioField({ codigoPostal: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Municipio/Delegación</label><input type="text" value={patientDraft?.domicilio?.municipio ?? ''} onChange={(e) => setDomicilioField({ municipio: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Estado</label><input type="text" value={patientDraft?.domicilio?.estadoDomicilio ?? ''} onChange={(e) => setDomicilioField({ estadoDomicilio: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Tel. Casa</label><input type="text" value={patientDraft?.domicilio?.telefonoCasa ?? ''} onChange={(e) => setDomicilioField({ telefonoCasa: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Tel. Celular</label><input type="text" value={patientDraft?.domicilio?.telefonoCelular ?? ''} onChange={(e) => setDomicilioField({ telefonoCelular: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Tel. Trabajo</label><input type="text" value={patientDraft?.domicilio?.telefonoTrabajo ?? ''} onChange={(e) => setDomicilioField({ telefonoTrabajo: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div className="md:col-span-2"><label className="text-slate-500 block mb-1">Correo Electrónico</label><input type="text" value={patientDraft?.email ?? ''} onChange={(e) => setPatientField({ email: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                </div>
+
+                <h4 className="text-xs font-bold text-clinical-dark pt-1">Contacto de Emergencia</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div><label className="text-slate-500 block mb-1">Nombre</label><input type="text" value={patientDraft?.contactoEmergencia?.nombre ?? ''} onChange={(e) => setContactoField({ nombre: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Parentesco</label><input type="text" value={patientDraft?.contactoEmergencia?.parentesco ?? ''} onChange={(e) => setContactoField({ parentesco: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                  <div><label className="text-slate-500 block mb-1">Teléfono</label><input type="text" value={patientDraft?.contactoEmergencia?.telefono ?? ''} onChange={(e) => setContactoField({ telefono: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg" /></div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button type="button" onClick={handleSaveDatosGenerales} disabled={readOnly} className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow disabled:opacity-50">Guardar Datos Generales</button>
+                </div>
+              </div>
+
+              {/* Responsable Legal */}
+              {patientDraft?.representante && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                  <h3 className="text-sm font-bold text-clinical-dark border-b border-slate-100 pb-2">Responsable Legal</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                    <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Nombre</span>{patientDraft.representante.nombreCompleto}</div>
+                    <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Parentesco/Relación</span>{patientDraft.representante.parentesco}</div>
+                    <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Teléfono</span>{patientDraft.representante.telefono}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Estatus Consentimiento */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-100">
+                    <Check className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-clinical-dark block">Consentimiento Informado Aceptado</span>
+                    <span className="text-[10px] text-slate-400">Firmado digitalmente el {activePatient.registrationDate}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate(`/intake?id=${activePatient.id}`)}
+                  className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded font-semibold text-[10px] transition-colors"
+                >
+                  Ver Documento de Privacidad Firmado
+                </button>
               </div>
             </div>
+          )}
 
-            <button
-              onClick={() => navigate(`/intake?id=${activePatient.id}`)}
-              className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded font-semibold text-[10px] transition-colors"
-            >
-              Ver Documento de Privacidad Firmado
-            </button>
-          </div>
+          {/* ── SUB-TAB: HISTORIA CLÍNICA ── */}
+          {datosSubTab === 'historia' && (
+            <div className="space-y-4">
+              {/* 1. Antecedentes Personales Patológicos */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><Heart className="w-4 h-4 text-clinical-accent" /> Antecedentes Personales Patológicos</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {([
+                    ['médicos', 'Médicos'],
+                    ['quirúrgicos', 'Quirúrgicos'],
+                    ['traumáticos', 'Traumáticos'],
+                    ['alérgicos', 'Alérgicos'],
+                    ['transfusionales', 'Transfusionales'],
+                    ['hospitalizaciones', 'Hospitalizaciones']
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="block text-slate-500 font-semibold mb-1">{label}:</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent"
+                        value={historiaDraft.personalesPatológicos[key]}
+                        onChange={(e) => setPatologico(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. Antecedentes Personales No Patológicos */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><User className="w-4 h-4 text-clinical-accent" /> Antecedentes Personales No Patológicos</span>
+                {([
+                  ['tabaquismo', 'Tabaquismo'],
+                  ['alcoholismo', 'Alcoholismo'],
+                  ['toxicomanías', 'Toxicomanías']
+                ] as const).map(([key, label]) => (
+                  <div key={key} className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2 font-semibold text-slate-600 w-32">
+                      <input
+                        type="checkbox"
+                        className="accent-clinical-accent"
+                        checked={historiaDraft.personalesNoPatológicos[key].presente}
+                        onChange={(e) => setHabito(key, { presente: e.target.checked })}
+                      />
+                      {label}
+                    </label>
+                    {historiaDraft.personalesNoPatológicos[key].presente && (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="text"
+                          placeholder="Cantidad"
+                          className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1"
+                          value={historiaDraft.personalesNoPatológicos[key].cantidad ?? ''}
+                          onChange={(e) => setHabito(key, { cantidad: e.target.value })}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Frecuencia"
+                          className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1"
+                          value={historiaDraft.personalesNoPatológicos[key].frecuencia ?? ''}
+                          onChange={(e) => setHabito(key, { frecuencia: e.target.value })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Actividad Física:</label>
+                    <input type="text" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={historiaDraft.personalesNoPatológicos.actividadFísica} onChange={(e) => setNoPatologico('actividadFísica', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Alimentación:</label>
+                    <input type="text" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={historiaDraft.personalesNoPatológicos.alimentación} onChange={(e) => setNoPatologico('alimentación', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Antecedentes Heredo Familiares */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><GitBranch className="w-4 h-4 text-clinical-accent" /> Antecedentes Heredo Familiares</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {([
+                    ['enfermedadesMentales', 'Enfermedades Mentales'],
+                    ['enfermedadesCrónicas', 'Enfermedades Crónicas'],
+                    ['suicidiosIntentos', 'Suicidios / Intentos'],
+                    ['adicciones', 'Adicciones']
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="block text-slate-500 font-semibold mb-1">{label}:</label>
+                      <input type="text" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={historiaDraft.heredoFamiliares[key]} onChange={(e) => setHeredo(key, e.target.value)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Evaluación del Estado Mental (Examen Mental) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <span className="font-bold text-clinical-dark flex items-center gap-1.5"><FileText className="w-4 h-4 text-clinical-accent" /> Evaluación del Estado Mental (Examen Mental)</span>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setShowExamenModal(true)} className="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg text-xs font-semibold">Realizar examen</button>
+                    <button type="button" onClick={() => setShowResultadosModal(true)} className="px-3 py-1.5 border border-clinical-accent text-clinical-accent hover:bg-clinical-accent hover:text-white rounded-lg text-xs font-semibold transition-colors">Ver resultados</button>
+                  </div>
+                </div>
+                {Object.keys(examenDraft).length === 0 ? (
+                  <p className="text-slate-400 italic">Sin datos — Realice el examen para registrar la evaluación del estado mental.</p>
+                ) : (
+                  <p className="text-slate-600">Impresión diagnóstica: <span className="font-semibold text-clinical-dark">{examenDraft.síntesis?.impresiónDiagnóstica || '—'}</span></p>
+                )}
+              </div>
+
+              {/* 5. Evaluación de Riesgo */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><ShieldAlert className="w-4 h-4 text-clinical-accent" /> Evaluación de Riesgo</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Riesgo Suicida:</label>
+                    <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none" value={clinicalRecord?.riesgoSuicida ?? ''} onChange={(e) => updateRecord({ riesgoSuicida: e.target.value as RiesgoSuicida })}>
+                      <option value="">—</option>
+                      <option value="ausente">Ausente</option>
+                      <option value="bajo">Bajo</option>
+                      <option value="moderado">Moderado</option>
+                      <option value="alto">Alto</option>
+                      <option value="inminente">Inminente</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Riesgo Heteroagresivo:</label>
+                    <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none" value={clinicalRecord?.riesgoHeteroagresivo ?? ''} onChange={(e) => updateRecord({ riesgoHeteroagresivo: e.target.value as RiesgoHeteroagresivo })}>
+                      <option value="">—</option>
+                      <option value="ausente">Ausente</option>
+                      <option value="bajo">Bajo</option>
+                      <option value="moderado">Moderado</option>
+                      <option value="alto">Alto</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Especificar (suicida):</label>
+                    <textarea rows={2} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent resize-y" value={clinicalRecord?.riesgoSuicidaEspecificar ?? ''} onChange={(e) => updateRecord({ riesgoSuicidaEspecificar: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Especificar (heteroagresivo):</label>
+                    <textarea rows={2} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent resize-y" value={clinicalRecord?.riesgoHeteroagresivoEspecificar ?? ''} onChange={(e) => updateRecord({ riesgoHeteroagresivoEspecificar: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-1">Otros Riesgos:</label>
+                  <textarea rows={2} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent resize-y" value={clinicalRecord?.otrosRiesgos ?? ''} onChange={(e) => updateRecord({ otrosRiesgos: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button onClick={handleSaveHistoria} disabled={readOnly} className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 disabled:opacity-50">
+                  <Save className="w-4 h-4" />
+                  Guardar Historia Clínica
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── SUB-TAB: FICHA DE IDENTIFICACIÓN ── */}
+          {datosSubTab === 'ficha' && (
+            <div className="space-y-4">
+              {/* 1. Identificación */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><User className="w-4 h-4 text-clinical-accent" /> Identificación</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">RFC:</span><span className="text-xs font-mono text-slate-700 block mt-0.5">{activePatient.rfc || '—'}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">Sexo:</span><span className="text-xs text-slate-700 block mt-0.5">{activePatient.sexo || '—'}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">Fecha de Nacimiento:</span><span className="text-xs text-slate-700 block mt-0.5">{activePatient.fechaNacimiento || activePatient.birthDate}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">Lugar de Nacimiento:</span><span className="text-xs text-slate-700 block mt-0.5">{activePatient.lugarNacimiento || '—'}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">Estado Civil:</span><span className="text-xs text-slate-700 block mt-0.5">{activePatient.estadoCivil || '—'}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">Escolaridad:</span><span className="text-xs text-slate-700 block mt-0.5">{activePatient.escolaridad || '—'}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">Ocupación:</span><span className="text-xs text-slate-700 block mt-0.5">{activePatient.ocupacion || '—'}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold uppercase block">Religión:</span><span className="text-xs text-slate-700 block mt-0.5">{activePatient.religion || '—'}</span></div>
+                </div>
+                <div className="border-t border-slate-200 pt-2">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Domicilio:</span>
+                  <span className="text-xs text-slate-700 block mt-0.5">
+                    {activePatient.domicilio
+                      ? [activePatient.domicilio.calleNumero, activePatient.domicilio.colonia, activePatient.domicilio.municipio, activePatient.domicilio.estadoDomicilio, `CP ${activePatient.domicilio.codigoPostal}`].filter(Boolean).join(', ')
+                      : '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Contacto de Emergencia:</span>
+                  <span className="text-xs text-slate-700 block mt-0.5">
+                    {activePatient.contactoEmergencia
+                      ? `${activePatient.contactoEmergencia.nombre} (${activePatient.contactoEmergencia.parentesco}) — ${activePatient.contactoEmergencia.telefono}`
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. Apertura del expediente */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><FolderHeart className="w-4 h-4 text-clinical-accent" /> Apertura del Expediente</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Fecha de Inicio:</label>
+                    <input type="text" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg" value={clinicalRecord?.startDate ?? ''} readOnly />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Tipo de Expediente:</label>
+                    <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none" value={clinicalRecord?.tipoExpediente ?? 'electronico'} onChange={(e) => updateRecord({ tipoExpediente: e.target.value as 'fisico' | 'electronico' | 'mixto' })}>
+                      <option value="fisico">Físico</option>
+                      <option value="electronico">Electrónico</option>
+                      <option value="mixto">Mixto</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Fecha de Apertura:</label>
+                    <input type="date" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.fechaApertura ?? clinicalRecord?.startDate ?? ''} onChange={(e) => updateRecord({ fechaApertura: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Fuente de referencia */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-clinical-accent" /> Fuente de Referencia</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none" value={clinicalRecord?.fuenteReferencia ?? 'iniciativa_propia'} onChange={(e) => updateRecord({ fuenteReferencia: e.target.value as FuenteReferencia })}>
+                      <option value="iniciativa_propia">Iniciativa propia</option>
+                      <option value="medico">Médico</option>
+                      <option value="psiquiatra">Psiquiatra</option>
+                      <option value="psicoterapeuta">Psicoterapeuta</option>
+                      <option value="familiar">Familiar</option>
+                      <option value="amigo">Amigo</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                  {clinicalRecord?.fuenteReferencia === 'otro' && (
+                    <input type="text" placeholder="Especificar" className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={clinicalRecord?.fuenteReferenciaOtro ?? ''} onChange={(e) => updateRecord({ fuenteReferenciaOtro: e.target.value })} />
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Tratamientos previos */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><Activity className="w-4 h-4 text-clinical-accent" /> Tratamientos Previos</span>
+                <div className="space-y-2">
+                  {tratamientosPrevios.map((tp) => (
+                    <div key={tp.id ?? tp.enfoque} className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                      <span className="text-slate-700"><span className="font-bold text-clinical-dark">{tp.enfoque}</span> — {tp.duracion || 'duración n/d'} ({tp.resultado})</span>
+                      <button onClick={() => setTratamientosPrevios(prev => prev.filter(x => (x.id ?? x.enfoque) !== (tp.id ?? tp.enfoque)))} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  {tratamientosPrevios.length === 0 && <p className="text-slate-400 italic">Sin tratamientos previos registrados.</p>}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <input type="text" placeholder="Enfoque" className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1 min-w-[160px]" value={newTratamientoEnfoque} onChange={(e) => setNewTratamientoEnfoque(e.target.value)} />
+                    <input type="text" placeholder="Duración" className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent w-32" value={newTratamientoDuracion} onChange={(e) => setNewTratamientoDuracion(e.target.value)} />
+                    <button onClick={addTratamiento} className="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold flex items-center gap-1"><Plus className="w-4 h-4" /> Agregar</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Fármacos */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><Activity className="w-4 h-4 text-clinical-accent" /> Fármacos</span>
+                <div className="space-y-2">
+                  {(clinicalRecord?.historialFarmacos ?? []).map((f, i) => (
+                    <div key={`${f.nombre}-${i}`} className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                      <span className="text-slate-700 font-medium">{f.nombre}</span>
+                      <button onClick={() => updateRecord({ historialFarmacos: (clinicalRecord?.historialFarmacos ?? []).filter((_, j) => j !== i) })} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  {(clinicalRecord?.historialFarmacos ?? []).length === 0 && <p className="text-slate-400 italic">Sin fármacos registrados.</p>}
+                  <div className="flex gap-2 pt-1">
+                    <input type="text" placeholder="Nombre del fármaco" className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1" value={newFarmacoNombre} onChange={(e) => setNewFarmacoNombre(e.target.value)} />
+                    <button onClick={addHistorialFarmaco} className="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold flex items-center gap-1"><Plus className="w-4 h-4" /> Agregar</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. Psicofármacos */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-clinical-accent" /> Psicofármacos</span>
+                <div className="space-y-2">
+                  {(clinicalRecord?.historialPsicofarmacos ?? []).map((f, i) => (
+                    <div key={`${f.nombre}-${i}`} className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                      <span className="text-slate-700 font-medium">{f.nombre}{f.duracion ? ` — ${f.duracion}` : ''}</span>
+                      <button onClick={() => updateRecord({ historialPsicofarmacos: (clinicalRecord?.historialPsicofarmacos ?? []).filter((_, j) => j !== i) })} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  {(clinicalRecord?.historialPsicofarmacos ?? []).length === 0 && <p className="text-slate-400 italic">Sin psicofármacos registrados.</p>}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <input type="text" placeholder="Nombre del psicofármaco" className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1 min-w-[160px]" value={newPsicofarmacoNombre} onChange={(e) => setNewPsicofarmacoNombre(e.target.value)} />
+                    <input type="text" placeholder="Duración" className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent w-32" value={newPsicofarmacoDuracion} onChange={(e) => setNewPsicofarmacoDuracion(e.target.value)} />
+                    <button onClick={addHistorialPsicofarmaco} className="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold flex items-center gap-1"><Plus className="w-4 h-4" /> Agregar</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 7. Drogas */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                <span className="font-bold text-clinical-dark flex items-center gap-1.5"><AlertOctagon className="w-4 h-4 text-clinical-accent" /> Drogas</span>
+                <div className="space-y-2">
+                  {(clinicalRecord?.historialDrogas ?? []).map((d, i) => (
+                    <div key={`${d.nombre}-${i}`} className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                      <span className="text-slate-700 font-medium">{d.nombre}</span>
+                      <button onClick={() => updateRecord({ historialDrogas: (clinicalRecord?.historialDrogas ?? []).filter((_, j) => j !== i) })} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  {(clinicalRecord?.historialDrogas ?? []).length === 0 && <p className="text-slate-400 italic">Sin drogas registradas.</p>}
+                  <div className="flex gap-2 pt-1">
+                    <input type="text" placeholder="Nombre de la droga" className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent flex-1" value={newDrogaNombre} onChange={(e) => setNewDrogaNombre(e.target.value)} />
+                    <button onClick={addHistorialDroga} className="px-3 py-1.5 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold flex items-center gap-1"><Plus className="w-4 h-4" /> Agregar</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button onClick={handleSaveFicha} disabled={readOnly} className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow flex items-center gap-1.5 disabled:opacity-50">
+                  <Save className="w-4 h-4" />
+                  Guardar Ficha de Identificación
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -3174,6 +3900,138 @@ export const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ userRole, patien
                 <span className="text-slate-400 font-bold block text-[9px] uppercase">Resonancia (RSS)</span>
                 <p className="text-slate-700 mt-1 leading-relaxed">{activeSessionDetail.rss || '—'}</p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Realizar Examen Mental */}
+      {showExamenModal && (
+        <div className="fixed inset-0 z-[160] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-clinical-dark">Examen Mental</h2>
+                <p className="text-[11px] text-slate-500">Evaluación del estado mental de {activePatient?.name || 'el paciente'} — Formato de Examen Mental</p>
+              </div>
+              <button type="button" onClick={() => setShowExamenModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+            </div>
+
+            {EXAMEN_SECCIONES.map(sec => (
+              <div key={sec.clave} className="border border-slate-100 rounded-xl p-4 space-y-2">
+                <h3 className="text-sm font-bold text-clinical-dark uppercase tracking-wide">{sec.titulo}</h3>
+                {sec.parametros.map(p => (
+                  <div key={p.clave} className="border-b border-slate-50 py-2 last:border-0">
+                    <div className="font-semibold text-slate-700">{p.etiqueta}</div>
+                    <div className="text-[11px] text-slate-400">Qué evaluar: {p.queEvaluar}</div>
+                    <div className="text-[11px] text-slate-400 mb-1">Descriptores: <span className="text-slate-500">{p.descriptores}</span></div>
+                    <textarea rows={1} placeholder="Hallazgo" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-clinical-accent" value={hallazgo(sec.clave, p.clave)} onChange={(e) => setHallazgo(sec.clave, p.clave, e.target.value)} />
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <div className="border border-slate-100 rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-bold text-clinical-dark uppercase tracking-wide">Evaluación de riesgo</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {EXAMEN_RIESGO_ITEMS.map(r => (
+                  <div key={r.clave} className="space-y-1">
+                    <label className="text-slate-500 block">{r.etiqueta}</label>
+                    <select className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white" value={riesgoItem(r.clave).nivel} onChange={(e) => setRiesgoNivel(r.clave, e.target.value)}>
+                      <option value="">— Nivel —</option>
+                      <option value="bajo">Bajo</option>
+                      <option value="moderado">Moderado</option>
+                      <option value="alto">Alto</option>
+                    </select>
+                    <textarea rows={1} placeholder="Hallazgo" className="w-full px-3 py-2 border border-slate-200 rounded-lg" value={riesgoItem(r.clave).hallazgo} onChange={(e) => setRiesgoHallazgo(r.clave, e.target.value)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-slate-100 rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-bold text-clinical-dark uppercase tracking-wide">Síntesis</h3>
+              {EXAMEN_SINTESIS_ITEMS.map(s => (
+                <div key={s.clave}>
+                  <label className="text-slate-500 block mb-1">{s.etiqueta}</label>
+                  <textarea rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg" value={sintesisTexto(s.clave)} onChange={(e) => setSintesisTexto(s.clave, e.target.value)} />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+              <button type="button" onClick={() => setShowExamenModal(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg">Cancelar</button>
+              <button type="button" onClick={handleSaveHistoria} className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold">Guardar examen</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Ver Resultados del Examen Mental */}
+      {showResultadosModal && (
+        <div className="fixed inset-0 z-[160] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-clinical-dark">Resultados del Examen Mental</h2>
+                <p className="text-[11px] text-slate-500">{activePatient?.name || 'Paciente'}{clinicalRecord?.fechaExamenMental ? ` — ${clinicalRecord.fechaExamenMental}` : ''}</p>
+              </div>
+              <button type="button" onClick={() => setShowResultadosModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+            </div>
+
+            {EXAMEN_SECCIONES.map(sec => (
+              <table key={sec.clave} className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="px-3 py-2 border border-slate-100 font-bold text-clinical-dark" colSpan={2}>{sec.titulo}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sec.parametros.map(p => (
+                    <tr key={p.clave} className="border-b border-slate-50">
+                      <td className="px-3 py-2 border border-slate-100 text-slate-500 w-1/3 align-top">{p.etiqueta}</td>
+                      <td className="px-3 py-2 border border-slate-100 text-slate-700 align-top">{hallazgo(sec.clave, p.clave) || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ))}
+
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-left">
+                  <th className="px-3 py-2 border border-slate-100 font-bold text-clinical-dark" colSpan={3}>Evaluación de riesgo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EXAMEN_RIESGO_ITEMS.map(r => (
+                  <tr key={r.clave} className="border-b border-slate-50">
+                    <td className="px-3 py-2 border border-slate-100 text-slate-500 w-1/3 align-top">{r.etiqueta}</td>
+                    <td className="px-3 py-2 border border-slate-100 text-slate-700 w-1/4 align-top">{riesgoItem(r.clave).nivel || '—'}</td>
+                    <td className="px-3 py-2 border border-slate-100 text-slate-700 align-top">{riesgoItem(r.clave).hallazgo || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-left">
+                  <th className="px-3 py-2 border border-slate-100 font-bold text-clinical-dark" colSpan={2}>Síntesis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EXAMEN_SINTESIS_ITEMS.map(s => (
+                  <tr key={s.clave} className="border-b border-slate-50">
+                    <td className="px-3 py-2 border border-slate-100 text-slate-500 w-1/3 align-top">{s.etiqueta}</td>
+                    <td className="px-3 py-2 border border-slate-100 text-slate-700 align-top">{sintesisTexto(s.clave) || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="flex justify-end border-t border-slate-100 pt-3">
+              <button type="button" onClick={() => setShowResultadosModal(false)} className="px-4 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold">Cerrar</button>
             </div>
           </div>
         </div>

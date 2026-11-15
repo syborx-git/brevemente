@@ -2,6 +2,8 @@ package com.syborx.brevemente.dashboard.application.service;
 
 import com.syborx.brevemente.cita.application.ports.out.CitaRepositoryPort;
 import com.syborx.brevemente.cita.domain.model.Cita;
+import com.syborx.brevemente.expediente.application.ports.out.SesionRepositoryPort;
+import com.syborx.brevemente.expediente.domain.model.Sesion;
 import com.syborx.brevemente.dashboard.application.ports.in.ListarAlertasDashboardUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ListarAlertasMayoriaEdadUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ListarCasosPorProtocoloUseCase;
@@ -13,6 +15,7 @@ import com.syborx.brevemente.dashboard.application.ports.in.ListarPendientesPrio
 import com.syborx.brevemente.dashboard.application.ports.in.ObtenerAccionDominanteUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ObtenerCatalogosDashboardUseCase;
 import com.syborx.brevemente.dashboard.application.ports.in.ObtenerDashboardStatsUseCase;
+import com.syborx.brevemente.dashboard.application.ports.in.ObtenerSedeUseCase;
 import com.syborx.brevemente.dashboard.application.ports.out.DashboardCatalogosRepositoryPort;
 import com.syborx.brevemente.dashboard.domain.model.AccionDominante;
 import com.syborx.brevemente.dashboard.domain.model.AlcanceDashboard;
@@ -25,6 +28,7 @@ import com.syborx.brevemente.dashboard.domain.model.DashboardStats;
 import com.syborx.brevemente.dashboard.domain.model.DistribucionFase;
 import com.syborx.brevemente.dashboard.domain.model.PendientePrioritario;
 import com.syborx.brevemente.dashboard.domain.model.Protocolo;
+import com.syborx.brevemente.dashboard.domain.model.Sede;
 import com.syborx.brevemente.dashboard.domain.model.SerieMes;
 import com.syborx.brevemente.paciente.application.ports.out.PacienteRepositoryPort;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
@@ -58,7 +62,8 @@ public class DashboardApplicationService implements
         ListarCasosPorProtocoloUseCase,
         ListarAlertasMayoriaEdadUseCase,
         ObtenerCatalogosDashboardUseCase,
-        ListarPendientesPrioritariosUseCase {
+        ListarPendientesPrioritariosUseCase,
+        ObtenerSedeUseCase {
 
     private static final ZoneId ZONA = ZoneId.of("America/Mexico_City");
     private static final List<String> ESTADOS_CITAS_HOY = List.of("confirmada", "pendiente", "solicita_reagendar");
@@ -75,6 +80,7 @@ public class DashboardApplicationService implements
     private final CitaRepositoryPort citaRepositoryPort;
     private final DashboardCatalogosRepositoryPort dashboardCatalogosRepositoryPort;
     private final DashboardScopeResolver dashboardScopeResolver;
+    private final SesionRepositoryPort sesionRepositoryPort;
 
     @Override
     public DashboardStats obtenerStats(DashboardFiltros filtros) {
@@ -232,13 +238,23 @@ public class DashboardApplicationService implements
 
     @Override
     public List<AlertaMayoriaEdad> listarAlertasMayoriaEdad() {
+        AlcanceDashboard alcance = alcance();
+        Collection<String> ids = DashboardFiltrosResolver.terapeutaIdsEfectivos(alcance, null);
+        if (DashboardFiltrosResolver.sinResultados(alcance, ids)) {
+            return List.of();
+        }
         LocalDate corte = LocalDate.now(ZONA).minusYears(18);
-        return pacienteRepositoryPort.findMayoriaEdad(corte);
+        return pacienteRepositoryPort.findMayoriaEdad(corte, ids);
     }
 
     @Override
     public CatalogosDashboard obtenerCatalogos() {
         return dashboardCatalogosRepositoryPort.obtenerCatalogos();
+    }
+
+    @Override
+    public Optional<Sede> obtenerSede(String sedeId) {
+        return dashboardCatalogosRepositoryPort.findSedeById(sedeId);
     }
 
     @Override
@@ -309,7 +325,24 @@ public class DashboardApplicationService implements
                 .intakeListo(paciente != null && !"pendiente".equalsIgnoreCase(paciente.getStatus()))
                 .consentimientoFirmado(consentimientoFirmado(paciente))
                 .grabacionLeva(paciente != null && "ia".equalsIgnoreCase(paciente.getRegistryMode()))
+                .motivoConsulta(paciente != null ? paciente.getMotivoConsulta() : null)
+                .numeroSesion(numeroSesion(cita))
                 .build();
+    }
+
+    private Integer numeroSesion(Cita cita) {
+        if (cita.getId() != null) {
+            Optional<Sesion> vinculada = sesionRepositoryPort.findByCitaId(cita.getId());
+            if (vinculada.isPresent() && vinculada.get().getNumero() != null) {
+                return vinculada.get().getNumero();
+            }
+        }
+        if (cita.getExpedienteId() == null) {
+            return null;
+        }
+        return sesionRepositoryPort.ultimoNumero(cita.getExpedienteId())
+                .map(n -> n + 1)
+                .orElse(1);
     }
 
     private boolean consentimientoFirmado(Paciente paciente) {

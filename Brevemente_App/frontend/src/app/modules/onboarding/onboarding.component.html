@@ -1,0 +1,87 @@
+<div class="min-h-screen flex items-center justify-center px-4 onboarding-backdrop">
+  <div class="w-full max-w-md">
+
+    <!-- Marca -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-white tracking-tight">BreveMente</h1>
+      <p class="text-sm text-white/70 mt-1">
+        Primer acceso · configura tu contraseña
+      </p>
+    </div>
+
+    <!-- Tarjeta de onboarding -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl p-8">
+      <h2 class="text-xl font-bold text-clinical-textDark">Establece tu nueva contraseña</h2>
+      <p class="text-xs text-clinical-textMuted mt-1 mb-6">
+        Por seguridad, debes reemplazar tu contraseña temporal antes de continuar.
+      </p>
+
+      <form (ngSubmit)="onSubmit()" class="space-y-4">
+        <div>
+          <label for="passwordActual" class="block text-xs font-semibold text-clinical-textDark mb-1">
+            Contraseña temporal
+          </label>
+          <input
+            id="passwordActual"
+            name="passwordActual"
+            type="password"
+            [(ngModel)]="passwordActual"
+            required
+            placeholder="Contraseña temporal recibida"
+            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-clinical-accent bg-slate-50/50" />
+        </div>
+
+        <div>
+          <label for="nuevaPassword" class="block text-xs font-semibold text-clinical-textDark mb-1">
+            Nueva contraseña
+          </label>
+          <input
+            id="nuevaPassword"
+            name="nuevaPassword"
+            type="password"
+            [(ngModel)]="nuevaPassword"
+            required
+            placeholder="Mínimo 8 caracteres"
+            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-clinical-accent bg-slate-50/50" />
+        </div>
+
+        <div>
+          <label for="confirmarPassword" class="block text-xs font-semibold text-clinical-textDark mb-1">
+            Confirmar nueva contraseña
+          </label>
+          <input
+            id="confirmarPassword"
+            name="confirmarPassword"
+            type="password"
+            [(ngModel)]="confirmarPassword"
+            required
+            placeholder="Repite la nueva contraseña"
+            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-clinical-accent bg-slate-50/50" />
+        </div>
+
+        <div
+          *ngIf="errorMessage"
+          class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2.5">
+          {{ errorMessage }}
+        </div>
+
+        <button
+          type="submit"
+          [disabled]="isLoading"
+          class="w-full py-2.5 bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark font-bold text-sm rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ isLoading ? 'Guardando…' : 'Guardar contraseña' }}
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-100 text-center">
+        <button
+          type="button"
+          (click)="cerrarSesion()"
+          class="text-[11px] font-semibold text-clinical-textMuted hover:text-clinical-textDark transition-colors">
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>

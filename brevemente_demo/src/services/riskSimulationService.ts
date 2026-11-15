@@ -6,13 +6,13 @@ const STORAGE_KEY = 'brevemente_risk_alerts';
 const initialAlerts: RiskAlert[] = [
   {
     id: 'risk-1',
-    patientId: 'patient-1',
-    patientName: 'Sofía Martínez',
+    patientId: 'pac-002',
+    patientName: 'Valeria Gómez Fuentes',
     timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), // Hace 1 día
     message: 'Ideación de escape y crisis de pánico recurrente con pérdida de control físico.',
-    note: 'Escalado preventivo por el terapeuta Dr. Alejandro Silva.',
+    note: 'Escalado preventivo por la terapeuta Dra. Sofía Ramírez Lozano.',
     resolved: true,
-    resolvedBy: 'Dr. Alejandro Silva',
+    resolvedBy: 'Dra. Sofía Ramírez Lozano',
     resolvedAt: new Date(Date.now() - 3600000 * 20).toISOString()
   }
 ];

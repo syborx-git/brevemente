@@ -25,6 +25,34 @@ public class LevaSessionController {
     private final StartTranscriptionUseCase startTranscriptionUseCase;
     private final GetLevaProposalUseCase getProposalUseCase;
     private final ApproveClinicalProposalUseCase approveProposalUseCase;
+    private final GetSessionAudioUseCase getSessionAudioUseCase;
+    private final RetryTranscriptionUseCase retryTranscriptionUseCase;
+
+    @GetMapping("/{sessionId}/audio")
+    @Operation(summary = "Reproducir/descargar audio original", description = "Devuelve el audio persistido de la sesión (soporta Range para reproducción)")
+    public ResponseEntity<org.springframework.core.io.Resource> getSessionAudio(
+            @PathVariable String sessionId,
+            @RequestParam(value = "download", defaultValue = "false") boolean download
+    ) {
+        GetSessionAudioUseCase.SessionAudio audio = getSessionAudioUseCase.getSessionAudio(sessionId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(audio.contentType()))
+                .contentLength(audio.sizeBytes() > 0 ? audio.sizeBytes() : -1)
+                .header("Accept-Ranges", "bytes")
+                .header("Content-Disposition",
+                        (download ? "attachment" : "inline") + "; filename=\"" + audio.fileName().replace("\"", "") + "\"")
+                .body(audio.resource());
+    }
+
+    @PostMapping("/{sessionId}/retranscribe")
+    @Operation(summary = "Reintentar transcripción", description = "Reprocesa el audio ya almacenado sin volver a grabar")
+    public ResponseEntity<TranscriptionTask> retranscribe(
+            @PathVariable String sessionId,
+            @RequestParam(value = "language", defaultValue = "es") String language
+    ) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(retryTranscriptionUseCase.retryTranscription(sessionId, language));
+    }
 
     @PostMapping(value = "/{sessionId}/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Iniciar transcripción y análisis LEVA", description = "Sube el audio de la sesión y encola el análisis clínico asíncrono")
@@ -36,6 +64,14 @@ public class LevaSessionController {
         log.info("[LEVA API] Solicitud de transcripción para sesión: {}", sessionId);
         TranscriptionTask task = startTranscriptionUseCase.startSessionTranscription(sessionId, file, language);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(task);
+    }
+
+    @GetMapping("/{sessionId}/task")
+    @Operation(summary = "Consultar estado de la tarea de transcripción", description = "Retorna el estado de transcripción y procesamiento de la sesión (PROCESSING, COMPLETED, FAILED)")
+    public ResponseEntity<TranscriptionTask> getSessionTask(@PathVariable String sessionId) {
+        return startTranscriptionUseCase.getTaskBySessionId(sessionId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{sessionId}/proposal")

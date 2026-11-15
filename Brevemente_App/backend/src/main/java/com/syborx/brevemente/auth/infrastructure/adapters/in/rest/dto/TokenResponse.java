@@ -8,5 +8,8 @@ public record TokenResponse(
         String token,
 
         @Schema(description = "Datos del usuario autenticado")
-        UserResponseDTO user
+        UserResponseDTO user,
+
+        @Schema(description = "El usuario debe cambiar su contraseña antes de operar")
+        boolean debeCambiarPassword
 ) {}

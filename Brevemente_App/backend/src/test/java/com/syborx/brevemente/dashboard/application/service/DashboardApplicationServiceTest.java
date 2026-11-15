@@ -8,6 +8,7 @@ import com.syborx.brevemente.dashboard.domain.model.AlcanceDashboard;
 import com.syborx.brevemente.dashboard.domain.model.AlcanceDashboard.TipoAlcance;
 import com.syborx.brevemente.dashboard.domain.model.DashboardFiltros;
 import com.syborx.brevemente.dashboard.domain.model.DashboardStats;
+import com.syborx.brevemente.expediente.application.ports.out.SesionRepositoryPort;
 import com.syborx.brevemente.paciente.application.ports.out.PacienteRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,13 +40,16 @@ class DashboardApplicationServiceTest {
     @Mock
     private DashboardScopeResolver dashboardScopeResolver;
 
+    @Mock
+    private SesionRepositoryPort sesionRepositoryPort;
+
     private DashboardApplicationService service;
 
     @BeforeEach
     void setUp() {
         service = new DashboardApplicationService(
                 pacienteRepositoryPort, citaRepositoryPort, dashboardCatalogosRepositoryPort,
-                dashboardScopeResolver);
+                dashboardScopeResolver, sesionRepositoryPort);
     }
 
     @Test

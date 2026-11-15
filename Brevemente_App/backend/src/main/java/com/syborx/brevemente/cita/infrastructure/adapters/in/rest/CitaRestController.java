@@ -53,7 +53,7 @@ public class CitaRestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta
     ) {
-        CitaFiltro filtro = new CitaFiltro(terapeutaId, null, consultorio, modalidad, estado, desde, hasta);
+        CitaFiltro filtro = new CitaFiltro(terapeutaId, null, consultorio, modalidad, estado, desde, hasta, null);
         List<CitaResponseDTO> responses = listarCitasUseCase.listar(filtro).stream()
                 .map(citaRestMapper::toResponse)
                 .toList();

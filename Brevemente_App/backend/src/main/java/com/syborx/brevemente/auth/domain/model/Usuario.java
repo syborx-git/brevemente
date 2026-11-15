@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -35,6 +36,12 @@ public class Usuario {
     private final boolean activo;
     /** Versión vigente de tokens; al incrementarse invalida todos los access tokens emitidos. */
     private final int tokenVersion;
+    /** Cuenta creada con contraseña temporal: debe cambiarla antes de operar. */
+    @Builder.Default
+    private boolean debeCambiarPassword = false;
+    /** Caducidad de la contraseña temporal (null si no es temporal). */
+    @Builder.Default
+    private Instant passwordTemporalVenceEn = null;
 
     public boolean tieneRol(String codigo) {
         return roles != null && roles.contains(codigo);

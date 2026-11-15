@@ -80,7 +80,9 @@ public class DashboardRestMapper {
                 accion.getProtocolo(),
                 accion.getIntakeListo(),
                 accion.getConsentimientoFirmado(),
-                accion.getGrabacionLeva()
+                accion.getGrabacionLeva(),
+                accion.getMotivoConsulta(),
+                accion.getNumeroSesion()
         );
     }
 
@@ -106,7 +108,9 @@ public class DashboardRestMapper {
                 accion.getProtocolo(),
                 null,
                 null,
-                accion.getGrabacionLeva()
+                accion.getGrabacionLeva(),
+                accion.getMotivoConsulta(),
+                accion.getNumeroSesion()
         );
     }
 
@@ -173,8 +177,8 @@ public class DashboardRestMapper {
         );
     }
 
-    private SedeDTO toResponse(com.syborx.brevemente.dashboard.domain.model.Sede sede) {
-        return sede == null ? null : new SedeDTO(sede.id(), sede.nombre());
+    public SedeDTO toResponse(com.syborx.brevemente.dashboard.domain.model.Sede sede) {
+        return sede == null ? null : new SedeDTO(sede.id(), sede.nombre(), sede.clues(), sede.licenciaSanitaria(), sede.tipoEstablecimiento());
     }
 
     private ProtocoloDTO toResponse(com.syborx.brevemente.dashboard.domain.model.Protocolo protocolo) {
@@ -217,7 +221,17 @@ public class DashboardRestMapper {
                 completo.representante(),
                 completo.telefonoPaciente(),
                 null,
-                null
+                null,
+                completo.rfc(),
+                completo.sexo(),
+                completo.lugarNacimiento(),
+                completo.estadoCivil(),
+                completo.escolaridad(),
+                completo.ocupacion(),
+                completo.religion(),
+                completo.domicilio(),
+                completo.contactoEmergencia(),
+                completo.sedeId()
         );
     }
 }

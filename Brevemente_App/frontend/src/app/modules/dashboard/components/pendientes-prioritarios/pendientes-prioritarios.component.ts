@@ -20,7 +20,7 @@ import { PendientePrioritario } from '../../ports/dashboard.repository';
       <div class="space-y-3 text-[11px] font-semibold text-slate-600">
         @if (pendientes.length === 0) {
           <p class="text-[11px] text-slate-400 font-semibold italic text-center py-4">
-            No hay pendientes clínicos. Todo al día ✅
+            No hay pendientes clínicos. Todo al día
           </p>
         } @else {
           @for (p of pendientes; track p.pacienteId) {

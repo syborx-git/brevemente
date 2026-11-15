@@ -11,6 +11,7 @@ import com.syborx.brevemente.auth.infrastructure.adapters.out.persistence.reposi
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.Optional;
 
 @Component
@@ -37,12 +38,23 @@ public class AuthPersistenceAdapter implements AutenticacionRepositoryPort {
         return springDataUsuarioRepository.findEstadoSesion(usuarioId)
                 .map(v -> new EstadoSesion(
                         v.getTokenVersion() != null ? v.getTokenVersion() : 1,
-                        Boolean.TRUE.equals(v.getActivo())));
+                        Boolean.TRUE.equals(v.getActivo()),
+                        Boolean.TRUE.equals(v.getDebeCambiarPassword())));
     }
 
     @Override
     public void incrementarTokenVersion(String usuarioId) {
         springDataUsuarioRepository.incrementTokenVersion(usuarioId);
+    }
+
+    @Override
+    public void actualizarPassword(String usuarioId, String nuevoHash) {
+        springDataUsuarioRepository.actualizarPassword(usuarioId, nuevoHash);
+    }
+
+    @Override
+    public void establecerPasswordTemporal(String usuarioId, String hashTemporal, Instant venceEn) {
+        springDataUsuarioRepository.establecerPasswordTemporal(usuarioId, hashTemporal, venceEn.atOffset(java.time.ZoneOffset.UTC));
     }
 
     private Usuario toDomain(UsuarioJpaEntity entity) {

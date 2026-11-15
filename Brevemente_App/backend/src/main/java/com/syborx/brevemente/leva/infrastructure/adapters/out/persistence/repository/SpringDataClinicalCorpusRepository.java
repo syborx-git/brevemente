@@ -15,11 +15,16 @@ public interface SpringDataClinicalCorpusRepository extends JpaRepository<Clinic
     Optional<ClinicalCorpusJpaEntity> findByProtocolCode(String protocolCode);
 
     @Query("SELECT c FROM ClinicalCorpusJpaEntity c WHERE " +
-           "(:protocolFilter IS NULL OR LOWER(c.protocolCode) LIKE LOWER(CONCAT('%', :protocolFilter, '%'))) AND " +
+           "(LOWER(c.protocolCode) LIKE LOWER(CONCAT('%', :protocolFilter, '%'))) AND " +
            "(LOWER(c.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            " LOWER(c.content) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<ClinicalCorpusJpaEntity> searchByQueryAndProtocol(
             @Param("query") String query,
             @Param("protocolFilter") String protocolFilter
     );
+
+    @Query("SELECT c FROM ClinicalCorpusJpaEntity c WHERE " +
+           "LOWER(c.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(c.content) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<ClinicalCorpusJpaEntity> searchByQuery(@Param("query") String query);
 }

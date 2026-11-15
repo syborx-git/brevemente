@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -64,6 +65,17 @@ public class AuthApplicationService implements AutenticarUseCase {
         }
 
         Usuario usuario = encontrado.get();
+
+        // Contraseña temporal expirada: rechazo genérico sin revelar el motivo.
+        if (usuario.isDebeCambiarPassword()
+                && usuario.getPasswordTemporalVenceEn() != null
+                && !Instant.now().isBefore(usuario.getPasswordTemporalVenceEn())) {
+            loginAttemptPort.registrarFallo(emailNormalizado, ip);
+            auditoriaAccesoPort.registrarIntentoFallido(
+                    usuario.getId(), emailNormalizado, ip, "PASSWORD_TEMPORAL_EXPIRADO");
+            throw new CredencialesInvalidasException();
+        }
+
         loginAttemptPort.registrarExito(emailNormalizado);
         auditoriaAccesoPort.registrarLogin(usuario.getId(), usuario.getRoles(), ip);
         return usuario;

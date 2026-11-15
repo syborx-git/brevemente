@@ -1,0 +1,682 @@
+[
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/dashboard",
+  "url": "#/dashboard",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/mi-consulta",
+  "url": "#/mi-consulta",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/pacientes",
+  "url": "#/pacientes",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/agenda",
+  "url": "#/agenda",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/expedientes",
+  "url": "#/expedientes",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/biblioteca",
+  "url": "#/biblioteca",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/leva",
+  "url": "#/leva",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/campus",
+  "url": "#/campus",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/desempeno",
+  "url": "#/desempeno",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "mobile",
+  "w": 390,
+  "route": "/configuracion",
+  "url": "#/configuracion",
+  "innerWidth": 390,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 134,
+  "overflowingCount": 30,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-2",
+   "SPAN.",
+   "DIV.flex.items-center.gap-1.5"
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/dashboard",
+  "url": "#/dashboard",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/mi-consulta",
+  "url": "#/mi-consulta",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/pacientes",
+  "url": "#/pacientes",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/agenda",
+  "url": "#/agenda",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/expedientes",
+  "url": "#/expedientes",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/biblioteca",
+  "url": "#/biblioteca",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/leva",
+  "url": "#/leva",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/campus",
+  "url": "#/campus",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/desempeno",
+  "url": "#/desempeno",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "tablet",
+  "w": 768,
+  "route": "/configuracion",
+  "url": "#/configuracion",
+  "innerWidth": 768,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 512,
+  "overflowingCount": 25,
+  "sample": [
+   "DIV.flex.items-center.gap-4",
+   "BUTTON.flex.items-center.gap-1.5",
+   "SPAN.text-sm",
+   "SPAN."
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/dashboard",
+  "url": "#/dashboard",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/mi-consulta",
+  "url": "#/mi-consulta",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/pacientes",
+  "url": "#/pacientes",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/agenda",
+  "url": "#/agenda",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/expedientes",
+  "url": "#/expedientes",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/biblioteca",
+  "url": "#/biblioteca",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/leva",
+  "url": "#/leva",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/campus",
+  "url": "#/campus",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/desempeno",
+  "url": "#/desempeno",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "laptop",
+  "w": 1366,
+  "route": "/configuracion",
+  "url": "#/configuracion",
+  "innerWidth": 1366,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1110,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/dashboard",
+  "url": "#/dashboard",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/mi-consulta",
+  "url": "#/mi-consulta",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/pacientes",
+  "url": "#/pacientes",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/agenda",
+  "url": "#/agenda",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/expedientes",
+  "url": "#/expedientes",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/biblioteca",
+  "url": "#/biblioteca",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/leva",
+  "url": "#/leva",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/campus",
+  "url": "#/campus",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/desempeno",
+  "url": "#/desempeno",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ },
+ {
+  "vp": "desktop",
+  "w": 1440,
+  "route": "/configuracion",
+  "url": "#/configuracion",
+  "innerWidth": 1440,
+  "overflowX": 0,
+  "asideWidth": 256,
+  "mainWidth": 1184,
+  "overflowingCount": 21,
+  "sample": [
+   "ASIDE.fixed.inset-y-0.right-0",
+   "DIV.p-4.border-b.border-slate-100",
+   "DIV.flex.items-center.gap-3",
+   "DIV.w-9.h-9.rounded-xl"
+  ]
+ }
+]

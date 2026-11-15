@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, throwError, of } from 'rxjs';
-import { PacienteRepository } from '../ports/paciente.repository';
+import { PacienteRepository, PacienteCreado } from '../ports/paciente.repository';
 import { Patient } from '../../../core/types/clinical.types';
 
 @Injectable({
@@ -31,8 +31,8 @@ export class PacienteHttpAdapter implements PacienteRepository {
     );
   }
 
-  crear(paciente: Omit<Patient, 'id'>): Observable<Patient> {
-    return this.http.post<Patient>(this.apiUrl, paciente).pipe(
+  crear(paciente: Omit<Patient, 'id'>): Observable<PacienteCreado> {
+    return this.http.post<PacienteCreado>(this.apiUrl, paciente).pipe(
       catchError(err => {
         console.error('[PacienteHttpAdapter] Error al registrar paciente:', err);
         return throwError(() => new Error('No se pudo registrar el paciente en el servidor'));
@@ -47,5 +47,9 @@ export class PacienteHttpAdapter implements PacienteRepository {
         return throwError(() => new Error('No se pudo actualizar el paciente en el servidor'));
       })
     );
+  }
+
+  generarPasswordTemporal(id: string): Observable<{ passwordTemporal: string }> {
+    return this.http.post<{ passwordTemporal: string }>(`${this.apiUrl}/${id}/password-temporal`, {});
   }
 }

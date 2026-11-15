@@ -8,6 +8,8 @@ import java.util.Optional;
 public interface SupervisionSolicitudRepositoryPort {
     List<SupervisionSolicitud> findByPacienteId(String pacienteId);
 
+    List<SupervisionSolicitud> findPendientes();
+
     Optional<SupervisionSolicitud> findById(String id);
 
     SupervisionSolicitud save(SupervisionSolicitud solicitud);

@@ -65,5 +65,16 @@ public record PacienteResponseDTO(
         Boolean consentimientoRepresentanteFirmado,
 
         @Schema(description = "Frecuencia de sesiones recomendada en TBE", example = "semanal", allowableValues = {"semanal", "quincenal", "mensual"})
-        String sessionFrequency
+        String sessionFrequency,
+
+        @Schema(description = "RFC del paciente") String rfc,
+        @Schema(description = "Sexo", allowableValues = {"M", "F", "LGTB+"}) String sexo,
+        @Schema(description = "Lugar de nacimiento") String lugarNacimiento,
+        @Schema(description = "Estado civil") String estadoCivil,
+        @Schema(description = "Escolaridad") String escolaridad,
+        @Schema(description = "Ocupación") String ocupacion,
+        @Schema(description = "Religión") String religion,
+        @Schema(description = "Domicilio estructurado") DomicilioDTO domicilio,
+        @Schema(description = "Contacto de emergencia") ContactoEmergenciaDTO contactoEmergencia,
+        @Schema(description = "Identificador de la sede del establecimiento", example = "sede-centro") String sedeId
 ) {}

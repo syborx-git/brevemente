@@ -93,10 +93,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ userRole, userName }) 
   const handleEscalateRisk = () => {
     if (activeRiskAlert) {
       riskSimulationService.escalateRisk(
-        'patient-1',
-        'Sofía Martínez',
+        'pac-002',
+        'Valeria Gómez Fuentes',
         `Alerta de crisis detectada en consulta de IA: "${activeRiskAlert.message}"`,
-        { id: 'therapist-1', name: userName, role: userRole }
+        { id: 'ter-001', name: userName, role: userRole }
       );
       alert('⚠️ ALERTA: Riesgo escalado y archivado exitosamente para supervisión.');
       setActiveRiskAlert(null);
@@ -108,7 +108,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ userRole, userName }) 
       {/* Risk banner */}
       {activeRiskAlert && (
         <RiskAlertBanner
-          patientName="Sofía Martínez"
+          patientName="Valeria Gómez Fuentes"
           message={activeRiskAlert.message}
           onEscalate={handleEscalateRisk}
           userRole={userRole}

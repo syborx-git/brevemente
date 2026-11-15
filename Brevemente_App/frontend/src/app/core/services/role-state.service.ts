@@ -57,6 +57,38 @@ export class RoleStateService {
     return this.currentUser?.name ?? '';
   }
 
+  /** Flag de onboarding: true mientras la contraseña temporal no haya sido reemplazada. */
+  get debeCambiarPassword(): boolean {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      return false;
+    }
+    try {
+      const session = JSON.parse(raw) as { debeCambiarPassword?: boolean };
+      return session?.debeCambiarPassword === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Marca la sesión como onboarding completado (limpia el flag local tras el
+   * cambio de contraseña exitoso en el backend).
+   */
+  completarOnboarding(): void {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      return;
+    }
+    try {
+      const session = JSON.parse(raw) as { debeCambiarPassword?: boolean };
+      session.debeCambiarPassword = false;
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } catch {
+      // Sesión corrupta: no se toca.
+    }
+  }
+
   hasRole(role: Role): boolean {
     return this.roles.includes(role);
   }

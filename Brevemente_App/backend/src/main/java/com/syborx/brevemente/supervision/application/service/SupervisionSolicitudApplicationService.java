@@ -50,6 +50,17 @@ public class SupervisionSolicitudApplicationService implements SupervisionSolici
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<SupervisionSolicitud> listarPendientes(List<String> terapeutaIds, String solicitanteId, boolean esEvaluador) {
+        List<SupervisionSolicitud> pendientes = solicitudRepositoryPort.findPendientes();
+        if (esEvaluador) return pendientes;
+        return pendientes.stream()
+                .filter(s -> (s.getTerapeutaId() != null && terapeutaIds.contains(s.getTerapeutaId()))
+                        || (solicitanteId != null && solicitanteId.equals(s.getSolicitanteId())))
+                .toList();
+    }
+
+    @Override
     @Transactional
     public SupervisionSolicitud atender(String solicitudId, String atendidoPorId) {
         SupervisionSolicitud solicitud = solicitudRepositoryPort.findById(solicitudId)

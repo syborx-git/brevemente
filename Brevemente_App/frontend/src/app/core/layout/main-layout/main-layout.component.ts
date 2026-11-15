@@ -5,6 +5,7 @@ import { HeaderComponent } from '../header/header.component';
 import { LevaDrawerComponent } from '../../components/leva-drawer/leva-drawer.component';
 import { LevaButtonComponent } from '../../components/leva-button/leva-button.component';
 import { RiskAlertBannerComponent } from '../../components/risk-banner/risk-banner.component';
+import { RoleStateService } from '../../services/role-state.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -20,4 +21,11 @@ import { RiskAlertBannerComponent } from '../../components/risk-banner/risk-bann
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss'
 })
-export class MainLayoutComponent {}
+export class MainLayoutComponent {
+  constructor(protected readonly roleService: RoleStateService) {}
+
+  /** El patient no ve sidebar, risk-banner ni LEVA (fidelidad con la demo). */
+  get esPaciente(): boolean {
+    return this.roleService.hasRole('patient');
+  }
+}

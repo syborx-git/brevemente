@@ -61,9 +61,11 @@ test.describe('Módulo de Agenda — Validación E2E de Oráculo y Regresión Vi
     // Banner de control normativo visible
     await expect(page.getByText('Control Normativo:')).toBeVisible();
 
-    // El oráculo sirve citas con nombre de paciente (join SQL) en la vista semanal
+    // El oráculo sirve citas con nombre de paciente (join SQL) en la vista semanal.
+    // V29 normaliza las citas al terapeuta dueño del paciente: Emiliano (pac-003)
+    // es de ter-002, por lo que NO aparece en la agenda de Sofía (ter-001).
     await expect(page.getByText('Mateo Herrera Santos').first()).toBeVisible();
-    await expect(page.getByText('Emiliano Díaz Corona').first()).toBeVisible();
+    await expect(page.getByText('Emiliano Díaz Corona')).not.toBeVisible();
   });
 
   test('TC-AG-02: Navegación del calendario (día/semana/mes/año) y detalle de cita', async ({ page }) => {

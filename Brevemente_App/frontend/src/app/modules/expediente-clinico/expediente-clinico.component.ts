@@ -1,34 +1,213 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo } from './ports/expediente.repository';
+import { Subscription } from 'rxjs';
+import { AudioRecorderService } from '../../core/services/audio-recorder.service';
+import { LevaSessionService, LevaProposalResponse } from '../../core/services/leva-session.service';
+import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from './ports/expediente.repository';
 import { ExpedienteLocalStorageAdapter } from './adapters/expediente-localstorage.adapter';
 import { ExpedienteHttpAdapter } from './adapters/expediente-http.adapter';
 import {
+  Antecedentes,
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
+  CodigoCategoriaPsicofarmaco,
+  CriterioCategoria,
+  CriterioClinico,
+  Drug,
+  Establecimiento,
+  ExamenMental,
+  FuenteReferencia,
+  HábitoPresente,
+  HistorialDroga,
+  HistorialFarmaco,
+  HistorialPsicofarmaco,
+  OpcionConductual,
   Patient,
   Payment,
   PaymentMethod,
   PaymentStatus,
   PhysicalCertificateLog,
   PhysicalCertificateType,
+  RiesgoHeteroagresivo,
+  RiesgoSuicida,
   Session,
   SupervisionLog,
   SupervisionRequest,
+  TratamientoPrevio,
   VcEntry,
   VgEntry
 } from '../../core/types/clinical.types';
+import { VcEstado, vcEstadoDeTexto, VC_ESTADO_A_TEXTO, VC_ESCALA } from '../../core/constants/vc-escala';
+import { VcSemaphoreComponent } from './components/vc-semaphore/vc-semaphore.component';
+import { LevaProposalReviewComponent } from './components/leva-proposal-review/leva-proposal-review.component';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
+
+const ANTECEDENTES_VACIO: Antecedentes = {
+  personalesPatológicos: {
+    médicos: '', quirúrgicos: '', traumáticos: '', alérgicos: '', transfusionales: '', hospitalizaciones: ''
+  },
+  personalesNoPatológicos: {
+    tabaquismo: { presente: false, cantidad: '', tiempo: '' },
+    alcoholismo: { presente: false, cantidad: '', frecuencia: '' },
+    toxicomanías: { presente: false, tipo: '', tiempo: '' },
+    actividadFísica: '',
+    alimentación: ''
+  },
+  heredoFamiliares: {
+    enfermedadesMentales: '', enfermedadesCrónicas: '', suicidiosIntentos: '', adicciones: ''
+  }
+};
+
+interface ExamenParametro {
+  clave: string;
+  etiqueta: string;
+  queEvaluar: string;
+  descriptores: string;
+}
+
+interface ExamenSeccion {
+  clave: string;
+  titulo: string;
+  parametros: ExamenParametro[];
+}
+
+const EXAMEN_SECCIONES: ExamenSeccion[] = [
+  {
+    clave: 'aparienciaConducta',
+    titulo: 'Apariencia y conducta',
+    parametros: [
+      { clave: 'aspectoGeneral', etiqueta: 'Aspecto general', queEvaluar: 'Presentación, higiene, aliño y complexión.', descriptores: 'Adecuado / Descuidado / Extravagante / Emaciado' },
+      { clave: 'actitudEntrevista', etiqueta: 'Actitud ante la entrevista', queEvaluar: 'Disposición y colaboración del paciente.', descriptores: 'Cooperador / Hostil / Evasivo / Seductor' },
+      { clave: 'contactoVisual', etiqueta: 'Contacto visual', queEvaluar: 'Cantidad y calidad del contacto ocular.', descriptores: 'Mantenido / Evitado / Fijo / Perdido' },
+      { clave: 'actividadPsicomotora', etiqueta: 'Actividad psicomotora', queEvaluar: 'Nivel de actividad global.', descriptores: 'Normal / Hiperactivo / Inhibido / Catatónico' },
+      { clave: 'movimientosAnormales', etiqueta: 'Movimientos anormales', queEvaluar: 'Tics, estereotipias y temblores.', descriptores: 'Ausentes / Tics / Temblor / Discinesias' },
+      { clave: 'posturaMarcha', etiqueta: 'Postura y marcha', queEvaluar: 'Alineación corporal y deambulación.', descriptores: 'Normal / Encorvada / Rígida / Inestable' }
+    ]
+  },
+  {
+    clave: 'concienciaSensorio',
+    titulo: 'Conciencia y sensorio',
+    parametros: [
+      { clave: 'nivelConciencia', etiqueta: 'Nivel de conciencia', queEvaluar: 'Alerta y respuesta a estímulos.', descriptores: 'Alerta / Somnoliento / Obnubilado / Estuporoso' },
+      { clave: 'orientación', etiqueta: 'Orientación', queEvaluar: 'Ubicación en tiempo, lugar y persona.', descriptores: 'Orientado / Desorientado' },
+      { clave: 'atenciónConcentración', etiqueta: 'Atención y concentración', queEvaluar: 'Capacidad de enfocar y sostener la atención.', descriptores: 'Conservada / Distraído / Disminuida' }
+    ]
+  },
+  {
+    clave: 'lenguajeHabla',
+    titulo: 'Lenguaje y habla',
+    parametros: [
+      { clave: 'cantidad', etiqueta: 'Cantidad', queEvaluar: 'Producción verbal espontánea.', descriptores: 'Normal / Verborreico / Pobre / Mutista' },
+      { clave: 'velocidadRitmo', etiqueta: 'Velocidad y ritmo', queEvaluar: 'Fluidez del discurso.', descriptores: 'Normal / Taquilalia / Bradilalia / Bloqueos' },
+      { clave: 'volumenProsodia', etiqueta: 'Volumen y prosodia', queEvaluar: 'Intensidad y entonación del habla.', descriptores: 'Normal / Elevado / Disminuido / Monótono' },
+      { clave: 'articulaciónFluidez', etiqueta: 'Articulación y fluidez', queEvaluar: 'Pronunciación y continuidad del discurso.', descriptores: 'Clara / Disártrico / Tartamudeo' },
+      { clave: 'comprensiónDenominaciónRepetición', etiqueta: 'Comprensión, denominación y repetición', queEvaluar: 'Integridad de funciones lingüísticas.', descriptores: 'Conservadas / Alteradas' },
+      { clave: 'alteracionesParticulares', etiqueta: 'Alteraciones particulares', queEvaluar: 'Neologismos, parafasias y ecolalia.', descriptores: 'Ninguna / Neologismos / Parafasias / Ecolalia' }
+    ]
+  },
+  {
+    clave: 'afectividad',
+    titulo: 'Afectividad',
+    parametros: [
+      { clave: 'estadoÁnimo', etiqueta: 'Estado de ánimo', queEvaluar: 'Tono afectivo predominante.', descriptores: 'Eutímico / Deprimido / Eufórico / Irritable / Ansioso' },
+      { clave: 'afecto', etiqueta: 'Afecto', queEvaluar: 'Expresión emocional observable.', descriptores: 'Adecuado / Aplanado / Embotado / Lábil' },
+      { clave: 'rangoIntensidad', etiqueta: 'Rango e intensidad', queEvaluar: 'Amplitud de la expresión afectiva.', descriptores: 'Normal / Restringido / Amplio / Intenso' },
+      { clave: 'estabilidad', etiqueta: 'Estabilidad', queEvaluar: 'Constancia del afecto durante la entrevista.', descriptores: 'Estable / Lábil' },
+      { clave: 'congruenciaAdecuación', etiqueta: 'Congruencia y adecuación', queEvaluar: 'Coherencia del afecto con el contenido.', descriptores: 'Congruente / Incongruente' },
+      { clave: 'reactividad', etiqueta: 'Reactividad', queEvaluar: 'Respuesta afectiva ante estímulos.', descriptores: 'Reactivo / Poco reactivo / No reactivo' }
+    ]
+  },
+  {
+    clave: 'pensamiento',
+    titulo: 'Pensamiento',
+    parametros: [
+      { clave: 'curso', etiqueta: 'Curso', queEvaluar: 'Velocidad y continuidad del pensamiento.', descriptores: 'Normal / Acelerado / Lentificado / Bloqueado' },
+      { clave: 'forma', etiqueta: 'Forma', queEvaluar: 'Organización lógica del pensamiento.', descriptores: 'Lógico / Circunstancial / Tangencial / Descarrilado' },
+      { clave: 'ideasDelirantes', etiqueta: 'Ideas delirantes', queEvaluar: 'Creencias falsas fijas e irreductibles.', descriptores: 'Ausentes / Persecutorias / Referenciales / Somáticas / Grandiosas' },
+      { clave: 'fenómenosPasividad', etiqueta: 'Fenómenos de pasividad', queEvaluar: 'Vivencia de control externo del pensamiento.', descriptores: 'Ausentes / Inserción / Robo / Difusión del pensamiento' },
+      { clave: 'ideasSobrevaloradas', etiqueta: 'Ideas sobrevaloradas', queEvaluar: 'Creencias con fuerte carga afectiva.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'obsesionesCompulsiones', etiqueta: 'Obsesiones y compulsiones', queEvaluar: 'Ideas intrusivas y rituales asociados.', descriptores: 'Ausentes / Obsesiones / Compulsiones' },
+      { clave: 'fobiasPreocupacionesRumiaciones', etiqueta: 'Fobias, preocupaciones y rumiaciones', queEvaluar: 'Temores y pensamientos recurrentes.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'ideaciónSuicidaAutolesivaHomicida', etiqueta: 'Ideación suicida, autolesiva u homicida', queEvaluar: 'Pensamientos de daño hacia sí mismo o a otros.', descriptores: 'Ausente / Pasiva / Activa / Con plan' }
+    ]
+  },
+  {
+    clave: 'sensopercepción',
+    titulo: 'Sensopercepción',
+    parametros: [
+      { clave: 'alucinaciones', etiqueta: 'Alucinaciones', queEvaluar: 'Percepciones sin objeto real.', descriptores: 'Ausentes / Auditivas / Visuales / Táctiles / Olfatorias' },
+      { clave: 'pseudoalucinacionesAlucinosis', etiqueta: 'Pseudoalucinaciones y alucinosis', queEvaluar: 'Percepciones reconocidas como irreales.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'ilusiones', etiqueta: 'Ilusiones', queEvaluar: 'Distorsiones de un estímulo real.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'despersonalizaciónDesrealización', etiqueta: 'Despersonalización y desrealización', queEvaluar: 'Vivencia de extrañeza de sí mismo o del entorno.', descriptores: 'Ausentes / Presentes' },
+      { clave: 'conductaAlucinatoria', etiqueta: 'Conducta alucinatoria', queEvaluar: 'Conductas derivadas de la alucinación.', descriptores: 'Ausente / Soliloquios / Respuesta a estímulos internos' },
+      { clave: 'otrasDistorsiones', etiqueta: 'Otras distorsiones', queEvaluar: 'Otras alteraciones perceptivas.', descriptores: 'Ninguna / Otras' }
+    ]
+  },
+  {
+    clave: 'funcionesCognoscitivas',
+    titulo: 'Funciones cognoscitivas',
+    parametros: [
+      { clave: 'memoriaInmediata', etiqueta: 'Memoria inmediata', queEvaluar: 'Retención a corto plazo.', descriptores: 'Conservada / Alterada' },
+      { clave: 'memoriaReciente', etiqueta: 'Memoria reciente', queEvaluar: 'Evocación de hechos recientes.', descriptores: 'Conservada / Alterada' },
+      { clave: 'memoriaRemota', etiqueta: 'Memoria remota', queEvaluar: 'Evocación de hechos pasados.', descriptores: 'Conservada / Alterada' },
+      { clave: 'cálculo', etiqueta: 'Cálculo', queEvaluar: 'Ejecución de operaciones aritméticas.', descriptores: 'Conservado / Alterado' },
+      { clave: 'abstracción', etiqueta: 'Abstracción', queEvaluar: 'Pensamiento simbólico y de semejanzas.', descriptores: 'Conservada / Concreta / Alterada' },
+      { clave: 'visoespacialPraxiasGnosias', etiqueta: 'Visoespacial, praxias y gnosias', queEvaluar: 'Organización espacial y ejecución motora.', descriptores: 'Conservadas / Alteradas' },
+      { clave: 'funcionesEjecutivas', etiqueta: 'Funciones ejecutivas', queEvaluar: 'Planeación, juicio y flexibilidad.', descriptores: 'Conservadas / Alteradas' },
+      { clave: 'inteligenciaCaudal', etiqueta: 'Inteligencia y caudal', queEvaluar: 'Nivel intelectual estimado.', descriptores: 'Promedio / Superior / Inferior' }
+    ]
+  },
+  {
+    clave: 'juicioIntrospección',
+    titulo: 'Juicio e introspección',
+    parametros: [
+      { clave: 'juicioRealidad', etiqueta: 'Juicio de realidad', queEvaluar: 'Discriminación de lo real.', descriptores: 'Conservado / Alterado' },
+      { clave: 'juicioCríticoSocial', etiqueta: 'Juicio crítico y social', queEvaluar: 'Adecuación a normas sociales.', descriptores: 'Conservado / Alterado' },
+      { clave: 'introspección', etiqueta: 'Introspección', queEvaluar: 'Conciencia de la propia enfermedad.', descriptores: 'Adecuada / Parcial / Nula' },
+      { clave: 'controlImpulsos', etiqueta: 'Control de impulsos', queEvaluar: 'Capacidad de diferir la gratificación.', descriptores: 'Conservado / Disminuido / Ausente' },
+      { clave: 'confiabilidad', etiqueta: 'Confiabilidad', queEvaluar: 'Veracidad de la información aportada.', descriptores: 'Fiable / Dudosa / No fiable' }
+    ]
+  },
+  {
+    clave: 'funcionesFisiológicas',
+    titulo: 'Funciones fisiológicas',
+    parametros: [
+      { clave: 'sueño', etiqueta: 'Sueño', queEvaluar: 'Patrón de sueño.', descriptores: 'Normal / Insomnio / Hipersomnia / Pesadillas' },
+      { clave: 'apetitoPeso', etiqueta: 'Apetito y peso', queEvaluar: 'Ingesta y variación ponderal.', descriptores: 'Normal / Aumentado / Disminuido' },
+      { clave: 'libido', etiqueta: 'Libido', queEvaluar: 'Deseo sexual.', descriptores: 'Normal / Aumentada / Disminuida' }
+    ]
+  }
+];
+
+const EXAMEN_RIESGO_ITEMS: Array<{ clave: string; etiqueta: string }> = [
+  { clave: 'suicida', etiqueta: 'Suicida' },
+  { clave: 'autolesión', etiqueta: 'Autolesión' },
+  { clave: 'heteroagresivo', etiqueta: 'Heteroagresivo' },
+  { clave: 'abandonoAutocuidado', etiqueta: 'Abandono de autocuidado' },
+  { clave: 'vulnerabilidad', etiqueta: 'Vulnerabilidad' },
+  { clave: 'fugaAbandono', etiqueta: 'Fuga o abandono' }
+];
+
+const EXAMEN_SINTESIS_ITEMS: Array<{ clave: string; etiqueta: string }> = [
+  { clave: 'resumenHallazgos', etiqueta: 'Resumen de hallazgos' },
+  { clave: 'integraciónSindromática', etiqueta: 'Integración sindromática' },
+  { clave: 'impresiónDiagnóstica', etiqueta: 'Impresión diagnóstica' },
+  { clave: 'conductaASeguir', etiqueta: 'Conducta a seguir' },
+  { clave: 'nombreFirmaEvaluador', etiqueta: 'Nombre y firma del evaluador' }
+];
+
+export type AudioRecordingUiState = 'IDLE' | 'GRABANDO' | 'ENVIANDO_AUDIO' | 'PROCESANDO_IA' | 'COMPLETADO' | 'ERROR';
 
 @Component({
   selector: 'app-expediente-clinico',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus],
+  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus, VcSemaphoreComponent, LevaProposalReviewComponent],
   providers: [
     {
       provide: ExpedienteRepository,
@@ -43,7 +222,7 @@ import { environment } from '../../../environments/environment';
   templateUrl: './expediente-clinico.component.html',
   styleUrl: './expediente-clinico.component.scss'
 })
-export class ExpedienteClinicoComponent implements OnInit {
+export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   pacienteId: string = 'patient-1';
   patient: Patient | null = null;
   record: ClinicalRecord | null = null;
@@ -56,8 +235,84 @@ export class ExpedienteClinicoComponent implements OnInit {
   solicitudes: SupervisionRequest[] = [];
 
   activeTab: 'datos' | 'psiquiatria' | 'tbe' | 'pagos' | 'auditoria' | 'supervision' | 'constancias' = 'tbe';
-  tbeSubTab: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' = 'dx';
+  tbeSubTab: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' | 'criterios' = 'dx';
+  datosSubTab: 'generales' | 'historia' | 'ficha' = 'generales';
+  psiquiatriaSubTab: 'esquema' | 'expediente' = 'expediente';
   selectedSession: Session | null = null;
+
+  // Historia Clínica (estructurada — SDD-HC-3)
+  antecedentes: Antecedentes | null = null;
+  antecedentesDraft: Antecedentes | null = null;
+  editandoPatologicos = false;
+  editandoNoPatologicos = false;
+  editandoHeredoFamiliares = false;
+  editandoRiesgo = false;
+  riesgoDraft: {
+    riesgoSuicida: RiesgoSuicida | null;
+    riesgoSuicidaEspecificar: string;
+    riesgoHeteroagresivo: RiesgoHeteroagresivo | null;
+    riesgoHeteroagresivoEspecificar: string;
+    otrosRiesgos: string;
+  } = {
+    riesgoSuicida: null,
+    riesgoSuicidaEspecificar: '',
+    riesgoHeteroagresivo: null,
+    riesgoHeteroagresivoEspecificar: '',
+    otrosRiesgos: ''
+  };
+  categoriasPsicofarmacos: CategoriaPsicofarmaco[] = [];
+  establecimiento: Establecimiento | null = null;
+
+  // Examen Mental (SDD-HC-3)
+  showExamenModal = false;
+  showResultadosModal = false;
+  examenDraft: ExamenMental = {};
+  readonly examenSecciones = EXAMEN_SECCIONES;
+  readonly examenRiesgoItems = EXAMEN_RIESGO_ITEMS;
+  readonly examenSintesisItems = EXAMEN_SINTESIS_ITEMS;
+
+  // Ficha de identificación (SDD-FI-1)
+  tratamientosPrevios: TratamientoPrevio[] = [];
+  editandoFicha = false;
+  tratamientosSi = false;
+  farmacosSi = false;
+  psicofarmacosSi = false;
+  drogasSi = false;
+  fuenteReferenciaDraft: FuenteReferencia | null = null;
+  fuenteReferenciaOtroDraft = '';
+  tratamientosDraft: TratamientoPrevio[] = [];
+  farmacosDraft: HistorialFarmaco[] = [];
+  psicofarmacosDraft: HistorialPsicofarmaco[] = [];
+  drogasDraft: HistorialDroga[] = [];
+
+  // Expediente Médico Psiquiátrico (SDD-EMP-1)
+  editandoEMP = false;
+  empFarmacosSi = false;
+  empDrogasSi = false;
+  empFarmacosDraft: HistorialFarmaco[] = [];
+  empDrogasDraft: HistorialDroga[] = [];
+  readonly empGruposPsicofarmacos: { grupo: string; categorias: CodigoCategoriaPsicofarmaco[] }[] = [
+    { grupo: 'BZD', categorias: ['bzd'] },
+    { grupo: 'Antidepresivos', categorias: ['isrs', 'duales', 'triciclicos_tetraciclicos'] },
+    { grupo: 'Neurolépticos', categorias: ['neurolepticos_tipicos', 'neurolepticos_atipicos'] },
+    { grupo: 'Psicoestabilizadores', categorias: ['psicoestabilizadores'] },
+    { grupo: 'Inductores del sueño', categorias: ['inductores_sueno'] },
+    { grupo: 'Otros', categorias: ['otros'] }
+  ];
+
+  // Edición inline de sesión (#102/#103/#104)
+  editingField: 'fase' | 'significado' | 'dxOp' | 'spr' | null = null;
+  isSavingField = false;
+
+  // Criterios clínicos por sesión (#106/#107/#108)
+  criterios: CriterioClinico[] = [];
+  opcionesConductuales: OpcionConductual[] = [];
+  criteriosAbiertos: Set<string> = new Set(['conductual']);
+  categoriasCriterio: CriterioCategoria[] = [
+    'conductual', 'racionalizaciones_intelectualizaciones', 'comparaciones', 'imagenes_intrusivas', 'otro'
+  ];
+  catalogoFases = ['Definición del problema', 'Desbloqueo', 'Consolidación', 'Cierre'];
+  catalogoSpr = ['SPR Fóbico', 'SPR Obsesivo-Compulsivo', 'SPR Paranoide', 'SPR Depresivo', 'SPR Dismórfico', 'SPR Hipocondríaco'];
 
   // Modal Nueva Sesión
   showSessionModal = false;
@@ -130,20 +385,45 @@ export class ExpedienteClinicoComponent implements OnInit {
     recommendations: 'Prescribir simulacros voluntarios en trayectos cortos sin anunciar a los familiares. Monitorear adherencia en la siguiente sesión.'
   };
 
-  // Audio Simulator State
+  // Real Audio Recording & LEVA Copilot State
+  recordingState: AudioRecordingUiState = 'IDLE';
   isRecording = false;
+  isPaused = false;
   recordingSeconds = 0;
-  private recordingInterval: any = null;
+  audioLevel = 0; // 0 - 100%
+  recordingErrorMessage: string | null = null;
   transcriptText = '';
   levaAdvice = '';
+  currentProposal: LevaProposalResponse | null = null;
+  // Audio de sesión: blob retenido localmente, URL de reproducción y disponibilidad en servidor
+  pendingAudioBlob: Blob | null = null;
+  audioObjectUrl: string | null = null;
+  audioSource: 'local' | 'server' | null = null;
+  storedAudioAvailable = false;
+  private audioSubs: Subscription[] = [];
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly expedienteRepo: ExpedienteRepository,
-    public readonly roleService: RoleStateService
+    public readonly roleService: RoleStateService,
+    private readonly audioRecorder: AudioRecorderService,
+    private readonly levaSessionService: LevaSessionService
   ) {}
 
   ngOnInit(): void {
+    this.audioSubs.push(
+      this.audioRecorder.isRecording$.subscribe(rec => this.isRecording = rec),
+      this.audioRecorder.isPaused$.subscribe(p => this.isPaused = p),
+      this.audioRecorder.recordingTime$.subscribe(sec => this.recordingSeconds = sec),
+      this.audioRecorder.audioLevel$.subscribe(lvl => this.audioLevel = lvl),
+      this.audioRecorder.error$.subscribe(err => {
+        if (err) {
+          this.recordingErrorMessage = err;
+          this.recordingState = 'ERROR';
+        }
+      })
+    );
+
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
@@ -159,11 +439,25 @@ export class ExpedienteClinicoComponent implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.audioSubs.forEach(s => s.unsubscribe());
+    this.audioSubs = [];
+    if (this.isRecording) {
+      this.audioRecorder.cancelRecording();
+    }
+    this.revokeAudioUrl();
+  }
+
   cargarDatos(): void {
     this.expedienteRepo.listarPacientes().subscribe(p => this.pacientes = p);
     this.expedienteRepo.obtenerPaciente(this.pacienteId).subscribe(p => {
       this.patient = p;
       if (p) {
+        if (!p.domicilio) p.domicilio = { calleNumero: '', colonia: '', codigoPostal: '', municipio: '', estadoDomicilio: '', telefonoCasa: null, telefonoCelular: null, telefonoTrabajo: null };
+        if (!p.contactoEmergencia) p.contactoEmergencia = { nombre: '', parentesco: '', telefono: '' };
+        if (p.sedeId) {
+          this.expedienteRepo.obtenerSede(p.sedeId).subscribe(s => this.establecimiento = s);
+        }
         if (!this.newConstancia.issuerName) {
           this.newConstancia.issuerName = p.therapistName || 'Dr. Carlos Mendoza';
         }
@@ -181,11 +475,18 @@ export class ExpedienteClinicoComponent implements OnInit {
         }
       }
     });
-    this.expedienteRepo.obtenerExpediente(this.pacienteId).subscribe(r => this.record = r);
+    this.expedienteRepo.obtenerExpediente(this.pacienteId).subscribe(r => {
+      this.record = r;
+      this.antecedentes = r?.antecedentes ?? null;
+    });
     this.expedienteRepo.obtenerSesiones(this.pacienteId).subscribe(s => {
       this.sessions = s;
       if (!this.selectedSession && s.length > 0) {
         this.selectedSession = s[0];
+        this.cargarPropuestaDeSesion(s[0].id);
+      } else if (!this.selectedSession && s.length === 0) {
+        const defaultSessionId = this.pacienteId + '-s1';
+        this.cargarPropuestaDeSesion(defaultSessionId);
       }
       this.newConstancia.sessionsCount = s.length > 0 ? s.length : 1;
       this.newBitacora.sessionNumber = s.length > 0 ? s.length : 1;
@@ -195,6 +496,8 @@ export class ExpedienteClinicoComponent implements OnInit {
     this.expedienteRepo.listarAuditoria(this.pacienteId).subscribe(a => this.auditoria = a);
     this.expedienteRepo.listarBitacoras(this.pacienteId).subscribe(b => this.bitacoras = b);
     this.expedienteRepo.listarSolicitudes(this.pacienteId).subscribe(s => this.solicitudes = s);
+    this.expedienteRepo.listarCategoriasPsicofarmacos().subscribe(c => this.categoriasPsicofarmacos = c);
+    this.cargarFicha();
   }
 
   get totalCobrado(): number {
@@ -261,8 +564,99 @@ export class ExpedienteClinicoComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  setTbeSubTab(sub: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst'): void {
+  setTbeSubTab(sub: 'dx' | 'sesiones' | 'vc' | 'vg' | 'rst' | 'criterios'): void {
     this.tbeSubTab = sub;
+    if (sub === 'criterios') {
+      this.cargarCriterios();
+    }
+  }
+
+  setDatosSubTab(sub: 'generales' | 'historia' | 'ficha'): void {
+    this.datosSubTab = sub;
+  }
+
+  setPsiquiatriaSubTab(sub: 'esquema' | 'expediente'): void {
+    this.psiquiatriaSubTab = sub;
+  }
+
+  // --- Edición inline de sesión (#102, #103, #104) ---
+  iniciarEdicion(campo: 'fase' | 'significado' | 'dxOp' | 'spr'): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    this.editingField = campo;
+  }
+
+  cancelarEdicion(): void {
+    this.editingField = null;
+    this.isSavingField = false;
+  }
+
+  guardarEdicion(): void {
+    if (!this.selectedSession || !this.editingField) return;
+    const parcial: SesionParcial = {};
+    switch (this.editingField) {
+      case 'fase': parcial.phase = this.selectedSession.phase; break;
+      case 'significado': parcial.significado = this.selectedSession.significado; break;
+      case 'dxOp': parcial.dxOp = this.selectedSession.dxOp; break;
+      case 'spr': parcial.spr = this.selectedSession.spr; break;
+    }
+    this.isSavingField = true;
+    this.expedienteRepo.actualizarSesion(this.selectedSession.id, parcial).subscribe({
+      next: (sesion) => {
+        this.selectedSession = { ...this.selectedSession, ...sesion };
+        const i = this.sessions.findIndex(x => x.id === sesion.id);
+        if (i >= 0) this.sessions[i] = sesion;
+        this.cancelarEdicion();
+      },
+      error: () => this.cancelarEdicion()
+    });
+  }
+
+  // --- Criterios clínicos (#106, #107, #108) ---
+  cargarCriterios(): void {
+    if (!this.selectedSession) return;
+    this.expedienteRepo.listarCriteriosSesion(this.selectedSession.id).subscribe(c => this.criterios = c);
+    this.expedienteRepo.listarOpcionesConductuales().subscribe(o => this.opcionesConductuales = o);
+  }
+
+  toggleCriterio(categoria: string): void {
+    if (this.criteriosAbiertos.has(categoria)) this.criteriosAbiertos.delete(categoria);
+    else this.criteriosAbiertos.add(categoria);
+  }
+
+  valorCriterio(categoria: string): string {
+    return this.criterios.find(c => c.categoria === categoria)?.valor ?? '';
+  }
+
+  setCriterioValor(categoria: CriterioCategoria, valor: string): void {
+    const existente = this.criterios.find(c => c.categoria === categoria);
+    if (existente) existente.valor = valor;
+    else this.criterios.push({ categoria, valor });
+  }
+
+  guardarCriterios(): void {
+    if (!this.selectedSession) return;
+    this.expedienteRepo.guardarCriteriosSesion(this.selectedSession.id, this.criterios).subscribe(c => this.criterios = c);
+  }
+
+  estadoVc(texto: string | null | undefined): VcEstado | null {
+    return vcEstadoDeTexto(texto);
+  }
+
+  vcMeta(texto: string | null | undefined): { etiqueta: string; color: string } | null {
+    const e = vcEstadoDeTexto(texto);
+    if (!e) return null;
+    const m = VC_ESCALA[e];
+    return { etiqueta: m.etiqueta, color: m.color };
+  }
+
+  setEstadoVc(campo: 'percepcion' | 'pensamientos' | 'sensaciones' | 'reacciones' | 'sintomas' | 'crisis', estado: VcEstado): void {
+    const texto = VC_ESTADO_A_TEXTO[estado];
+    if (campo === 'percepcion') this.newVcPercepcion = texto;
+    else if (campo === 'pensamientos') this.newVcPensamientos = texto;
+    else if (campo === 'sensaciones') this.newVcSensaciones = texto;
+    else if (campo === 'reacciones') this.newVcReacciones = texto;
+    else if (campo === 'sintomas') this.newVcSintomas = texto;
+    else this.newVcCrisis = texto;
   }
 
   @HostListener('document:keydown.escape')
@@ -271,7 +665,9 @@ export class ExpedienteClinicoComponent implements OnInit {
     if (this.showConstanciaModal) { this.closeConstanciaModal(); return; }
     if (this.showBitacoraModal) { this.closeBitacoraModal(); return; }
     if (this.selectedConstancia) { this.cerrarDetalleConstancia(); return; }
-    if (this.showSessionModal) { this.closeSessionModal(); }
+    if (this.showSessionModal) { this.closeSessionModal(); return; }
+    if (this.showExamenModal) { this.cerrarExamen(); return; }
+    if (this.showResultadosModal) { this.cerrarResultados(); }
   }
 
   firmarConsentimiento(): void {
@@ -280,22 +676,343 @@ export class ExpedienteClinicoComponent implements OnInit {
     });
   }
 
-  // Audio recording simulation
-  toggleRecording(): void {
-    if (this.isRecording) {
-      clearInterval(this.recordingInterval);
-      this.isRecording = false;
-      this.transcriptText = "Transcripción completada: 'El paciente refiere que al salir a la calle siente opresión torácica y busca inmediatamente el contacto de su madre. Intenta calmar la respiración pero el intento genera mayor hiperventilación.'";
-      this.levaAdvice = "LEVA detectó la tentativa de solución redundante: 'Intentar controlar conscientemente las reacciones espontáneas'. Sugerencia TBE: Prescribir la Peor Fantasía o Declaración del Miedo.";
-    } else {
-      this.isRecording = true;
-      this.recordingSeconds = 0;
-      this.transcriptText = 'Grabando y transcribiendo en tiempo real...';
-      this.levaAdvice = '';
-      this.recordingInterval = setInterval(() => {
-        this.recordingSeconds++;
-      }, 1000);
+  // Real Audio Recording with MediaRecorder API & LEVA Copilot
+  async startRealRecording(): Promise<void> {
+    this.recordingErrorMessage = null;
+    this.transcriptText = '';
+    this.levaAdvice = '';
+    this.currentProposal = null;
+    this.pendingAudioBlob = null;
+    this.revokeAudioUrl();
+    this.audioSource = null;
+
+    try {
+      this.recordingState = 'GRABANDO';
+      await this.audioRecorder.startRecording();
+    } catch (err: any) {
+      this.recordingErrorMessage = err.message || 'No se pudo iniciar la captura de audio.';
+      this.recordingState = 'ERROR';
     }
+  }
+
+  pauseRecording(): void {
+    this.audioRecorder.pauseRecording();
+  }
+
+  resumeRecording(): void {
+    this.audioRecorder.resumeRecording();
+  }
+
+  cancelRecording(): void {
+    this.audioRecorder.cancelRecording();
+    this.recordingState = 'IDLE';
+    this.recordingErrorMessage = null;
+  }
+
+  async stopAndTranscribe(): Promise<void> {
+    if (!this.isRecording) return;
+
+    this.recordingState = 'ENVIANDO_AUDIO';
+    this.recordingErrorMessage = null;
+
+    try {
+      const recordingResult = await this.audioRecorder.stopRecording();
+      // Conservar el audio en memoria: reproducible/descargable y reintentable aunque falle el envío
+      this.pendingAudioBlob = recordingResult.blob;
+      this.setAudioPlayback(recordingResult.blob, 'local');
+      this.uploadPendingAudio();
+    } catch (err: any) {
+      this.recordingErrorMessage = err.message || 'Error al detener y procesar la grabación.';
+      this.recordingState = 'ERROR';
+    }
+  }
+
+  private get currentSessionId(): string {
+    return this.selectedSession?.id || (this.pacienteId + '-s' + (this.sessions.length + 1));
+  }
+
+  /** Sube el audio retenido (también usado para "Reintentar envío"). */
+  uploadPendingAudio(): void {
+    if (!this.pendingAudioBlob) return;
+    const sessionId = this.currentSessionId;
+    this.recordingState = 'ENVIANDO_AUDIO';
+    this.recordingErrorMessage = null;
+
+    this.levaSessionService.uploadSessionAudio(sessionId, this.pendingAudioBlob, 'sesion_clinica.webm', 'es')
+      .subscribe({
+        next: (task) => {
+          if (task.status === 'FAILED') {
+            this.recordingErrorMessage = task.errorMessage || 'El motor de transcripción no pudo iniciar. Tu audio quedó guardado en el servidor.';
+            this.recordingState = 'ERROR';
+            this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+            return;
+          }
+          this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+          this.pendingAudioBlob = null;
+          this.pollAnalysis(sessionId);
+        },
+        error: (uploadErr) => {
+          this.recordingErrorMessage = (uploadErr.error?.message || uploadErr.message || 'Error al subir el audio de la sesión.')
+            + ' Tu grabación sigue en este navegador: puedes reintentar el envío o descargarla.';
+          this.recordingState = 'ERROR';
+        }
+      });
+  }
+
+  /** Reprocesa en el servidor el audio ya guardado (sin volver a grabar). */
+  retranscribeStoredAudio(): void {
+    const sessionId = this.currentSessionId;
+    this.recordingState = 'PROCESANDO_IA';
+    this.recordingErrorMessage = null;
+    this.currentProposal = null;
+    this.levaSessionService.retranscribe(sessionId, 'es').subscribe({
+      next: (task) => {
+        if (task.status === 'FAILED') {
+          this.recordingErrorMessage = task.errorMessage || 'No se pudo reiniciar la transcripción.';
+          this.recordingState = 'ERROR';
+          return;
+        }
+        this.pollAnalysis(sessionId);
+      },
+      error: (err) => {
+        this.recordingErrorMessage = err.error?.message || err.message || 'No se pudo reiniciar la transcripción.';
+        this.recordingState = 'ERROR';
+      }
+    });
+  }
+
+  /** Consulta de nuevo el resultado (útil si se agotó la espera pero el servidor siguió procesando). */
+  checkAnalysisResult(): void {
+    this.recordingState = 'PROCESANDO_IA';
+    this.recordingErrorMessage = null;
+    this.pollAnalysis(this.currentSessionId);
+  }
+
+  private pollAnalysis(sessionId: string): void {
+    this.recordingState = 'PROCESANDO_IA';
+    this.levaSessionService.pollSessionAnalysis(sessionId, 2500, 300).subscribe({
+      next: (pollResult) => {
+        if (!pollResult.completed) return;
+        this.recordingState = 'COMPLETADO';
+        if (pollResult.proposal) {
+          this.currentProposal = pollResult.proposal;
+          const sp = pollResult.proposal.structuredProposal;
+          if (sp) {
+            this.transcriptText = pollResult.task?.rawResult?.fullText
+              || (sp.dialogue && sp.dialogue.length > 0 ? sp.dialogue.map(d => `${d.speaker}: ${d.text}`).join('\n') : '')
+              || 'Transcripción completada por Whisper.';
+
+            const adviceParts: string[] = [];
+            if (sp.diagnosticoOperativo) adviceParts.push(`Dx Operativo: ${sp.diagnosticoOperativo}`);
+            if (sp.sistemaPerceptivoReactivo) adviceParts.push(`SPR: ${sp.sistemaPerceptivoReactivo}`);
+            if (sp.tentativasSolucionRedundantes?.length) adviceParts.push(`Tentativas redundantes: ${sp.tentativasSolucionRedundantes.join(', ')}`);
+            if (sp.prescripcionesEstrategicas?.length) adviceParts.push(`Prescripciones TBE: ${sp.prescripcionesEstrategicas.join(', ')}`);
+            this.levaAdvice = adviceParts.join(' | ');
+          }
+        } else if (pollResult.task?.rawResult?.fullText) {
+          this.transcriptText = pollResult.task.rawResult.fullText;
+          this.levaAdvice = 'Transcripción generada correctamente. Pendiente de propuesta clínica.';
+        }
+      },
+      error: (pollErr) => {
+        this.recordingErrorMessage = (pollErr.message || 'Error durante el procesamiento inteligente de la sesión.')
+          + ' El audio está guardado; puedes comprobar el resultado o reintentar la transcripción.';
+        this.recordingState = 'ERROR';
+      }
+    });
+  }
+
+  // --- Reproducción / descarga del audio de la sesión ---------------------------------------
+  private setAudioPlayback(blob: Blob, source: 'local' | 'server'): void {
+    this.revokeAudioUrl();
+    this.audioObjectUrl = URL.createObjectURL(blob);
+    this.audioSource = source;
+  }
+
+  private revokeAudioUrl(): void {
+    if (this.audioObjectUrl) {
+      URL.revokeObjectURL(this.audioObjectUrl);
+      this.audioObjectUrl = null;
+    }
+  }
+
+  /** Carga el audio persistido en el servidor para la sesión seleccionada (si existe). */
+  cargarAudioDeSesion(sessionId: string): void {
+    this.storedAudioAvailable = false;
+    this.levaSessionService.getTaskStatus(sessionId).subscribe({
+      next: (task) => {
+        this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+        if (!this.storedAudioAvailable || this.pendingAudioBlob) return;
+        this.levaSessionService.getStoredAudio(sessionId).subscribe({
+          next: (blob) => this.setAudioPlayback(blob, 'server'),
+          error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
+        });
+      },
+      error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
+    });
+  }
+
+  descargarAudio(): void {
+    if (!this.audioObjectUrl) return;
+    const a = document.createElement('a');
+    a.href = this.audioObjectUrl;
+    a.download = `sesion_${this.currentSessionId}.webm`;
+    a.click();
+  }
+
+  toggleRecording(): void {
+    if (this.recordingState === 'GRABANDO') {
+      this.stopAndTranscribe();
+    } else {
+      this.startRealRecording();
+    }
+  }
+
+  aplicarPropuestaAlExpediente(): void {
+    if (!this.currentProposal?.structuredProposal) return;
+    const sp = this.currentProposal.structuredProposal;
+
+    if (this.record) {
+      if (sp.diagnosticoOperativo && !this.record.dxOpInicial) {
+        this.record.dxOpInicial = sp.diagnosticoOperativo;
+      }
+      if (sp.sistemaPerceptivoReactivo && !this.record.sprInicial) {
+        this.record.sprInicial = sp.sistemaPerceptivoReactivo;
+      }
+      this.guardarDx();
+    }
+
+    if (this.selectedSession) {
+      if (sp.protocoloCodigo || sp.protocoloReferencia) {
+        this.selectedSession.protocol = (sp.protocoloCodigo || sp.protocoloReferencia) ?? '';
+      }
+      if (sp.diagnosticoOperativo) this.selectedSession.dxOp = sp.diagnosticoOperativo;
+      if (sp.sistemaPerceptivoReactivo) this.selectedSession.spr = sp.sistemaPerceptivoReactivo;
+      if (sp.prescripcionesEstrategicas?.length) this.selectedSession.px = [...sp.prescripcionesEstrategicas];
+      if (sp.notaEvolucionSoap) this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + sp.notaEvolucionSoap;
+    } else {
+      const nuevaSesion: any = {
+        number: this.sessions.length + 1,
+        date: new Date().toISOString().split('T')[0],
+        phase: 'Fase 1: Diagnóstico e Intervención',
+        protocol: (sp.protocoloCodigo || sp.protocoloReferencia) ?? 'TBE',
+        dxOp: sp.diagnosticoOperativo || 'Diagnóstico preliminar TBE',
+        spr: sp.sistemaPerceptivoReactivo || 'Fóbico',
+        px: sp.prescripcionesEstrategicas ? [...sp.prescripcionesEstrategicas] : [],
+        f1: 'Intervención de primera sesión',
+        f2: 'Reestructuración estratégica',
+        oss: 'Sesión clínica analizada con LEVA Copilot',
+        add: sp.notaEvolucionSoap || '',
+        rss: 'En observación',
+        eff: 'Inicio de tratamiento estratégico',
+        notes: 'Sesión generada a partir de propuesta LEVA',
+        observationsNextSession: 'Evaluar cumplimiento de prescripción.'
+      };
+      this.expedienteRepo.agregarSesion(this.pacienteId, nuevaSesion).subscribe(() => {
+        this.cargarDatos();
+      });
+    }
+  }
+
+  onProposalApproved(approvedProposal: LevaProposalResponse): void {
+    this.currentProposal = approvedProposal;
+    const approvedData = approvedProposal.approvedData || approvedProposal.structuredProposal;
+    if (!approvedData) return;
+
+    if (this.record) {
+      if (approvedData.diagnosticoOperativo) {
+        this.record.dxOpInicial = approvedData.diagnosticoOperativo;
+      }
+      if (approvedData.sistemaPerceptivoReactivo) {
+        this.record.sprInicial = approvedData.sistemaPerceptivoReactivo;
+      }
+      this.guardarDx();
+    }
+
+    if (this.selectedSession) {
+      if (approvedData.protocoloCodigo || approvedData.protocoloReferencia) {
+        this.selectedSession.protocol = (approvedData.protocoloCodigo || approvedData.protocoloReferencia) ?? '';
+      }
+      if (approvedData.diagnosticoOperativo) this.selectedSession.dxOp = approvedData.diagnosticoOperativo;
+      if (approvedData.sistemaPerceptivoReactivo) this.selectedSession.spr = approvedData.sistemaPerceptivoReactivo;
+      if (approvedData.prescripcionesEstrategicas?.length) {
+        this.selectedSession.px = [...approvedData.prescripcionesEstrategicas];
+      }
+      if (approvedData.notaEvolucionSoap) {
+        const headerFirma = `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n`;
+        this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + headerFirma + approvedData.notaEvolucionSoap;
+      }
+
+      if (approvedData.puntoClaveProtocolo && !this.selectedSession.f2) {
+        this.selectedSession.f2 = approvedData.puntoClaveProtocolo;
+      }
+
+      this.expedienteRepo.actualizarSesion(this.selectedSession.id, {
+        protocol: this.selectedSession.protocol,
+        dxOp: this.selectedSession.dxOp,
+        spr: this.selectedSession.spr,
+        px: this.selectedSession.px,
+        add: this.selectedSession.add,
+        status: 'validado'
+      }).subscribe({
+        next: () => this.cargarDatos(),
+        error: () => this.cargarDatos()
+      });
+    } else {
+      const nuevaSesion: any = {
+        number: this.sessions.length + 1,
+        date: new Date().toISOString().split('T')[0],
+        phase: 'Fase 1: Diagnóstico e Intervención',
+        protocol: (approvedData.protocoloCodigo || approvedData.protocoloReferencia) ?? 'TBE',
+        dxOp: approvedData.diagnosticoOperativo || 'Diagnóstico preliminar TBE',
+        spr: approvedData.sistemaPerceptivoReactivo || 'Fóbico',
+        px: approvedData.prescripcionesEstrategicas ? [...approvedData.prescripcionesEstrategicas] : [],
+        f1: 'Intervención de primera sesión',
+        f2: approvedData.puntoClaveProtocolo || 'Reestructuración estratégica',
+        oss: 'Sesión clínica analizada y sellada con LEVA Copilot',
+        add: (approvedData.notaEvolucionSoap ? `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n` + approvedData.notaEvolucionSoap : ''),
+        rss: 'En observación',
+        eff: 'Inicio de tratamiento estratégico',
+        notes: 'Sesión oficial sellada por terapeuta',
+        observationsNextSession: 'Evaluar cumplimiento de prescripción.'
+      };
+      this.expedienteRepo.agregarSesion(this.pacienteId, nuevaSesion).subscribe(() => {
+        this.cargarDatos();
+      });
+    }
+  }
+
+  onProposalRejected(proposalId: string): void {
+    this.currentProposal = null;
+    this.recordingState = 'IDLE';
+  }
+
+  seleccionarSesion(s: Session): void {
+    this.selectedSession = s;
+    this.cargarPropuestaDeSesion(s.id);
+  }
+
+  cargarPropuestaDeSesion(sessionId: string): void {
+    this.pendingAudioBlob = null;
+    this.revokeAudioUrl();
+    this.cargarAudioDeSesion(sessionId);
+    this.levaSessionService.getProposal(sessionId).subscribe({
+      next: (proposal) => {
+        this.currentProposal = proposal;
+      },
+      error: () => {
+        this.currentProposal = null;
+      }
+    });
+  }
+
+  resetRecordingState(): void {
+    this.recordingState = 'IDLE';
+    this.recordingErrorMessage = null;
+  }
+
+  mathMax(a: number, b: number): number {
+    return Math.max(a, b);
   }
 
   openSessionModal(): void {
@@ -324,21 +1041,473 @@ export class ExpedienteClinicoComponent implements OnInit {
     }).subscribe(r => this.record = r);
   }
 
-  guardarPsiquiatria(): void {
+  guardarExpedientePsiquiatrico(): void {
     if (!this.record) return;
-    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+    const payload: Partial<ClinicalRecord> = {
+      motif: this.record.motif,
+      firstAppearance: this.record.firstAppearance,
+      precipitatingFactors: this.record.precipitatingFactors,
+      evolutionType: this.record.evolutionType,
       dxNosologico: this.record.dxNosologico,
       dsm5: this.record.dsm5,
       cie11: this.record.cie11,
-      comorbilidad: this.record.comorbilidad,
       differentialDx: this.record.differentialDx,
       treatmentPlan: this.record.treatmentPlan,
       prognosis: this.record.prognosis,
       favorableFactors: this.record.favorableFactors,
       unfavorableFactors: this.record.unfavorableFactors,
-      drugsUsage: this.record.drugsUsage,
       drugsList: this.record.drugsList
-    }).subscribe(r => this.record = r);
+    };
+    if (this.editandoEMP) {
+      payload.drugsUsage = this.empFarmacosSi ? 'SI' : 'NO';
+      payload.farmacosEsquema = this.empFarmacosSi ? this.empFarmacosDraft : [];
+      payload.usoDrogas = this.empDrogasSi ? 'SI' : 'NO';
+      payload.drogasEsquema = this.empDrogasSi ? this.empDrogasDraft : [];
+    }
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, payload).subscribe(r => {
+      this.record = r;
+      this.editandoEMP = false;
+    });
+  }
+
+  guardarDatosGenerales(): void {
+    if (!this.patient) return;
+    this.expedienteRepo.actualizarPaciente(this.pacienteId, {
+      email: this.patient.email,
+      rfc: this.patient.rfc,
+      sexo: this.patient.sexo,
+      lugarNacimiento: this.patient.lugarNacimiento,
+      estadoCivil: this.patient.estadoCivil,
+      escolaridad: this.patient.escolaridad,
+      ocupacion: this.patient.ocupacion,
+      religion: this.patient.religion,
+      domicilio: this.patient.domicilio,
+      contactoEmergencia: this.patient.contactoEmergencia
+    }).subscribe(p => { if (p) this.patient = p; });
+    if (this.record) {
+      this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+        tipoExpediente: this.record.tipoExpediente,
+        fechaApertura: this.record.fechaApertura
+      }).subscribe(r => this.record = r);
+    }
+  }
+
+  // --- Historia Clínica estructurada (SDD-HC-3) ---
+  get personalesPatologicos() {
+    return this.antecedentes?.personalesPatológicos ?? ANTECEDENTES_VACIO.personalesPatológicos;
+  }
+
+  get personalesNoPatologicos() {
+    return this.antecedentes?.personalesNoPatológicos ?? ANTECEDENTES_VACIO.personalesNoPatológicos;
+  }
+
+  get heredoFamiliares() {
+    return this.antecedentes?.heredoFamiliares ?? ANTECEDENTES_VACIO.heredoFamiliares;
+  }
+
+  get draftPatologicos() {
+    return this.antecedentesDraft?.personalesPatológicos ?? ANTECEDENTES_VACIO.personalesPatológicos;
+  }
+
+  get draftNoPatologicos() {
+    return this.antecedentesDraft?.personalesNoPatológicos ?? ANTECEDENTES_VACIO.personalesNoPatológicos;
+  }
+
+  get draftHeredoFamiliares() {
+    return this.antecedentesDraft?.heredoFamiliares ?? ANTECEDENTES_VACIO.heredoFamiliares;
+  }
+
+  // Acceso por clave para el template (el parser de Angular no admite acentos en identificadores)
+  antPat(clave: string): string { return (this.personalesPatologicos as any)[clave] ?? ''; }
+  draftAntPat(clave: string): string { return (this.draftPatologicos as any)[clave] ?? ''; }
+  setAntPat(clave: string, valor: string): void { (this.draftPatologicos as any)[clave] = valor; }
+
+  antNoPat(clave: string): string { return (this.personalesNoPatologicos as any)[clave] ?? ''; }
+  draftAntNoPat(clave: string): string { return (this.draftNoPatologicos as any)[clave] ?? ''; }
+  setAntNoPat(clave: string, valor: string): void { (this.draftNoPatologicos as any)[clave] = valor; }
+
+  antHer(clave: string): string { return (this.heredoFamiliares as any)[clave] ?? ''; }
+  draftAntHer(clave: string): string { return (this.draftHeredoFamiliares as any)[clave] ?? ''; }
+  setAntHer(clave: string, valor: string): void { (this.draftHeredoFamiliares as any)[clave] = valor; }
+
+  habitoActual(clave: string): HábitoPresente | undefined {
+    return (this.personalesNoPatologicos as any)[clave];
+  }
+
+  draftHabito(clave: string): HábitoPresente {
+    const h: any = (this.draftNoPatologicos as any)[clave];
+    return h && typeof h === 'object' ? h : { presente: false, cantidad: '', tiempo: '', frecuencia: '', tipo: '' };
+  }
+
+  habitoResumen(habito: HábitoPresente | undefined): string {
+    if (!habito?.presente) return 'No';
+    const detalle = [habito.cantidad, habito.tiempo, habito.frecuencia, habito.tipo]
+      .filter(x => !!x && !!x.trim()).join(' · ');
+    return 'Sí' + (detalle ? ' — ' + detalle : '');
+  }
+
+  private clonarAntecedentes(a: Antecedentes | null): Antecedentes {
+    const base: Antecedentes = JSON.parse(JSON.stringify(ANTECEDENTES_VACIO));
+    if (!a) return base;
+    base.personalesPatológicos = { ...base.personalesPatológicos, ...(a.personalesPatológicos ?? {}) };
+    base.personalesNoPatológicos = {
+      tabaquismo: { ...base.personalesNoPatológicos.tabaquismo, ...(a.personalesNoPatológicos?.tabaquismo ?? {}) },
+      alcoholismo: { ...base.personalesNoPatológicos.alcoholismo, ...(a.personalesNoPatológicos?.alcoholismo ?? {}) },
+      toxicomanías: { ...base.personalesNoPatológicos.toxicomanías, ...(a.personalesNoPatológicos?.toxicomanías ?? {}) },
+      actividadFísica: a.personalesNoPatológicos?.actividadFísica ?? '',
+      alimentación: a.personalesNoPatológicos?.alimentación ?? ''
+    };
+    base.heredoFamiliares = { ...base.heredoFamiliares, ...(a.heredoFamiliares ?? {}) };
+    return base;
+  }
+
+  hasPatologicosData(): boolean {
+    return Object.values(this.personalesPatologicos).some(v => !!v && !!v.trim());
+  }
+
+  hasNoPatologicosData(): boolean {
+    const n = this.personalesNoPatologicos;
+    return !!n.tabaquismo?.presente || !!n.alcoholismo?.presente || !!n.toxicomanías?.presente
+      || !!(n.actividadFísica?.trim()) || !!(n.alimentación?.trim());
+  }
+
+  hasHeredoFamiliaresData(): boolean {
+    return Object.values(this.heredoFamiliares).some(v => !!v && !!v.trim());
+  }
+
+  hasRiesgoData(): boolean {
+    return !!this.record?.riesgoSuicida || !!this.record?.riesgoHeteroagresivo
+      || !!(this.record?.riesgoSuicidaEspecificar?.trim())
+      || !!(this.record?.riesgoHeteroagresivoEspecificar?.trim())
+      || !!(this.record?.otrosRiesgos?.trim());
+  }
+
+  hasExamenMentalData(): boolean {
+    const em: any = this.record?.examenMental;
+    if (!em) return false;
+    return Object.keys(em).some(seccion => {
+      const val = em[seccion];
+      if (val && typeof val === 'object') {
+        return Object.values(val).some((v: any) => {
+          if (v && typeof v === 'object') {
+            return Object.values(v).some(x => x !== null && x !== undefined && x !== '');
+          }
+          return v !== null && v !== undefined && v !== '';
+        });
+      }
+      return false;
+    });
+  }
+
+  get examenImpresionDiagnostica(): string {
+    return (this.record?.examenMental as any)?.síntesis?.impresiónDiagnóstica ?? '';
+  }
+
+  get examenFechaTexto(): string {
+    const f = this.record?.fechaExamenMental;
+    if (!f) return '';
+    return new Date(`${f}T00:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  editarAntecedentes(card: 'patologicos' | 'noPatologicos' | 'heredoFamiliares'): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    this.antecedentesDraft = this.clonarAntecedentes(this.antecedentes);
+    if (card === 'patologicos') this.editandoPatologicos = true;
+    else if (card === 'noPatologicos') this.editandoNoPatologicos = true;
+    else this.editandoHeredoFamiliares = true;
+  }
+
+  cancelarAntecedentes(): void {
+    this.editandoPatologicos = false;
+    this.editandoNoPatologicos = false;
+    this.editandoHeredoFamiliares = false;
+    this.antecedentesDraft = null;
+  }
+
+  guardarAntecedentes(): void {
+    if (!this.antecedentesDraft) return;
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, { antecedentes: this.antecedentesDraft }).subscribe(r => {
+      this.record = r;
+      this.antecedentes = r?.antecedentes ?? null;
+      this.cancelarAntecedentes();
+    });
+  }
+
+  editarRiesgo(): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    this.riesgoDraft = {
+      riesgoSuicida: this.record?.riesgoSuicida ?? null,
+      riesgoSuicidaEspecificar: this.record?.riesgoSuicidaEspecificar ?? '',
+      riesgoHeteroagresivo: this.record?.riesgoHeteroagresivo ?? null,
+      riesgoHeteroagresivoEspecificar: this.record?.riesgoHeteroagresivoEspecificar ?? '',
+      otrosRiesgos: this.record?.otrosRiesgos ?? ''
+    };
+    this.editandoRiesgo = true;
+  }
+
+  cancelarRiesgo(): void {
+    this.editandoRiesgo = false;
+  }
+
+  guardarRiesgo(): void {
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+      riesgoSuicida: this.riesgoDraft.riesgoSuicida ?? undefined,
+      riesgoSuicidaEspecificar: this.riesgoDraft.riesgoSuicidaEspecificar,
+      riesgoHeteroagresivo: this.riesgoDraft.riesgoHeteroagresivo ?? undefined,
+      riesgoHeteroagresivoEspecificar: this.riesgoDraft.riesgoHeteroagresivoEspecificar,
+      otrosRiesgos: this.riesgoDraft.otrosRiesgos
+    }).subscribe(r => {
+      this.record = r;
+      this.editandoRiesgo = false;
+    });
+  }
+
+  // --- Examen Mental (SDD-HC-3) ---
+  abrirExamen(): void {
+    const prev: any = this.record?.examenMental;
+    this.examenDraft = prev && Object.keys(prev).length > 0 ? JSON.parse(JSON.stringify(prev)) : {};
+    this.showExamenModal = true;
+  }
+
+  cerrarExamen(): void {
+    this.showExamenModal = false;
+  }
+
+  hallazgoTexto(seccion: string, parametro: string): string {
+    const s: any = (this.examenDraft as any)[seccion];
+    return s && typeof s[parametro] === 'string' ? s[parametro] : '';
+  }
+
+  setHallazgoTexto(seccion: string, parametro: string, valor: string): void {
+    const d: any = this.examenDraft;
+    if (!d[seccion]) d[seccion] = {};
+    d[seccion][parametro] = valor;
+  }
+
+  riesgoNivel(clave: string): string {
+    const item: any = (this.examenDraft as any).evaluaciónRiesgo?.[clave];
+    return item && typeof item === 'object' ? (item.nivel ?? '') : '';
+  }
+
+  setRiesgoNivel(clave: string, nivel: string): void {
+    const d: any = this.examenDraft;
+    if (!d.evaluaciónRiesgo) d.evaluaciónRiesgo = {};
+    if (!d.evaluaciónRiesgo[clave] || typeof d.evaluaciónRiesgo[clave] !== 'object') {
+      d.evaluaciónRiesgo[clave] = { nivel: '', hallazgo: '' };
+    }
+    d.evaluaciónRiesgo[clave].nivel = nivel;
+  }
+
+  riesgoHallazgo(clave: string): string {
+    const item: any = (this.examenDraft as any).evaluaciónRiesgo?.[clave];
+    return item && typeof item === 'object' ? (item.hallazgo ?? '') : '';
+  }
+
+  setRiesgoHallazgo(clave: string, hallazgo: string): void {
+    const d: any = this.examenDraft;
+    if (!d.evaluaciónRiesgo) d.evaluaciónRiesgo = {};
+    if (!d.evaluaciónRiesgo[clave] || typeof d.evaluaciónRiesgo[clave] !== 'object') {
+      d.evaluaciónRiesgo[clave] = { nivel: '', hallazgo: '' };
+    }
+    d.evaluaciónRiesgo[clave].hallazgo = hallazgo;
+  }
+
+  sintesisTexto(clave: string): string {
+    const s: any = (this.examenDraft as any).síntesis;
+    return s && typeof s[clave] === 'string' ? s[clave] : '';
+  }
+
+  setSintesisTexto(clave: string, valor: string): void {
+    const d: any = this.examenDraft;
+    if (!d.síntesis) d.síntesis = {};
+    d.síntesis[clave] = valor;
+  }
+
+  guardarExamen(): void {
+    const examenMental: ExamenMental = JSON.parse(JSON.stringify(this.examenDraft));
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+      examenMental,
+      fechaExamenMental: new Date().toISOString().split('T')[0]
+    }).subscribe(r => {
+      this.record = r;
+      this.showExamenModal = false;
+    });
+  }
+
+  verResultados(): void {
+    if (!this.hasExamenMentalData()) return;
+    const prev: any = this.record?.examenMental;
+    this.examenDraft = prev ? JSON.parse(JSON.stringify(prev)) : {};
+    this.showResultadosModal = true;
+  }
+
+  cerrarResultados(): void {
+    this.showResultadosModal = false;
+  }
+
+  // --- Ficha de identificación (SDD-FI-1) ---
+  cargarFicha(): void {
+    this.expedienteRepo.listarTratamientosPrevios(this.pacienteId).subscribe(t => this.tratamientosPrevios = t);
+  }
+
+  get fechaInicioTexto(): string {
+    const f = this.record?.startDate;
+    if (!f) return '—';
+    return new Date(`${f}T00:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  get historialFarmacos(): HistorialFarmaco[] {
+    return this.record?.historialFarmacos ?? [];
+  }
+
+  get historialPsicofarmacos(): HistorialPsicofarmaco[] {
+    return this.record?.historialPsicofarmacos ?? [];
+  }
+
+  get historialDrogas(): HistorialDroga[] {
+    return this.record?.historialDrogas ?? [];
+  }
+
+  tieneTratamientos(): boolean { return this.tratamientosPrevios.length > 0; }
+  tieneFarmacos(): boolean { return this.historialFarmacos.length > 0; }
+  tienePsicofarmacos(): boolean { return this.historialPsicofarmacos.length > 0; }
+  tieneDrogas(): boolean { return this.historialDrogas.length > 0; }
+
+  fuenteReferenciaTexto(fuente: FuenteReferencia | null | undefined): string {
+    const mapa: Record<string, string> = {
+      iniciativa_propia: 'Iniciativa propia',
+      medico: 'Médico',
+      psiquiatra: 'Psiquiatra',
+      psicoterapeuta: 'Psicoterapeuta',
+      familiar: 'Familiar',
+      amigo: 'Amigo',
+      otro: 'Otro'
+    };
+    return fuente ? (mapa[fuente] ?? fuente) : '—';
+  }
+
+  resultadoTexto(resultado: string): string {
+    const mapa: Record<string, string> = {
+      resuelto: 'Resuelto', mejorado: 'Mejorado', invariable: 'Invariable', drop_out: 'Drop out', otro: 'Otro'
+    };
+    return mapa[resultado] ?? resultado;
+  }
+
+  editarFicha(): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    if (this.record) {
+      this.record.historialFarmacos = this.record.historialFarmacos ?? [];
+      this.record.historialPsicofarmacos = this.record.historialPsicofarmacos ?? [];
+      this.record.historialDrogas = this.record.historialDrogas ?? [];
+    }
+    this.fuenteReferenciaDraft = this.record?.fuenteReferencia ?? null;
+    this.fuenteReferenciaOtroDraft = this.record?.fuenteReferenciaOtro ?? '';
+    this.tratamientosDraft = JSON.parse(JSON.stringify(this.tratamientosPrevios));
+    this.farmacosDraft = JSON.parse(JSON.stringify(this.historialFarmacos));
+    this.psicofarmacosDraft = JSON.parse(JSON.stringify(this.historialPsicofarmacos));
+    this.drogasDraft = JSON.parse(JSON.stringify(this.historialDrogas));
+    this.tratamientosSi = this.tratamientosDraft.length > 0;
+    this.farmacosSi = this.farmacosDraft.length > 0;
+    this.psicofarmacosSi = this.psicofarmacosDraft.length > 0;
+    this.drogasSi = this.drogasDraft.length > 0;
+    this.editandoFicha = true;
+  }
+
+  cancelarFicha(): void {
+    this.editandoFicha = false;
+  }
+
+  guardarFicha(): void {
+    const fuente = this.fuenteReferenciaDraft;
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, {
+      fuenteReferencia: fuente ?? undefined,
+      fuenteReferenciaOtro: fuente === 'otro' ? this.fuenteReferenciaOtroDraft : '',
+      historialFarmacos: this.farmacosSi ? this.farmacosDraft : [],
+      historialPsicofarmacos: this.psicofarmacosSi ? this.psicofarmacosDraft : [],
+      historialDrogas: this.drogasSi ? this.drogasDraft : []
+    }).subscribe(r => {
+      this.record = r;
+      this.expedienteRepo.guardarTratamientosPrevios(this.pacienteId, this.tratamientosSi ? this.tratamientosDraft : []).subscribe(() => {
+        this.cargarFicha();
+        this.editandoFicha = false;
+      });
+    });
+  }
+
+  agregarTratamiento(): void { this.tratamientosDraft.push({ enfoque: '', duracion: '', resultado: 'mejorado' }); }
+  eliminarTratamiento(i: number): void { this.tratamientosDraft.splice(i, 1); }
+
+  agregarFarmacoHistorial(): void { if (this.farmacosDraft.length < 3) this.farmacosDraft.push({ nombre: '' }); }
+  eliminarFarmacoHistorial(i: number): void { this.farmacosDraft.splice(i, 1); }
+
+  agregarPsicofarmacoHistorial(): void { if (this.psicofarmacosDraft.length < 8) this.psicofarmacosDraft.push({ nombre: '', duracion: '' }); }
+  eliminarPsicofarmacoHistorial(i: number): void { this.psicofarmacosDraft.splice(i, 1); }
+
+  agregarDrogaHistorial(): void { if (this.drogasDraft.length < 4) this.drogasDraft.push({ nombre: '' }); }
+  eliminarDrogaHistorial(i: number): void { this.drogasDraft.splice(i, 1); }
+
+  agregarFarmaco(): void {
+    if (!this.record) return;
+    const drugs = [...(this.record.drugsList || [])];
+    drugs.push({ id: `drug-${Date.now()}`, name: '', doseMorning: '', doseAfternoon: '', doseNight: '', eff: '', notes: '', categoria: 'otros' });
+    this.record.drugsList = drugs;
+  }
+  eliminarFarmaco(drugId: string): void {
+    if (!this.record) return;
+    this.record.drugsList = (this.record.drugsList || []).filter(d => d.id !== drugId);
+  }
+
+  // --- Expediente Médico Psiquiátrico (SDD-EMP-1) ---
+  private static readonly EMP_CATEGORIAS_CONOCIDAS = [
+    'bzd', 'isrs', 'duales', 'triciclicos_tetraciclicos', 'neurolepticos_tipicos', 'neurolepticos_atipicos', 'psicoestabilizadores', 'inductores_sueno'
+  ];
+
+  editarExpedienteMedico(): void {
+    if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    if (this.record) {
+      this.record.farmacosEsquema = this.record.farmacosEsquema ?? [];
+      this.record.drogasEsquema = this.record.drogasEsquema ?? [];
+      this.record.drugsList = this.record.drugsList ?? [];
+    }
+    this.empFarmacosDraft = JSON.parse(JSON.stringify(this.record?.farmacosEsquema ?? []));
+    this.empDrogasDraft = JSON.parse(JSON.stringify(this.record?.drogasEsquema ?? []));
+    this.empFarmacosSi = this.empFarmacosDraft.length > 0;
+    this.empDrogasSi = this.empDrogasDraft.length > 0;
+    this.editandoEMP = true;
+  }
+
+  cancelarExpedienteMedico(): void {
+    this.editandoEMP = false;
+    this.cargarDatos();
+  }
+
+  agregarFarmacoEsquema(): void { if (this.empFarmacosDraft.length < 3) this.empFarmacosDraft.push({ nombre: '' }); }
+  eliminarFarmacoEsquema(i: number): void { this.empFarmacosDraft.splice(i, 1); }
+  agregarDrogaEsquema(): void { if (this.empDrogasDraft.length < 4) this.empDrogasDraft.push({ nombre: '' }); }
+  eliminarDrogaEsquema(i: number): void { this.empDrogasDraft.splice(i, 1); }
+
+  agregarPsicofarmaco(grupo: { grupo: string; categorias: CodigoCategoriaPsicofarmaco[] }): void {
+    if (!this.record) return;
+    const categoria: CodigoCategoriaPsicofarmaco = grupo.grupo === 'Otros' ? 'otros' : grupo.categorias[0];
+    const drugs = [...(this.record.drugsList || [])];
+    drugs.push({ id: `drug-${Date.now()}`, name: '', doseMorning: '', doseAfternoon: '', doseNight: '', eff: '', notes: '', categoria });
+    this.record.drugsList = drugs;
+  }
+
+  empFarmacosDeGrupo(grupo: { grupo: string; categorias: CodigoCategoriaPsicofarmaco[] }): Drug[] {
+    const drugs = this.record?.drugsList || [];
+    if (grupo.grupo === 'Otros') {
+      return drugs.filter(d => !d.categoria || !ExpedienteClinicoComponent.EMP_CATEGORIAS_CONOCIDAS.includes(d.categoria));
+    }
+    return drugs.filter(d => !!d.categoria && grupo.categorias.includes(d.categoria));
+  }
+
+  get empFarmacosVigentes(): HistorialFarmaco[] {
+    return this.record?.farmacosEsquema ?? [];
+  }
+
+  get empDrogasVigentes(): HistorialDroga[] {
+    return this.record?.drogasEsquema ?? [];
   }
 
   solicitarSupervision(): void {
@@ -591,7 +1760,7 @@ export class ExpedienteClinicoComponent implements OnInit {
   }
 
   simularDescargarEscaneo(scanFileName?: string): void {
-    alert(`📥 Descargando respaldo escaneado: "${scanFileName || 'constancia_escaneada.pdf'}"`);
+    alert(`Descargando respaldo escaneado: "${scanFileName || 'constancia_escaneada.pdf'}"`);
   }
 
   // --- MÉTODOS DE BITÁCORAS DE SUPERVISIÓN ---

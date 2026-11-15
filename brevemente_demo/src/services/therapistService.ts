@@ -17,14 +17,14 @@ export interface TherapistDirectoryEntry {
 
 const THERAPIST_DIRECTORY: TherapistDirectoryEntry[] = [
   {
-    id: 'therapist-1',
-    name: 'Dr. Alejandro Silva',
+    id: 'ter-001',
+    name: 'Dra. Sofía Ramírez Lozano',
     hasAssistant: true,
     assistantName: 'Laura Gómez',
   },
   {
-    id: 'therapist-2',
-    name: 'Dra. Patricia Ortiz',
+    id: 'ter-002',
+    name: 'Mtro. Alejandro Mendoza Garza',
     hasAssistant: false,
   },
 ];
@@ -34,8 +34,8 @@ const THERAPIST_DIRECTORY: TherapistDirectoryEntry[] = [
  * En producción esto proviene del usuario autenticado.
  */
 const ROLE_TO_THERAPIST: Partial<Record<Role, string>> = {
-  therapist: 'therapist-1',
-  admin_clinical: 'therapist-2',
+  therapist: 'ter-001',
+  admin_clinical: 'ter-002',
 };
 
 /** Devuelve el id del terapeuta que representa un rol en la demo (o undefined). */
@@ -79,8 +79,8 @@ export const therapistService = {
    * Un terapeuta CON asistente delega → solo lectura (su asistente administra).
    *
    * DEMO: los roles aún no traen therapistId, por eso este mapeo temporal:
-   *   - therapist      = Dr. Alejandro Silva (therapist-1, CON asistente)
-   *   - admin_clinical = Dra. Patricia Ortiz  (therapist-2, SIN asistente)
+   *   - therapist      = Dra. Sofía Ramírez Lozano (ter-001, CON asistente)
+   *   - admin_clinical = Mtro. Alejandro Mendoza Garza (ter-002, SIN asistente)
    */
   canManagePayments(role: Role): boolean {
     const therapistId = getTherapistIdForRole(role);

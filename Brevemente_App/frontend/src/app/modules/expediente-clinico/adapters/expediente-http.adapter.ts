@@ -2,17 +2,22 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo } from '../ports/expediente.repository';
+import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from '../ports/expediente.repository';
 import {
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
+  CriterioClinico,
+  Establecimiento,
+  OpcionConductual,
   Patient,
   Payment,
   PaymentStatus,
   PhysicalCertificateLog,
   Session,
   SupervisionLog,
-  SupervisionRequest
+  SupervisionRequest,
+  TratamientoPrevio
 } from '../../../core/types/clinical.types';
 import { environment } from '../../../../environments/environment';
 
@@ -114,8 +119,51 @@ export class ExpedienteHttpAdapter implements ExpedienteRepository {
     return this.http.post<Session>(`${this.base}/expedientes/paciente/${pacienteId}/sesiones`, sesion);
   }
 
+  actualizarSesion(sesionId: string, datos: SesionParcial): Observable<Session> {
+    return this.http.patch<Session>(`${this.base}/expedientes/sesiones/${sesionId}`, datos);
+  }
+
+  listarCriteriosSesion(sesionId: string): Observable<CriterioClinico[]> {
+    return this.http.get<CriterioClinico[]>(`${this.base}/expedientes/sesiones/${sesionId}/criterios`)
+      .pipe(catchError(() => of([])));
+  }
+
+  guardarCriteriosSesion(sesionId: string, criterios: CriterioClinico[]): Observable<CriterioClinico[]> {
+    return this.http.put<CriterioClinico[]>(`${this.base}/expedientes/sesiones/${sesionId}/criterios`, criterios);
+  }
+
+  listarOpcionesConductuales(): Observable<OpcionConductual[]> {
+    return this.http.get<OpcionConductual[]>(`${this.base}/expedientes/catalogos/opciones-conductuales`)
+      .pipe(catchError(() => of([])));
+  }
+
   firmarConsentimiento(pacienteId: string): Observable<boolean> {
     return this.http.post<void>(`${this.base}/pacientes/${pacienteId}/consentimiento/firmar`, {})
       .pipe(map(() => true));
+  }
+
+  // Historia Clínica
+  listarCategoriasPsicofarmacos(): Observable<CategoriaPsicofarmaco[]> {
+    return this.http.get<CategoriaPsicofarmaco[]>(`${this.base}/expedientes/catalogos/categorias-psicofarmacos`)
+      .pipe(catchError(() => of([])));
+  }
+
+  listarTratamientosPrevios(pacienteId: string): Observable<TratamientoPrevio[]> {
+    return this.http.get<TratamientoPrevio[]>(`${this.base}/expedientes/paciente/${pacienteId}/tratamientos-previos`)
+      .pipe(catchError(() => of([])));
+  }
+
+  guardarTratamientosPrevios(pacienteId: string, items: TratamientoPrevio[]): Observable<TratamientoPrevio[]> {
+    return this.http.put<TratamientoPrevio[]>(`${this.base}/expedientes/paciente/${pacienteId}/tratamientos-previos`, items);
+  }
+
+  obtenerSede(sedeId: string): Observable<Establecimiento | null> {
+    return this.http.get<Establecimiento>(`${this.base}/sedes/${sedeId}`)
+      .pipe(catchError(() => of(null)));
+  }
+
+  actualizarPaciente(pacienteId: string, datos: Partial<Patient>): Observable<Patient | null> {
+    return this.http.patch<Patient>(`${this.base}/pacientes/${pacienteId}`, datos)
+      .pipe(catchError(() => of(null)));
   }
 }

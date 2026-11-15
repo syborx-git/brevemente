@@ -36,9 +36,17 @@ export const LevaSidebarPanel: React.FC<LevaSidebarPanelProps> = ({
   const isAcademic = window.location.hash.includes('/campus');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'leva'; text: string; citation?: string }>>([
+  const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'leva'; text: string; citation?: string; sugerenciaEstratagema?: string }>>([
     { sender: 'leva', text: 'Hola. Soy LEVA - Inteligencia asistiva. Estoy analizando el caso activo de salud mental. ¿Deseas que busquemos protocolos autorizados, redactemos un borrador o auditemos notas clínicas?' }
   ]);
+
+  // Herramientas clínicas rápidas (paridad fullstack)
+  const clinicalTools = [
+    { label: 'Analizar Tentativa de Solución', prompt: 'Analiza los intentos de solución redundantes del caso y cómo desarticularlos según TBE.' },
+    { label: 'Prescripción de la Peor Fantasía', prompt: 'Redacta la prescripción de la media hora de lo peor para este paciente fóbico.' },
+    { label: 'Declaración del Secreto', prompt: 'Genera la estratagema para desarticular la complicidad familiar fóbica.' },
+    { label: 'Reestructuración Analógica', prompt: 'Sugerir aforismos o metáforas estratégicas para romper el marco cognitivo del paciente.' }
+  ];
 
   // Borrador diferenciado local para el doble paso
   const [suggestion, setSuggestion] = useState<SuggestionState>({
@@ -75,14 +83,12 @@ export const LevaSidebarPanel: React.FC<LevaSidebarPanelProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
+  const sendText = (raw: string) => {
+    if (!raw.trim()) return;
 
-    const userMsg = { sender: 'user' as const, text: inputText };
+    const userMsg = { sender: 'user' as const, text: raw };
     setChatHistory(prev => [...prev, userMsg]);
-    const currentInput = inputText;
-    setInputText('');
+    const currentInput = raw;
     setIsTyping(true);
 
     // Auditoría
@@ -97,6 +103,7 @@ export const LevaSidebarPanel: React.FC<LevaSidebarPanelProps> = ({
     setTimeout(() => {
       let levaText = '';
       let citation = '';
+      let estratagema: string | undefined;
 
       if (isAcademic) {
         const lowerInput = currentInput.toLowerCase();
@@ -123,9 +130,35 @@ export const LevaSidebarPanel: React.FC<LevaSidebarPanelProps> = ({
         }
       }
 
-      setChatHistory(prev => [...prev, { sender: 'leva', text: levaText, citation }]);
+      // Estratagema recomendada (paridad fullstack)
+      const lower = currentInput.toLowerCase();
+      if (lower.includes('pánico') || lower.includes('panico') || lower.includes('peor fantasia') || lower.includes('peor fantasía') || lower.includes('fóbico') || lower.includes('fobico')) {
+        estratagema = 'La Peor Fantasía (Worry-Time de 30 minutos)';
+      } else if (lower.includes('solucion') || lower.includes('solución') || lower.includes('intento')) {
+        estratagema = 'Bloqueo de las Soluciones Intentadas Redundantes';
+      } else if (lower.includes('secreto') || lower.includes('familiar')) {
+        estratagema = 'Declaración del Secreto';
+      } else if (lower.includes('metafora') || lower.includes('metáfora') || lower.includes('aforismo')) {
+        estratagema = 'Reestructuración Analógica (aforismo/metáfora estratégica)';
+      } else {
+        estratagema = 'Reestructuración paradójica del SPR del paciente';
+      }
+
+      setChatHistory(prev => [...prev, { sender: 'leva', text: levaText, citation, sugerenciaEstratagema: estratagema }]);
       setIsTyping(false);
     }, 1200);
+  };
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+    const text = inputText;
+    setInputText('');
+    sendText(text);
+  };
+
+  const usarHerramienta = (prompt: string) => {
+    sendText(prompt);
   };
 
   const handleAccept = () => {
@@ -216,6 +249,20 @@ export const LevaSidebarPanel: React.FC<LevaSidebarPanelProps> = ({
 
       {/* Cuerpo de Mensajes e Interacciones */}
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
+        {/* Herramientas Clínicas Rápidas (paridad fullstack) */}
+        <div className="grid grid-cols-2 gap-2">
+          {clinicalTools.map(tool => (
+            <button
+              key={tool.label}
+              onClick={() => usarHerramienta(tool.prompt)}
+              className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-left hover:border-clinical-accent transition-all group"
+            >
+              <span className="text-[11px] font-bold text-clinical-dark block group-hover:text-clinical-teal">{tool.label}</span>
+              <span className="text-[9px] text-slate-400 mt-0.5 block">Aplicar al diálogo actual</span>
+            </button>
+          ))}
+        </div>
+
         {/* Chat Feed */}
         <div className="space-y-3.5">
           {chatHistory.map((msg, idx) => (
@@ -235,6 +282,15 @@ export const LevaSidebarPanel: React.FC<LevaSidebarPanelProps> = ({
                   <span className="text-[8px] font-bold block mt-1 text-clinical-dark uppercase">
                     Fuente: {msg.citation}
                   </span>
+                )}
+                {msg.sugerenciaEstratagema && (
+                  <div className="mt-2 pt-2 border-t border-slate-200 bg-white/80 rounded-lg p-2 text-slate-900">
+                    <span className="text-[9px] font-bold text-clinical-dark uppercase tracking-wider block mb-0.5">
+                      Estratagema Recomendada:
+                    </span>
+                    <p className="font-bold text-clinical-teal text-[11px] mb-0.5">{msg.sugerenciaEstratagema}</p>
+                    <p className="text-[10px] text-slate-600">Prescripción paradójica orientada a desarticular la tentativa reiterada de control que genera descontrol.</p>
+                  </div>
                 )}
               </div>
             </div>

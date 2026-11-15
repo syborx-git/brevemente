@@ -12,6 +12,7 @@ import com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.re
 import com.syborx.brevemente.paciente.infrastructure.adapters.out.persistence.repository.SpringDataTerapeutaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -29,7 +30,18 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
 
     @Override
     public List<Paciente> findAll() {
-        return springDataPacienteRepository.findAll().stream()
+        return findAll(null);
+    }
+
+    @Override
+    public List<Paciente> findAll(Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
+                : springDataPacienteRepository.findAllByTerapeutaIds(terapeutaIds);
+        return entities.stream()
                 .map(e -> pacientePersistenceMapper.toDomain(e, resolveTherapistName(e)))
                 .toList();
     }
@@ -49,6 +61,16 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
     @Override
     public boolean existsByCurp(String curp) {
         return springDataPacienteRepository.existsByCurp(curp);
+    }
+
+    @Override
+    public boolean existsByRfc(String rfc) {
+        return springDataPacienteRepository.existsByRfc(rfc);
+    }
+
+    @Override
+    public boolean existsTerapeuta(String terapeutaId) {
+        return springDataTerapeutaRepository.existsById(terapeutaId);
     }
 
     @Override
@@ -158,8 +180,14 @@ public class PacientePersistenceAdapter implements PacienteRepositoryPort {
     }
 
     @Override
-    public List<AlertaMayoriaEdad> findMayoriaEdad(LocalDate corteNacimiento) {
-        return springDataPacienteRepository.findMayoriaEdad(corteNacimiento).stream()
+    public List<AlertaMayoriaEdad> findMayoriaEdad(LocalDate corteNacimiento, Collection<String> terapeutaIds) {
+        if (terapeutaIds != null && terapeutaIds.isEmpty()) {
+            return List.of();
+        }
+        List<PacienteJpaEntity> entities = terapeutaIds == null
+                ? springDataPacienteRepository.findMayoriaEdad(corteNacimiento)
+                : springDataPacienteRepository.findMayoriaEdadScoped(corteNacimiento, terapeutaIds);
+        return entities.stream()
                 .map(e -> new AlertaMayoriaEdad(
                         e.getId(),
                         nombreCompleto(e),

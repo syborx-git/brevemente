@@ -1,8 +1,10 @@
 package com.syborx.brevemente.auth.infrastructure.adapters.in.rest;
 
 import com.syborx.brevemente.auth.application.ports.in.AutenticarUseCase;
+import com.syborx.brevemente.auth.application.ports.in.CambiarPasswordUseCase;
 import com.syborx.brevemente.auth.application.ports.in.GestionarSesionUseCase;
 import com.syborx.brevemente.auth.domain.model.Usuario;
+import com.syborx.brevemente.auth.infrastructure.adapters.in.rest.dto.CambiarPasswordRequest;
 import com.syborx.brevemente.auth.infrastructure.adapters.in.rest.dto.LoginRequest;
 import com.syborx.brevemente.auth.infrastructure.adapters.in.rest.dto.TokenResponse;
 import com.syborx.brevemente.auth.infrastructure.adapters.in.rest.dto.UserResponseDTO;
@@ -37,6 +39,7 @@ public class AuthController {
 
     private final AutenticarUseCase autenticarUseCase;
     private final GestionarSesionUseCase gestionarSesionUseCase;
+    private final CambiarPasswordUseCase cambiarPasswordUseCase;
     private final JwtService jwtService;
     private final AuthRestMapper authRestMapper;
 
@@ -70,7 +73,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(new TokenResponse(accessToken, authRestMapper.toUserResponse(usuario)));
+                .body(new TokenResponse(accessToken, authRestMapper.toUserResponse(usuario), usuario.isDebeCambiarPassword()));
     }
 
     @PostMapping("/refresh")
@@ -91,7 +94,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(new TokenResponse(newAccessToken, authRestMapper.toUserResponse(renovada.usuario())));
+                .body(new TokenResponse(newAccessToken, authRestMapper.toUserResponse(renovada.usuario()), renovada.usuario().isDebeCambiarPassword()));
     }
 
     @PostMapping("/logout")
@@ -112,6 +115,22 @@ public class AuthController {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
                 .build();
+    }
+
+    @PostMapping("/cambiar-password")
+    @Operation(summary = "Cambia la contraseña (onboarding obligatorio o cambio voluntario)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Contraseña actualizada"),
+            @ApiResponse(responseCode = "409", description = "Contraseña actual incorrecta"),
+            @ApiResponse(responseCode = "400", description = "La nueva contraseña no cumple la política")
+    })
+    public ResponseEntity<Void> cambiarPassword(
+            @Valid @RequestBody CambiarPasswordRequest request,
+            Authentication authentication
+    ) {
+        cambiarPasswordUseCase.cambiarPassword(
+                authentication.getName(), request.passwordActual(), request.nuevaPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")

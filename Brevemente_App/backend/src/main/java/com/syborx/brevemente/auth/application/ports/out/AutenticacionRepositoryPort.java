@@ -3,6 +3,7 @@ package com.syborx.brevemente.auth.application.ports.out;
 import com.syborx.brevemente.auth.domain.model.EstadoSesion;
 import com.syborx.brevemente.auth.domain.model.Usuario;
 
+import java.time.Instant;
 import java.util.Optional;
 
 public interface AutenticacionRepositoryPort {
@@ -18,4 +19,10 @@ public interface AutenticacionRepositoryPort {
 
     /** Invalida todos los access tokens emitidos al usuario. */
     void incrementarTokenVersion(String usuarioId);
+
+    /** Actualiza el hash, limpia el flag de cambio obligatorio y anula el TTL temporal. */
+    void actualizarPassword(String usuarioId, String nuevoHash);
+
+    /** Fija una contraseña temporal + flag de cambio obligatorio + TTL. */
+    void establecerPasswordTemporal(String usuarioId, String hashTemporal, Instant venceEn);
 }

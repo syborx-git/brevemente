@@ -17,6 +17,8 @@ public interface SpringDataPacienteRepository extends JpaRepository<PacienteJpaE
     Optional<PacienteJpaEntity> findByCurp(String curp);
     boolean existsByCurp(String curp);
 
+    boolean existsByRfc(String rfc);
+
     long countByStatus(String status);
 
     long countByRiskLevelIn(Collection<String> niveles);
@@ -26,6 +28,13 @@ public interface SpringDataPacienteRepository extends JpaRepository<PacienteJpaE
     List<PacienteJpaEntity> findByStatus(String status);
 
     List<PacienteJpaEntity> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    @Query("""
+            SELECT p FROM PacienteJpaEntity p
+            WHERE p.terapeuta.id IN :terapeutaIds
+            ORDER BY p.id ASC
+            """)
+    List<PacienteJpaEntity> findAllByTerapeutaIds(@Param("terapeutaIds") Collection<String> terapeutaIds);
 
     @Query("""
             SELECT p FROM PacienteJpaEntity p
@@ -107,6 +116,16 @@ public interface SpringDataPacienteRepository extends JpaRepository<PacienteJpaE
             ORDER BY p.fechaNacimiento
             """)
     List<PacienteJpaEntity> findMayoriaEdad(@Param("corte") LocalDate corte);
+
+    @Query("""
+            SELECT p FROM PacienteJpaEntity p
+            WHERE p.estadoConsentimiento = 'REPRESENTADO_POR_EDAD'
+              AND p.fechaNacimiento <= :corte
+              AND p.terapeuta.id IN :terapeutaIds
+            ORDER BY p.fechaNacimiento
+            """)
+    List<PacienteJpaEntity> findMayoriaEdadScoped(@Param("corte") LocalDate corte,
+                                                  @Param("terapeutaIds") Collection<String> terapeutaIds);
 
     @Query(value = """
             SELECT CASE

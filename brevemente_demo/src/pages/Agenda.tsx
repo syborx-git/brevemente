@@ -11,6 +11,7 @@ import { appointmentService } from '../services/appointmentService';
 import { holidayService } from '../services/holidayService';
 import { isActionBlockedByLegalConsent, LEGAL_CONSENT_TOOLTIP, calculateAge } from '../utils/legalConsent';
 import { addDays, addMonths, addYears, startOfWeek, startOfMonth, daysInMonth, dayName, monthName, monthOf, parseISO } from '../utils/dateUtils';
+import { todayISO } from '../utils/dates';
 import {
   SESSION_DURATION_OPTIONS,
   DEFAULT_FORM_DURATION,
@@ -55,7 +56,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
   // Estados
   const [viewLevel, setViewLevel] = useState<'dia' | 'semana' | 'mes' | 'anio'>('dia');
-  const [anchorDate, setAnchorDate] = useState('2026-08-24'); // fecha foco del calendario
+  const [anchorDate, setAnchorDate] = useState(todayISO()); // fecha foco del calendario
   const [selectedApp, setSelectedApp] = useState<Appointment | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -70,12 +71,13 @@ export const Agenda: React.FC<AgendaProps> = ({
   const [isNewPatient, setIsNewPatient] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
-  const [date, setDate] = useState('2026-08-24');
+  const [date, setDate] = useState(todayISO());
   const [time, setTime] = useState('10:00');
   const [type, setType] = useState<'primera' | 'seguimiento' | 'cierre' | 'supervision' | 'evaluacion'>('seguimiento');
   const [duration, setDuration] = useState<SessionDuration>(DEFAULT_FORM_DURATION);
   const [appModality, setAppModality] = useState<'presencial' | 'online'>('online');
-  const [office, setOffice] = useState('Consultorio A');
+  const [tipoTerapia, setTipoTerapia] = useState<'individual' | 'pareja' | 'familiar' | 'grupal'>('individual');
+  const [office, setOffice] = useState<'A' | 'B'>('A');
 
   // Form nuevo paciente
   const [name, setName] = useState('');
@@ -89,7 +91,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
   // Reprogramación local en el Drawer
   const [reprogrammingTime, setReprogrammingTime] = useState('10:00');
-  const [reprogrammingDate, setReprogrammingDate] = useState('2026-08-24');
+  const [reprogrammingDate, setReprogrammingDate] = useState(todayISO());
   const [reprogrammingDuration, setReprogrammingDuration] = useState<SessionDuration>(DEFAULT_LEGACY_DURATION);
 
   // ── Navegación jerárquica del calendario ────────────────────────────────────
@@ -137,12 +139,18 @@ export const Agenda: React.FC<AgendaProps> = ({
   };
 
   const goToday = () => {
-    setAnchorDate('2026-08-24');
+    setAnchorDate(todayISO());
     setViewLevel('dia');
   };
 
-  // Paciente de hoy (Carlos Mendoza es el patient-2)
-  const patient2 = patients.find(p => p.id === 'patient-2');
+  // Bloqueo normativo: menor de edad sin consentimiento formalizado del representante
+  const isPatientBlocked = (patientId: string): boolean => {
+    const p = patients.find(x => x.id === patientId);
+    return !!p && p.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD' && !p.consentimientoRepresentanteFirmado;
+  };
+
+  // Paciente de hoy (Mateo Herrera Santos es el pac-001)
+  const patient2 = patients.find(p => p.id === 'pac-001');
 
   // ── Calendario festivo y días personales ────────────────────────────────────
   const [holidays, setHolidays] = useState<Holiday[]>(holidayService.getHolidays());
@@ -172,7 +180,7 @@ export const Agenda: React.FC<AgendaProps> = ({
   const anchorHoliday = getHolidayForDate(anchorDate);
   // Modal de día personal
   const [showPersonalDayModal, setShowPersonalDayModal] = useState(false);
-  const [personalDayDate, setPersonalDayDate] = useState('2026-08-24');
+  const [personalDayDate, setPersonalDayDate] = useState(todayISO());
   const [personalDayName, setPersonalDayName] = useState('');
 
   const handleAddPersonalDay = (e: React.FormEvent) => {
@@ -194,7 +202,7 @@ export const Agenda: React.FC<AgendaProps> = ({
   const allowedAppointments = initialAppointments.filter(app => {
     if (userRole === 'patient') {
       // El paciente SOLO puede ver sus propias citas
-      return app.patientId === 'patient-2';
+      return app.patientId === 'pac-002';
     }
     return true;
   });
@@ -293,8 +301,8 @@ export const Agenda: React.FC<AgendaProps> = ({
         riskLevel: 'bajo',
         registryMode: 'ia',
         motif,
-        therapistId: 'therapist-1',
-        therapistName: 'Dr. Alejandro Silva',
+        therapistId: 'ter-001',
+        therapistName: 'Dra. Sofía Ramírez Lozano',
         quienCompletaRegistro: 'PACIENTE',
         capacidadConsentimiento: {
           estado: calculatedAge >= 18 ? 'AUTONOMO' : 'REPRESENTADO_POR_EDAD',
@@ -325,7 +333,10 @@ export const Agenda: React.FC<AgendaProps> = ({
       date,
       type: type as any,
       status: 'pendiente',
-      duration
+      duration,
+      modality: appModality,
+      tipoTerapia,
+      office: appModality === 'presencial' ? office : undefined
     };
 
     onAddAppointment(newApp);
@@ -434,6 +445,23 @@ export const Agenda: React.FC<AgendaProps> = ({
     );
   };
 
+  const handleCancelPush = (app: Appointment) => {
+    const pat = patients.find(p => p.id === app.patientId);
+    const phoneDigits = (pat?.phone || '').replace(/\D/g, '');
+    if (!phoneDigits) {
+      alert('El paciente no tiene teléfono registrado.');
+      return;
+    }
+    const message = `Hola ${app.patientName}, te contactamos de BreveMente. Tu cita del ${app.date} a las ${app.time} ha sido cancelada. Si deseas reagendar, respóndenos por este medio.`;
+    window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`, '_blank');
+    auditLogService.addLog(
+      'Contacto a paciente',
+      `Notificó por WhatsApp la cancelación de la cita de ${app.patientName} (${app.date}).`,
+      'sesion',
+      { id: 'user-current', name: userName, role: userRole }
+    );
+  };
+
   // Buscar pacientes existentes
   const filteredPatientsSearch = patients.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -463,7 +491,15 @@ export const Agenda: React.FC<AgendaProps> = ({
         </div>
       </div>
 
-      {/* Banner de WhatsApp e Intake Paciente Carlos Mendoza (Paso de Demo) */}
+      {/* Banner Normativo (paridad fullstack) */}
+      <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
+        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+        <span>
+          <strong>Control Normativo:</strong> Los pacientes menores de edad sin consentimiento formalizado de la persona de apoyo mantienen sus sesiones en estado <em>Bloqueada / Pendiente</em>.
+        </span>
+      </div>
+
+      {/* Banner de WhatsApp e Intake Paciente Mateo Herrera Santos (Paso de Demo) */}
       {whatsappTriggerId && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow animate-fadeIn" data-tour="whatsapp-simulation-btn">
           <div className="flex items-start gap-3">
@@ -505,7 +541,7 @@ export const Agenda: React.FC<AgendaProps> = ({
               onChange={(e) => setFilterTherapist(e.target.value)}
             >
               <option value="all">Todos los terapeutas</option>
-              <option value="Silva">Dr. Alejandro Silva</option>
+              <option value="Ramírez">Dra. Sofía Ramírez Lozano</option>
             </select>
           </div>
 
@@ -710,7 +746,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                               {slotApps.map((app) => {
                                 const pat = patients.find(p => p.id === app.patientId);
-                                const isCarlos = app.patientId === 'patient-2';
+                                const isCarlos = app.patientId === 'pac-001';
 
                                 // Conflict validation (colisión por duración real)
                                 const isConflict = slotApps.length > 1 || hasOverlap(app);
@@ -739,13 +775,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <ShieldAlert className="w-3 h-3 text-red-500 shrink-0 animate-pulse" />
                                       )}
                                     </div>
+                                    {isPatientBlocked(app.patientId) && (
+                                      <span className="text-[8px] font-bold text-amber-600 flex items-center gap-0.5">
+                                        <Lock className="w-2.5 h-2.5 shrink-0" />
+                                        Bloqueada por Normativa
+                                      </span>
+                                    )}
                                     <div className="flex justify-between items-center text-[8px] text-slate-400">
                                       <span className="font-semibold">{app.type.toUpperCase()}</span>
                                       <span className="font-bold px-1 rounded bg-slate-100 text-slate-600">
                                         {sessionMinutes(app)}′
                                       </span>
                                       <span className="font-bold">
-                                        {appModality === 'online' ? 'VIRTUAL' : 'SALA A'}
+                                        {app.modality === 'presencial' ? (app.office ? `SALA ${app.office}` : 'SALA A') : 'VIRTUAL'}
                                       </span>
                                     </div>
                                   </div>
@@ -863,6 +905,11 @@ export const Agenda: React.FC<AgendaProps> = ({
                               <div>
                                 <span className="font-bold text-clinical-dark block">{app.patientName}</span>
                                 <span className="text-[10px] text-slate-400">{app.type.toUpperCase()} • {sessionMinutes(app)} min • {pat?.registryMode === 'ia' ? 'IA ACTIVA' : 'MANUAL'}</span>
+                                {isPatientBlocked(app.patientId) && (
+                                  <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1 mt-0.5">
+                                    <Lock className="w-3 h-3" /> Bloqueada por Normativa
+                                  </span>
+                                )}
                                 {hasOverlap(app) && (
                                   <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1 mt-0.5">
                                     <AlertTriangle className="w-3 h-3" /> Solapamiento de horario
@@ -1109,6 +1156,16 @@ export const Agenda: React.FC<AgendaProps> = ({
               </button>
             </div>
 
+            {selectedApp.status === 'cancelada' && (
+              <button
+                onClick={() => handleCancelPush(selectedApp)}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                Notificar cancelación por WhatsApp
+              </button>
+            )}
+
             <div className="space-y-1">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Uso de IA autorizado por consentimiento:</span>
               <span className="font-bold text-clinical-dark uppercase">
@@ -1294,6 +1351,43 @@ export const Agenda: React.FC<AgendaProps> = ({
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-0.5">Tipo de terapia:</label>
+                  <select
+                    className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded focus:outline-none"
+                    value={tipoTerapia}
+                    onChange={(e) => setTipoTerapia(e.target.value as any)}
+                  >
+                    <option value="individual">Individual</option>
+                    <option value="pareja">Pareja</option>
+                    <option value="familiar">Familiar</option>
+                    <option value="grupal">Grupal</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-0.5">Modalidad:</label>
+                  <select
+                    className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded focus:outline-none"
+                    value={appModality}
+                    onChange={(e) => setAppModality(e.target.value as 'presencial' | 'online')}
+                  >
+                    <option value="presencial">Presencial</option>
+                    <option value="online">Online</option>
+                  </select>
+                </div>
+                {appModality === 'presencial' && (
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-0.5">Consultorio:</label>
+                    <select
+                      className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded focus:outline-none"
+                      value={office}
+                      onChange={(e) => setOffice(e.target.value as 'A' | 'B')}
+                    >
+                      <option value="A">Consultorio A</option>
+                      <option value="B">Consultorio B</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {(() => {

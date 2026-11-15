@@ -1,6 +1,9 @@
 package com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.mapper;
 
+import com.syborx.brevemente.paciente.domain.CurpParser;
 import com.syborx.brevemente.paciente.domain.model.CapacidadConsentimiento;
+import com.syborx.brevemente.paciente.domain.model.ContactoEmergencia;
+import com.syborx.brevemente.paciente.domain.model.Domicilio;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
 import com.syborx.brevemente.paciente.domain.model.RepresentanteLegal;
 import com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.dto.*;
@@ -67,7 +70,17 @@ public class PacienteRestMapper {
                 repDTO,
                 domain.getTelefono(),
                 Boolean.TRUE.equals(domain.getConsentimientoRepresentanteFirmado()),
-                domain.getSessionFrequency() != null ? domain.getSessionFrequency() : "semanal"
+                domain.getSessionFrequency() != null ? domain.getSessionFrequency() : "semanal",
+                domain.getRfc(),
+                domain.getSexo(),
+                domain.getLugarNacimiento(),
+                domain.getEstadoCivil(),
+                domain.getEscolaridad(),
+                domain.getOcupacion(),
+                domain.getReligion(),
+                toDomicilioDTO(domain.getDomicilio()),
+                toContactoDTO(domain.getContactoEmergencia()),
+                domain.getSedeId()
         );
     }
 
@@ -76,6 +89,10 @@ public class PacienteRestMapper {
 
         String[] parts = splitName(request.name());
         LocalDate fechaNac = parseDate(request.fechaNacimiento() != null ? request.fechaNacimiento() : request.birthDate());
+        // Paridad con la demo: si no se capturó fecha de nacimiento, se deriva de la CURP.
+        if (fechaNac == null) {
+            fechaNac = CurpParser.extraerFechaNacimiento(request.curp()).orElse(null);
+        }
         int edad = request.edadCalculada() != null 
                 ? request.edadCalculada() 
                 : (fechaNac != null ? Period.between(fechaNac, LocalDate.now()).getYears() : 25);
@@ -107,8 +124,8 @@ public class PacienteRestMapper {
         return Paciente.builder()
                 .nombre(parts[0])
                 .apellidos(parts[1])
-                .curp(request.curp() != null ? request.curp() : "CURP-GENERADO")
-                .fechaNacimiento(fechaNac != null ? fechaNac : LocalDate.of(2000, 1, 1))
+                .curp(request.curp())
+                .fechaNacimiento(fechaNac)
                 .edadCalculada(edad)
                 .telefono(request.phone() != null ? request.phone() : request.telefonoPaciente())
                 .email(request.email())
@@ -119,7 +136,16 @@ public class PacienteRestMapper {
                 .quienCompletaRegistro(request.quienCompletaRegistro() != null ? request.quienCompletaRegistro() : (edad < 18 ? "FAMILIAR_O_APOYO" : "PACIENTE"))
                 .motivoConsulta(request.motif())
                 .terapeutaId(request.therapistId())
-                .terapeutaNombre(request.therapistName())
+                .rfc(request.rfc())
+                .sexo(request.sexo())
+                .lugarNacimiento(request.lugarNacimiento())
+                .estadoCivil(request.estadoCivil())
+                .escolaridad(request.escolaridad())
+                .ocupacion(request.ocupacion())
+                .religion(request.religion())
+                .domicilio(toDomicilio(request.domicilio()))
+                .contactoEmergencia(toContacto(request.contactoEmergencia()))
+                .sedeId(request.sedeId())
                 .capacidadConsentimiento(consentimiento)
                 .representante(representante)
                 .consentimientoRepresentanteFirmado(Boolean.TRUE.equals(request.consentimientoRepresentanteFirmado()))
@@ -164,6 +190,15 @@ public class PacienteRestMapper {
                 .riskLevel(patch.riskLevel())
                 .motivoConsulta(patch.motif())
                 .sessionFrequency(patch.sessionFrequency())
+                .rfc(patch.rfc())
+                .sexo(patch.sexo())
+                .lugarNacimiento(patch.lugarNacimiento())
+                .estadoCivil(patch.estadoCivil())
+                .escolaridad(patch.escolaridad())
+                .ocupacion(patch.ocupacion())
+                .religion(patch.religion())
+                .domicilio(toDomicilio(patch.domicilio()))
+                .contactoEmergencia(toContacto(patch.contactoEmergencia()))
                 .capacidadConsentimiento(consentimiento)
                 .representante(representante)
                 .consentimientoRepresentanteFirmado(patch.consentimientoRepresentanteFirmado())
@@ -187,5 +222,23 @@ public class PacienteRestMapper {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private DomicilioDTO toDomicilioDTO(Domicilio d) {
+        return d == null ? null : new DomicilioDTO(d.calleNumero(), d.colonia(), d.codigoPostal(),
+                d.municipio(), d.estadoDomicilio(), d.telefonoCasa(), d.telefonoCelular(), d.telefonoTrabajo());
+    }
+
+    private ContactoEmergenciaDTO toContactoDTO(ContactoEmergencia c) {
+        return c == null ? null : new ContactoEmergenciaDTO(c.nombre(), c.parentesco(), c.telefono());
+    }
+
+    private Domicilio toDomicilio(DomicilioDTO d) {
+        return d == null ? null : new Domicilio(d.calleNumero(), d.colonia(), d.codigoPostal(),
+                d.municipio(), d.estadoDomicilio(), d.telefonoCasa(), d.telefonoCelular(), d.telefonoTrabajo());
+    }
+
+    private ContactoEmergencia toContacto(ContactoEmergenciaDTO c) {
+        return c == null ? null : new ContactoEmergencia(c.nombre(), c.parentesco(), c.telefono());
     }
 }

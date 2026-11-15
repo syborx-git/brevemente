@@ -32,5 +32,15 @@ public record PacientePatchRequest(
         RepresentanteLegalDTO representante,
 
         @Schema(description = "Estatus de firma de consentimiento", example = "true")
-        Boolean consentimientoRepresentanteFirmado
+        Boolean consentimientoRepresentanteFirmado,
+
+        @Schema(description = "RFC del paciente") String rfc,
+        @Schema(description = "Sexo", allowableValues = {"M", "F", "LGTB+"}) String sexo,
+        @Schema(description = "Lugar de nacimiento") String lugarNacimiento,
+        @Schema(description = "Estado civil") String estadoCivil,
+        @Schema(description = "Escolaridad") String escolaridad,
+        @Schema(description = "Ocupación") String ocupacion,
+        @Schema(description = "Religión") String religion,
+        @Schema(description = "Domicilio estructurado") DomicilioDTO domicilio,
+        @Schema(description = "Contacto de emergencia") ContactoEmergenciaDTO contactoEmergencia
 ) {}

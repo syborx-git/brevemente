@@ -31,5 +31,8 @@ public record CitaCreateRequest(
         String modalidad,
 
         @Schema(description = "Consultorio (solo PRESENCIAL)", example = "A", allowableValues = {"A", "B"})
-        String consultorio
+        String consultorio,
+
+        @Schema(description = "Tipo de terapia", example = "individual", allowableValues = {"individual", "pareja", "familiar", "grupal"})
+        String tipoTerapia
 ) {}

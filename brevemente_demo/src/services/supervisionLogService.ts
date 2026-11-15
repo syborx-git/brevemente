@@ -1,18 +1,19 @@
 import { SupervisionLog, Role } from '../types/clinical';
 import { auditLogService } from './auditLogService';
+import { daysAgoISO } from '../utils/dates';
 
 const STORAGE_KEY = 'brevemente_supervision_logs';
 
 const initialSupervisionLogs: SupervisionLog[] = [
   {
     id: 'sup-1',
-    date: '2026-08-18',
+    date: daysAgoISO(76),
     supervisorName: 'Dra. Isabel Cárdenas',
     supervisorLicense: 'CED-9988221-MX',
-    patientId: 'patient-1',
-    patientName: 'Sofía Martínez',
-    therapistId: 'therapist-1',
-    therapistName: 'Dr. Alejandro Silva',
+    patientId: 'pac-002',
+    patientName: 'Valeria Gómez Fuentes',
+    therapistId: 'ter-001',
+    therapistName: 'Dra. Sofía Ramírez Lozano',
     sessionNumber: 2,
     problemDefinition: 'Ataques de pánico agudos con pérdida de control percibida. Solución intentada dominante de evitación sistemática y búsqueda compulsiva de acompañamiento.',
     currentSituation: 'Favorable. Disminución del 70% de las crisis agudas espontáneas tras prescripción de Diario de a Bordo.',

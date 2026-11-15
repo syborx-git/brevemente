@@ -46,7 +46,12 @@ export class LoginComponent {
       this.isLoading = false;
       if (session) {
         this.roleState.setUser(session.user);
-        this.router.navigate(['/dashboard']);
+        if (session.debeCambiarPassword) {
+          // Onboarding: reemplazo obligatorio de la contraseña temporal.
+          this.router.navigate(['/onboarding'], { state: { passwordActual: this.password } });
+        } else {
+          this.router.navigate(['/']);
+        }
       } else {
         this.errorMessage = 'Credenciales inválidas. Verifica tu correo y contraseña.';
       }

@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, Router, RouterStateSnapshot } from '@angular/router';
 
 /** Clave de sesión persistida por el adaptador de login (JWT + usuario). */
 const SESSION_KEY = 'brevemente_session';
@@ -8,8 +8,9 @@ const SESSION_KEY = 'brevemente_session';
  * Guard funcional de autenticación.
  * - Sin sesión → redirige a /login.
  * - Sesión malformada o token JWT expirado → limpia y redirige a /login.
+ * - Con el flag de onboarding activo → fuerza /onboarding (salvo que ya esté ahí).
  */
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (_route, state: RouterStateSnapshot) => {
   const router = inject(Router);
 
   const raw = localStorage.getItem(SESSION_KEY);
@@ -18,7 +19,11 @@ export const authGuard: CanActivateFn = () => {
   }
 
   try {
-    const session = JSON.parse(raw) as { token?: string; user?: { roles?: string[] } };
+    const session = JSON.parse(raw) as {
+      token?: string;
+      user?: { roles?: string[] };
+      debeCambiarPassword?: boolean;
+    };
     if (!session?.token || !session?.user) {
       localStorage.removeItem(SESSION_KEY);
       return router.createUrlTree(['/login']);
@@ -26,6 +31,9 @@ export const authGuard: CanActivateFn = () => {
     if (isTokenExpired(session.token)) {
       localStorage.removeItem(SESSION_KEY);
       return router.createUrlTree(['/login']);
+    }
+    if (session.debeCambiarPassword && state.url !== '/onboarding') {
+      return router.createUrlTree(['/onboarding']);
     }
     return true;
   } catch {

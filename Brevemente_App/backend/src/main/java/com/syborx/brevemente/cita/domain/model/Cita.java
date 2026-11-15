@@ -26,6 +26,7 @@ public class Cita {
     private OffsetDateTime fechaHoraInicio;
     private OffsetDateTime fechaHoraFin;
     private String tipoCita;           // primera | seguimiento | cierre
+    private String tipoSesion;         // individual | pareja | familiar | grupal
     private String modalidad;          // PRESENCIAL | ONLINE
     private String estadoCita;         // 7 estados del contrato
     private Integer duracionMinutos;   // 30 | 45 | 60

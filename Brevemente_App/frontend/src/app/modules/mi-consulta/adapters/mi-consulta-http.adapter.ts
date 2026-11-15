@@ -1,145 +1,190 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map, of } from 'rxjs';
-import { CambioConfiguracion, ConsultaConfig, MiConsultaRepository, TerapeutaSede } from '../ports/mi-consulta.repository';
+import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, map, of } from 'rxjs';
+import {
+  AccionDominante,
+  AlertaStaff,
+  BorradorSesion,
+  CitaHoy,
+  MiConsultaRepository,
+  SolicitudPendiente
+} from '../ports/mi-consulta.repository';
 import { environment } from '../../../../environments/environment';
 
-/** Wire de una sede (GET /mi-consulta y PUT /mi-consulta/sedes). */
-interface TerapeutaSedeWire {
+interface AccionDominanteWire {
+  citaId: string;
+  pacienteId: string;
+  pacienteNombre: string;
+  terapeutaNombre: string | null;
+  fecha: string | null;
+  hora: string | null;
+  tipoCita: string;
+  modalidad: string | null;
+  duracionMinutos: number | null;
+  consultorio: string | null;
+  protocolo: string | null;
+  intakeListo: boolean;
+  consentimientoFirmado: boolean;
+  grabacionLeva: boolean;
+  motivoConsulta: string | null;
+  numeroSesion: number | null;
+}
+
+interface CitaHoyWire {
   id: string;
-  nombre: string;
-  esPrincipal: boolean;
+  patientId: string;
+  patientName: string;
+  time: string;
+  type: string;
+  modality: string;
+  duration: number;
+  status: string;
 }
 
-/** Wire del backend (GET/PUT /api/v1/mi-consulta) — 10 campos + sedes. */
-interface TerapeutaConfigWire {
+interface AlertaStaffWire {
   id: string;
-  nombre: string;
-  email: string;
-  cedulaProfesional: string;
-  especialidad: string;
-  telefono: string | null;
-  duracionSesionDefaultMin: number;
-  costoPrimeraSesion: number;
-  costoSeguimiento: number;
-  edadMinimaAtencion: number;
-  sedes: TerapeutaSedeWire[];
+  pacienteId: string;
+  pacienteNombre: string;
+  tipo: string;
+  estado: string;
+  mensaje: string;
+  createdAt: string;
+  resueltaPor: string | null;
+  resueltaEn: string | null;
 }
 
-/** Body de actualización (solo los 5 campos editables). */
-interface TerapeutaConfigRequestWire {
-  telefono: string | null;
-  duracionSesionDefaultMin: number;
-  costoPrimeraSesion: number;
-  costoSeguimiento: number;
-  edadMinimaAtencion: number;
-}
-
-/** Body de reemplazo de sedes (PUT /mi-consulta/sedes). */
-interface TerapeutaSedeRequestWire {
-  sedeId: string;
-  esPrincipal: boolean;
-}
-
-/** Wire del historial de configuración (GET /auditoria/configuracion/{id}). */
-interface AuditoriaConfiguracionWire {
+interface SolicitudPendienteWire {
   id: string;
-  campo: string;
-  valorAnterior: string | null;
-  valorNuevo: string | null;
-  usuarioNombre: string | null;
-  timestamp: string;
+  patientId: string;
+  patientName: string;
+  therapistName: string | null;
+  reason: string;
+  status: string;
+  createdAt: string;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+interface BorradorSesionWire {
+  id: string;
+  patientId: string;
+  number: number;
+  date: string | null;
+  notes: string | null;
+  status: string;
+}
+
+@Injectable({ providedIn: 'root' })
 export class MiConsultaHttpAdapter implements MiConsultaRepository {
-  private readonly apiUrl = `${environment.apiBaseUrl}/mi-consulta`;
+  private readonly baseUrl = environment.apiBaseUrl;
 
   constructor(private readonly http: HttpClient) {}
 
-  obtenerConfig(terapeutaId?: string): Observable<ConsultaConfig> {
+  obtenerAccionDominante(): Observable<AccionDominante | null> {
     return this.http
-      .get<TerapeutaConfigWire>(this.apiUrl, { params: this.buildParams(terapeutaId) })
-      .pipe(map((wire) => this.toDomain(wire)));
+      .get<AccionDominanteWire | null>(`${this.baseUrl}/dashboard/accion-dominante`)
+      .pipe(map((w) => (w ? this.toAccion(w) : null)));
   }
 
-  guardarConfig(config: ConsultaConfig, terapeutaId?: string): Observable<ConsultaConfig> {
-    const body: TerapeutaConfigRequestWire = {
-      telefono: config.phone || null,
-      duracionSesionDefaultMin: config.defaultSessionDuration,
-      costoPrimeraSesion: config.costoPrimeraSesion,
-      costoSeguimiento: config.costoSeguimiento,
-      edadMinimaAtencion: config.edadMinimaAtencion
-    };
+  listarCitasHoy(): Observable<CitaHoy[]> {
     return this.http
-      .put<TerapeutaConfigWire>(this.apiUrl, body, { params: this.buildParams(terapeutaId) })
-      .pipe(map((wire) => this.toDomain(wire)));
+      .get<CitaHoyWire[]>(`${this.baseUrl}/dashboard/citas-hoy`)
+      .pipe(map((citas) => citas.map((c) => this.toCita(c))));
   }
 
-  guardarSedes(sedes: TerapeutaSede[], terapeutaId?: string): Observable<TerapeutaSede[]> {
-    const body: TerapeutaSedeRequestWire[] = sedes.map((s) => ({
-      sedeId: s.id,
-      esPrincipal: s.esPrincipal
-    }));
-    return this.http.put<TerapeutaSedeWire[]>(
-      `${this.apiUrl}/sedes`,
-      body,
-      { params: this.buildParams(terapeutaId) }
-    );
+  listarAlertasActivas(): Observable<AlertaStaff[]> {
+    return this.http
+      .get<AlertaStaffWire[]>(`${this.baseUrl}/alertas/activas`)
+      .pipe(map((alertas) => alertas.map((a) => this.toAlerta(a))));
   }
 
-  obtenerSedesCatalog(): Observable<TerapeutaSede[]> {
+  resolverAlerta(id: string): Observable<AlertaStaff> {
     return this.http
-      .get<{ sedes: { id: string; nombre: string }[] }>(
-        `${environment.apiBaseUrl}/dashboard/catalogos`
-      )
+      .patch<AlertaStaffWire>(`${this.baseUrl}/alertas/${id}/resolver`, {})
+      .pipe(map((a) => this.toAlerta(a)));
+  }
+
+  listarSolicitudesPendientes(): Observable<SolicitudPendiente[]> {
+    return this.http
+      .get<SolicitudPendienteWire[]>(`${this.baseUrl}/supervision/solicitudes/pendientes`)
+      .pipe(map((solicitudes) => solicitudes.map((s) => this.toSolicitud(s))));
+  }
+
+  listarBorradores(): Observable<BorradorSesion[]> {
+    return this.http
+      .get<BorradorSesionWire[]>(`${this.baseUrl}/expedientes/sesiones/borradores`)
       .pipe(
-        map((resp) => (resp.sedes ?? []).map((s) => ({ id: s.id, nombre: s.nombre, esPrincipal: false })))
+        map((sesiones) => sesiones.map((s) => this.toBorrador(s))),
+        catchError(() => of([]))
       );
   }
 
-  obtenerHistorial(terapeutaId?: string): Observable<CambioConfiguracion[]> {
-    if (!terapeutaId) {
-      return of([]);
-    }
-    return this.http
-      .get<AuditoriaConfiguracionWire[]>(
-        `${environment.apiBaseUrl}/auditoria/configuracion/${terapeutaId}`
-      )
-      .pipe(
-        map((items) => (items ?? []).map((i) => ({
-          id: i.id,
-          campo: i.campo,
-          valorAnterior: i.valorAnterior ?? null,
-          valorNuevo: i.valorNuevo ?? null,
-          usuarioNombre: i.usuarioNombre ?? '',
-          fecha: i.timestamp
-        })))
-      );
-  }
-
-  private buildParams(terapeutaId?: string): HttpParams {
-    let params = new HttpParams();
-    if (terapeutaId) {
-      params = params.set('terapeutaId', terapeutaId);
-    }
-    return params;
-  }
-
-  private toDomain(wire: TerapeutaConfigWire): ConsultaConfig {
+  private toAccion(w: AccionDominanteWire): AccionDominante {
     return {
-      therapistName: wire.nombre ?? '',
-      license: wire.cedulaProfesional ?? '',
-      specialty: wire.especialidad ?? '',
-      email: wire.email ?? '',
-      phone: wire.telefono ?? '',
-      defaultSessionDuration: wire.duracionSesionDefaultMin ?? 50,
-      costoPrimeraSesion: wire.costoPrimeraSesion ?? 0,
-      costoSeguimiento: wire.costoSeguimiento ?? 0,
-      edadMinimaAtencion: wire.edadMinimaAtencion ?? 0,
-      sedes: (wire.sedes ?? []).map((s) => ({ id: s.id, nombre: s.nombre, esPrincipal: s.esPrincipal }))
+      citaId: w.citaId,
+      pacienteId: w.pacienteId,
+      pacienteNombre: w.pacienteNombre,
+      terapeutaNombre: w.terapeutaNombre ?? null,
+      fecha: w.fecha ?? null,
+      hora: w.hora ?? null,
+      tipoCita: w.tipoCita,
+      modalidad: w.modalidad ?? null,
+      duracionMinutos: w.duracionMinutos ?? null,
+      consultorio: w.consultorio ?? null,
+      protocolo: w.protocolo ?? null,
+      intakeListo: !!w.intakeListo,
+      consentimientoFirmado: !!w.consentimientoFirmado,
+      grabacionLeva: !!w.grabacionLeva,
+      motivoConsulta: w.motivoConsulta ?? null,
+      numeroSesion: w.numeroSesion ?? null
+    };
+  }
+
+  private toCita(w: CitaHoyWire): CitaHoy {
+    return {
+      id: w.id,
+      pacienteId: w.patientId,
+      pacienteNombre: w.patientName,
+      hora: w.time,
+      tipo: w.type,
+      modalidad: w.modality ?? 'PRESENCIAL',
+      duracionMinutos: w.duration ?? 30,
+      estado: w.status
+    };
+  }
+
+  private toAlerta(w: AlertaStaffWire): AlertaStaff {
+    return {
+      id: w.id,
+      pacienteId: w.pacienteId,
+      pacienteNombre: w.pacienteNombre,
+      tipo: w.tipo,
+      estado: w.estado,
+      mensaje: w.mensaje,
+      createdAt: w.createdAt,
+      resueltaPor: w.resueltaPor ?? null,
+      resueltaEn: w.resueltaEn ?? null
+    };
+  }
+
+  private toSolicitud(w: SolicitudPendienteWire): SolicitudPendiente {
+    return {
+      id: w.id,
+      pacienteId: w.patientId,
+      pacienteNombre: w.patientName,
+      terapeutaNombre: w.therapistName ?? null,
+      motivo: w.reason,
+      estado: w.status,
+      createdAt: w.createdAt
+    };
+  }
+
+  private toBorrador(w: BorradorSesionWire): BorradorSesion {
+    return {
+      id: w.id,
+      pacienteId: w.patientId,
+      numero: w.number,
+      fecha: w.date ?? null,
+      notas: w.notes ?? null,
+      status: w.status
     };
   }
 }

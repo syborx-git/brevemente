@@ -11,6 +11,10 @@ export const environment = {
     pagosBackend: true,
     constanciasBackend: true,
     auditoriaBackend: true,
-    miConsultaBackend: true
+    configuracionBackend: true,
+    miConsultaBackend: true,
+    pacientePortalBackend: true,
+    dashboardPlataformaBackend: true,
+    usuariosBackend: true
   }
 };

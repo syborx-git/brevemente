@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Component
@@ -37,17 +36,18 @@ public class PythonTranscriptionHttpClient implements TranscriptionClientPort {
     }
 
     @Override
-    public void dispatchAsyncTranscription(String taskId, MultipartFile file, String callbackUrl, String language) {
+    public void dispatchAsyncTranscription(String taskId, byte[] audio, String fileName, String callbackUrl, String language) {
         log.info("[LEVA Client] Despachando audio a Python Whisper: taskId={}, callbackUrl={}", taskId, callbackUrl);
 
         try {
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
-            if (file != null && !file.isEmpty()) {
-                ByteArrayResource fileResource = new ByteArrayResource(file.getBytes()) {
+            if (audio != null && audio.length > 0) {
+                final String name = (fileName != null && !fileName.isBlank()) ? fileName : "audio.webm";
+                ByteArrayResource fileResource = new ByteArrayResource(audio) {
                     @Override
                     public String getFilename() {
-                        return file.getOriginalFilename() != null ? file.getOriginalFilename() : "audio.mp3";
+                        return name;
                     }
                 };
                 body.add("file", fileResource);

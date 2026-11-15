@@ -9,5 +9,7 @@ public interface SupervisionSolicitudUseCases {
 
     List<SupervisionSolicitud> listarPorPaciente(String pacienteId, List<String> terapeutaIds, boolean esEvaluador);
 
+    List<SupervisionSolicitud> listarPendientes(List<String> terapeutaIds, String solicitanteId, boolean esEvaluador);
+
     SupervisionSolicitud atender(String solicitudId, String atendidoPorId);
 }

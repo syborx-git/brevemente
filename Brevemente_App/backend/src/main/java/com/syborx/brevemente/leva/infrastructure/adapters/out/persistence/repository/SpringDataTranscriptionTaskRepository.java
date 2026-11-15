@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface SpringDataTranscriptionTaskRepository extends JpaRepository<TranscriptionTaskJpaEntity, String> {
-    Optional<TranscriptionTaskJpaEntity> findBySessionId(String sessionId);
+    Optional<TranscriptionTaskJpaEntity> findFirstBySessionIdOrderByCreatedAtDesc(String sessionId);
 }

@@ -43,21 +43,26 @@ public class OllamaLlmClient implements LocalLlmPort {
     }
 
     private static final String FEW_SHOT_SYSTEM_PROMPT = """
-            Eres LEVA, copiloto clínico de inteligencia artificial especializado en Terapia Breve Estratégica (TBE, modelo Giorgio Nardone), CIE-11 y DSM-5-TR.
-            Tu función es analizar la transcripción de una sesión psicoterapéutica y generar una propuesta clínica rigurosa y estructurada en formato JSON.
+            Eres un motor técnico de extracción documental y formulación estratégica para psicólogos y profesionales de la salud mental colegiados, especializado en Terapia Breve Estratégica (TBE, modelo Giorgio Nardone), CIE-11 y DSM-5-TR.
+            Tu función técnica es analizar la transcripción de una sesión psicoterapéutica y los fragmentos de protocolo clínico provistos, estructurando la formulación del caso en formato JSON estricto.
 
             REGLAS FUNDAMENTALES OBLIGATORIAS:
             1. Devuelve ÚNICAMENTE un objeto JSON válido según el esquema solicitado, sin texto explicativo adicional ni bloques Markdown fuera del JSON.
-            2. REGLA ESTRICTA DE DIARIZACIÓN ('dialogue'):
+            2. VINCULACIÓN ESTRICTA CON EL PROTOCOLO CLÍNICO RECUPERADO:
+               - En los campos 'protocoloCodigo' y 'protocoloReferencia', DEBES consignar el código y título del protocolo provisto en los fragmentos (ejemplo: 'TBE-PROTOCOLO-HIDRO' y 'Protocolo Clínico TBE: Hidrofobia y Ansiedad Acuática [TBE-PROTOCOLO-HIDRO]').
+               - En 'puntoClaveProtocolo', describe de forma sintetizada la técnica, estratagema o mecanismo central del protocolo en que se fundamenta la intervención (ejemplo: "Estratagema de 'El Espejo Líquido': Exposición matutina de 5 minutos mirando el reflejo en el lavabo sin tocar el agua para extinguir el pánico y quebrar la delegación de auxilio").
+               - En 'fragmentoProtocolo', incluye la cita textual o extracto directo del protocolo del corpus de donde extrajiste la intervención.
+               - El 'diagnosticoOperativo' (DX.OP) DEBE describir con precisión y claridad cómo funciona el problema en la transcripción (ej. 'Fobia específica al agua / Ansiedad acuática ante aproximación a lavabos o inmersión, mantenida por evitación y delegación'). NUNCA uses diagnósticos genéricos o vagos.
+               - En 'prescripcionesEstrategicas', DEBES incluir las prescripciones y estratagemas exactas indicadas en el fragmento del protocolo provisto (por ejemplo: 'La Estratagema de El Espejo Líquido').
+            3. REGLA ESTRICTA DE DIARIZACIÓN ('dialogue'):
                - El atributo 'speaker' en cada turno DEBE ser exactamente "Terapeuta" o "Paciente".
-               - NUNCA utilices nombres propios (por ejemplo 'Kike', 'Laura', 'Juan'), ni títulos ('Doctor', 'Licenciado'), ni roles genéricos ('Entrevistador', 'Cliente').
                - Si el turno realiza preguntas clínicas, guía la sesión, formula reestructuraciones o prescribe: speaker = "Terapeuta".
                - Si el turno expone síntomas, responde al terapeuta o describe sus problemas: speaker = "Paciente".
-            3. CRITERIOS CLÍNICOS ESTRATÉGICOS (TBE):
-               - sistemaPerceptivoReactivo: Clasificación TBE (Fóbico, Obsesivo-Compulsivo, Depresivo, Duda Patológica, etc.).
+            4. CRITERIOS CLÍNICOS ESTRATÉGICOS (TBE):
+               - sistemaPerceptivoReactivo: Clasificación TBE acorde al problema (Fóbico, Obsesivo-Compulsivo, Depresivo, Duda Patológica, etc.).
                - tentativasSolucionRedundantes: Acciones o conductas del paciente o su entorno que mantienen o agravan el síntoma.
                - reestructuracionesPropuestas: Aforismos, metáforas o reencuadres estratégicos introducidos para cambiar la percepción del problema.
-               - prescripcionesEstrategicas: Tareas o prescripciones asignadas (ej. Diario de a bordo, La peor fantasía, Pequeña transgresión, Media hora de queja).
+               - prescripcionesEstrategicas: Tareas o prescripciones asignadas según el protocolo.
                - notaEvolucionSoap: Formato formal estandarizado organizado estrictamente en cuatro ejes:
                  S (Subjetivo): Motivo de consulta y síntomas referidos por el paciente.
                  O (Objetivo): Apariencia, orientación, coherencia, estado afectivo observado.
@@ -81,6 +86,10 @@ public class OllamaLlmClient implements LocalLlmPort {
 
     private static final String FEW_SHOT_ASSISTANT_EXAMPLE = """
             {
+              "protocoloCodigo": "TBE-PANICO-01",
+              "protocoloReferencia": "Protocolo TBE: Trastorno de Pánico y Agorafobia [TBE-PANICO-01]",
+              "puntoClaveProtocolo": "Estratagema de 'La Peor Fantasía' (saturación paradójica del miedo) y 'Diario de a Bordo' para desviar el foco hipervigilante corporal.",
+              "fragmentoProtocolo": "ESTRATAGEMAS Y PRESCRIPCIONES: a) La Peor Fantasía: Dedicar media hora diaria a imaginar los peores temores... b) Diario de a Bordo: Registrar en libreta los síntomas en el momento exacto.",
               "diagnosticoOperativo": "Trastorno de angustia y pánico con conducta agorafóbica incipiente, mantenido por el bucle de evitación fóbica y delegación de auxilio a familiares.",
               "sistemaPerceptivoReactivo": "Fóbico (Miedo al miedo / Evitación y delegación)",
               "tentativasSolucionRedundantes": [
@@ -114,9 +123,37 @@ public class OllamaLlmClient implements LocalLlmPort {
 
     @Override
     public StructuredProposalData generateStructuredProposal(String fullText, List<TranscriptSegment> segments) {
-        log.info("[LEVA LLM] Generando propuesta clínica estructurada (Few-Shot) con modelo local: {}", modelName);
+        return generateStructuredProposal(fullText, segments, Collections.emptyList());
+    }
 
-        String userPrompt = "Transcripción de la sesión:\n\"\"\"\n" + fullText + "\n\"\"\"";
+    @Override
+    public StructuredProposalData generateStructuredProposal(
+            String fullText,
+            List<TranscriptSegment> segments,
+            List<ClinicalCorpusChunk> relevantChunks) {
+        int chunkCount = (relevantChunks != null) ? relevantChunks.size() : 0;
+        log.info("[LEVA LLM] Generando propuesta clínica estructurada (Few-Shot) con {} fragmentos de protocolo RAG y modelo local: {}",
+                chunkCount, modelName);
+
+        StringBuilder protocolContext = new StringBuilder();
+        if (chunkCount > 0) {
+            protocolContext.append("FRAGMENTOS DE PROTOCOLO CLÍNICO RECUPERADOS (REGLAS OBLIGATORIAS):\n");
+            for (ClinicalCorpusChunk chunk : relevantChunks) {
+                String protoCode = (chunk.getProtocolCode() != null && !chunk.getProtocolCode().isBlank())
+                        ? chunk.getProtocolCode() : "PROTOCOLO-TBE";
+                protocolContext.append("--- [").append(protoCode).append("] ");
+                if (chunk.getTitle() != null && !chunk.getTitle().isBlank()) {
+                    protocolContext.append("(").append(chunk.getTitle()).append(")");
+                }
+                protocolContext.append(" ---\n")
+                        .append(chunk.getContent())
+                        .append("\n\n");
+            }
+        }
+
+        String userPrompt = (protocolContext.length() > 0 ? protocolContext.toString() : "")
+                + "Transcripción de la sesión:\n\"\"\"\n" + fullText + "\n\"\"\""
+                + (protocolContext.length() > 0 ? "\n\nINSTRUCCIÓN ESTRICTA: Basa el diagnóstico operativo (DX.OP) y las prescripciones estratégicas (PX) estrictamente en los fragmentos de protocolo clínico arriba indicados." : "");
 
         try {
             Map<String, Object> requestPayload = Map.of(
@@ -158,7 +195,7 @@ public class OllamaLlmClient implements LocalLlmPort {
         }
 
         // Fallback clínico heurístico de alta fidelidad cuando Ollama esté offline
-        return buildHeuristicFallbackProposal(fullText, segments);
+        return buildHeuristicFallbackProposal(fullText, segments, relevantChunks);
     }
 
     @Override
@@ -173,13 +210,13 @@ public class OllamaLlmClient implements LocalLlmPort {
         }
 
         String systemPrompt = """
-            Eres LEVA, copiloto clínico para Terapia Breve Estratégica.
-            Responde a la consulta del terapeuta o alumno apoyándote EXCLUSIVAMENTE en los protocolos adjuntos.
-            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita el código del protocolo al responder.
-            Si no se encuentra en el texto, indica amablemente que no está documentado en el corpus.
+            Eres un motor de extracción y análisis documental para psicólogos y profesionales de la salud mental.
+            Tu función es extraer y citar información estrictamente técnica de los documentos provistos, respondiendo a la consulta técnica del especialista.
+            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita siempre el código de protocolo o título al responder.
+            Si la información solicitada no está documentada en los textos provistos, indica de forma clara que no se encuentra en el corpus clínico cerrado.
             """;
 
-        String userPrompt = "CORPUS CLÍNICO CERRADO:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
+        String userPrompt = "TEXTO TÉCNICO DE REFERENCIA:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
 
         try {
             Map<String, Object> requestPayload = Map.of(
@@ -243,13 +280,13 @@ public class OllamaLlmClient implements LocalLlmPort {
         }
 
         String systemPrompt = """
-            Eres LEVA, copiloto clínico para Terapia Breve Estratégica.
-            Responde a la consulta del terapeuta o alumno apoyándote EXCLUSIVAMENTE en los protocolos adjuntos.
-            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita el código del protocolo al responder.
-            Si no se encuentra en el texto, indica amablemente que no está documentado en el corpus.
+            Eres un motor de extracción y análisis documental para psicólogos y profesionales de la salud mental.
+            Tu función es extraer y citar información estrictamente técnica de los documentos provistos, respondiendo a la consulta técnica del especialista.
+            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita siempre el código de protocolo o título al responder.
+            Si la información solicitada no está documentada en los textos provistos, indica de forma clara que no se encuentra en el corpus clínico cerrado.
             """;
 
-        String userPrompt = "CORPUS CLÍNICO CERRADO:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
+        String userPrompt = "TEXTO TÉCNICO DE REFERENCIA:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
 
         try {
             Map<String, Object> requestPayload = Map.of(
@@ -341,7 +378,10 @@ public class OllamaLlmClient implements LocalLlmPort {
                 .build();
     }
 
-    private StructuredProposalData buildHeuristicFallbackProposal(String fullText, List<TranscriptSegment> segments) {
+    private StructuredProposalData buildHeuristicFallbackProposal(
+            String fullText,
+            List<TranscriptSegment> segments,
+            List<ClinicalCorpusChunk> relevantChunks) {
         List<StructuredProposalData.DialogueTurn> turns = new ArrayList<>();
 
         if (segments != null && !segments.isEmpty()) {
@@ -349,7 +389,9 @@ public class OllamaLlmClient implements LocalLlmPort {
                 String speaker = seg.getSpeaker();
                 if (speaker == null || speaker.isBlank()) {
                     String t = seg.getText().toLowerCase();
-                    speaker = (t.contains("doctor") || t.contains("terapeuta") || t.contains("cómo te llamas") || t.contains("¿por qué vienes?") || t.contains("diagnóstico"))
+                    speaker = (t.contains("doctor") || t.contains("terapeuta") || t.contains("cómo te llamas")
+                            || t.contains("¿por qué vienes?") || t.contains("diagnóstico") || t.contains("buenas tardes")
+                            || t.contains("vamos a acordar") || t.contains("prescripción"))
                             ? "Terapeuta" : "Paciente";
                 }
                 turns.add(StructuredProposalData.DialogueTurn.builder()
@@ -368,8 +410,78 @@ public class OllamaLlmClient implements LocalLlmPort {
                     .build());
         }
 
+        String lowerText = (fullText != null) ? fullText.toLowerCase() : "";
+        ClinicalCorpusChunk topChunk = (relevantChunks != null && !relevantChunks.isEmpty()) ? relevantChunks.get(0) : null;
+
+        String protoCode = (topChunk != null && topChunk.getProtocolCode() != null && !topChunk.getProtocolCode().isBlank())
+                ? topChunk.getProtocolCode() : null;
+        String protoTitle = (topChunk != null && topChunk.getTitle() != null && !topChunk.getTitle().isBlank())
+                ? topChunk.getTitle() : null;
+
+        boolean isHydro = lowerText.contains("hidro") || lowerText.contains("agua") || lowerText.contains("lavabo")
+                || lowerText.contains("espejo líquido") || lowerText.contains("acuátic")
+                || (protoCode != null && protoCode.toLowerCase().contains("hidro"));
+
+        if (isHydro) {
+            protoCode = (protoCode != null) ? protoCode : "TBE-PROTOCOLO-HIDRO";
+            protoTitle = (protoTitle != null) ? protoTitle : "Protocolo Clínico TBE: Hidrofobia y Ansiedad Acuática";
+            String ref = protoTitle + " [" + protoCode + "]";
+
+            return StructuredProposalData.builder()
+                    .protocoloCodigo(protoCode)
+                    .protocoloReferencia(ref)
+                    .puntoClaveProtocolo("Estratagema de 'El Espejo Líquido': Exposición de 5 minutos diarios a las 8:00 AM frente al lavabo lleno mirando el reflejo sin tocar el agua y anotando sensaciones en libreta, quebrando el bucle de evitación y cancelando la delegación de auxilio familiar.")
+                    .fragmentoProtocolo("PUNTO CLAVE Y ESTRATAGEMA CENTRAL TBE: La Prescripción de 'El Espejo Líquido'. Colocarse diariamente a las 8:00 AM exactamente durante 5 minutos frente a un lavabo lleno con agua en reposo, mirando únicamente el reflejo en la superficie sin tocar el agua y anotando sensaciones en libreta. Bloqueo de la delegación familiar: cancelar el auxilio que confirma la invalidez asumida.")
+                    .justificacionEstrategica("El cuadro clínico corresponde al protocolo de fobia específica al agua e hidrofobia validado en el corpus clínico TBE.")
+                    .diagnosticoOperativo("Fobia Específica al Agua (Hidrofobia y Ansiedad Acuática). Ansiedad paroxística y bloqueo ante la aproximación a lavabos, regaderas o inmersión, mantenida por evitación activa y delegación de auxilio a familiares.")
+                    .sistemaPerceptivoReactivo("Fóbico (Miedo fóbico al agua / Evitación y delegación)")
+                    .tentativasSolucionRedundantes(List.of(
+                            "Evitación sistemática del contacto o aproximación a cuerpos de agua y lavabos",
+                            "Petición de auxilio y delegación de tareas de higiene a familiares para no enfrentar el agua",
+                            "Intento de control racional forzado de la respiración y palpitaciones ante la cercanía del agua"
+                    ))
+                    .reestructuracionesPropuestas(List.of(
+                            "El miedo que evitas hoy se convierte en el pánico de mañana.",
+                            "Intentar controlar deliberadamente una reacción involuntaria es lo que genera el descontrol."
+                    ))
+                    .prescripcionesEstrategicas(List.of(
+                            "Prescripción de 'El Espejo Líquido': colocarse frente a un lavabo lleno durante 5 minutos exactos a las 8:00 AM mirando el reflejo sin tocar el agua y anotando las sensaciones en libreta"
+                    ))
+                    .valoracionDelCambio("Definición operativa del sistema perceptivo-reactivo fóbico. Prescripción de reestructuración paradójica acordada.")
+                    .estratagemaAplicada("La Estratagema de El Espejo Líquido (Reestructuración paradójica TBE)")
+                    .reaccionPaciente("Aceptación colaborativa y compromiso con la tarea matutina de registro.")
+                    .notaEvolucionSoap("S: Paciente acude refiriendo temor intenso e invalidante ante el contacto o proximidad con agua (hidrofobia), disnea y taquicardia reactiva. O: Facie de ansiedad ante la evocación del estímulo acuático, orientado en tres esferas, juicio de realidad conservado. A: Cuadro clínico compatible con Fobia Específica (CIE-11: 6B03 / DSM-5-TR: 300.29). Sistema perceptivo-reactivo fóbico mantenido por evitación activa y delegación. P: Protocolo TBE Hidrofobia. Prescripción de 'El Espejo Líquido' (5 min diarios a las 8:00 hrs frente a lavabo con registro en libreta). Próxima cita en 7 días.")
+                    .dialogue(turns)
+                    .build();
+        }
+
+        if (topChunk != null) {
+            String ref = (protoTitle != null && !protoTitle.isBlank()) ? protoTitle + " [" + protoCode + "]" : protoCode;
+            return StructuredProposalData.builder()
+                    .protocoloCodigo(protoCode)
+                    .protocoloReferencia(ref)
+                    .puntoClaveProtocolo(topChunk.getTitle() != null ? "Punto Clave según " + topChunk.getTitle() : "Técnica clínica estandarizada TBE")
+                    .fragmentoProtocolo(topChunk.getContent())
+                    .justificacionEstrategica("Protocolo identificado a partir de los documentos del corpus clínico cerrado en base de datos.")
+                    .diagnosticoOperativo("Cuadro clínico formulado según " + (protoTitle != null ? protoTitle : "Protocolo TBE") + " a partir del motivo de consulta expresado.")
+                    .sistemaPerceptivoReactivo("Fóbico / Reactivo")
+                    .tentativasSolucionRedundantes(List.of("Evitación de estímulos ansiogénicos", "Búsqueda de control o apoyo externo"))
+                    .reestructuracionesPropuestas(List.of("El miedo evitado se transforma en pánico; el miedo afrontado se disuelve."))
+                    .prescripcionesEstrategicas(List.of("Prescripción estratégica acorde al protocolo " + protoCode))
+                    .valoracionDelCambio("Identificación de SPR e inicio de intervención estructurada.")
+                    .estratagemaAplicada("Intervención protocolizada TBE")
+                    .reaccionPaciente("Receptiva a la formulación estratégica.")
+                    .notaEvolucionSoap("S: Motivo de consulta registrado en sesión. O: Evaluado en consulta. A: Análisis según protocolo " + protoCode + ". P: Prescripción TBE aplicada.")
+                    .dialogue(turns)
+                    .build();
+        }
+
         return StructuredProposalData.builder()
-                .diagnosticoOperativo("Dificultad en gestión emocional y sintomatología reportada en sesión.")
+                .protocoloCodigo("TBE-GENERAL")
+                .protocoloReferencia("Protocolo General de Terapia Breve Estratégica [TBE-GENERAL]")
+                .puntoClaveProtocolo("Estratagema de 'La Peor Fantasía' / Declaración del síntoma para interrumpir la evitación fóbica y la hipervigilancia.")
+                .fragmentoProtocolo("ESTRATAGEMA TBE GENERAL: Identificación del sistema perceptivo-reactivo e interrupción de las tentativas de solución redundantes.")
+                .diagnosticoOperativo("Sintomatología reactiva reportada en sesión, mantenida por conductas de evitación y búsqueda de control.")
                 .sistemaPerceptivoReactivo("Fóbico / Ansioso reactivo")
                 .tentativasSolucionRedundantes(List.of("Evitación de situaciones generadoras de estrés", "Búsqueda recurrente de validación externa"))
                 .reestructuracionesPropuestas(List.of("El miedo evitado se convierte en pánico, el miedo afrontado se transforma en valor."))

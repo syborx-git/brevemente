@@ -1,16 +1,21 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo } from '../ports/expediente.repository';
+import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from '../ports/expediente.repository';
 import {
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
+  CriterioClinico,
+  Establecimiento,
+  OpcionConductual,
   Patient,
   Payment,
   PaymentStatus,
   PhysicalCertificateLog,
   Session,
   SupervisionLog,
-  SupervisionRequest
+  SupervisionRequest,
+  TratamientoPrevio
 } from '../../../core/types/clinical.types';
 import { mockClinicalRecords, mockPatients, mockSessions } from '../../../core/data/mockData';
 
@@ -21,6 +26,7 @@ export class ExpedienteLocalStorageAdapter implements ExpedienteRepository {
   private readonly recordsKey = 'brevemente_records';
   private readonly patientsKey = 'brevemente_patients';
   private readonly sessionsKey = 'brevemente_sessions';
+  private readonly criterios = new Map<string, CriterioClinico[]>();
 
   constructor() {
     if (!localStorage.getItem(this.recordsKey)) {
@@ -74,6 +80,38 @@ export class ExpedienteLocalStorageAdapter implements ExpedienteRepository {
     sessions.unshift(created);
     localStorage.setItem(this.sessionsKey, JSON.stringify(sessions));
     return of(created);
+  }
+
+  actualizarSesion(sesionId: string, datos: SesionParcial): Observable<Session> {
+    const raw = localStorage.getItem(this.sessionsKey);
+    const sessions: Session[] = raw ? JSON.parse(raw) : mockSessions;
+    const index = sessions.findIndex(s => s.id === sesionId);
+    if (index === -1) {
+      throw new Error('Sesión no encontrada');
+    }
+    sessions[index] = { ...sessions[index], ...datos };
+    localStorage.setItem(this.sessionsKey, JSON.stringify(sessions));
+    return of(sessions[index]);
+  }
+
+  listarCriteriosSesion(sesionId: string): Observable<CriterioClinico[]> {
+    return of(this.criterios.get(sesionId) || []);
+  }
+
+  guardarCriteriosSesion(sesionId: string, criterios: CriterioClinico[]): Observable<CriterioClinico[]> {
+    const guardados = criterios.map((c, i) => ({ ...c, id: c.id || `crit-${i}` }));
+    this.criterios.set(sesionId, guardados);
+    return of(guardados);
+  }
+
+  listarOpcionesConductuales(): Observable<OpcionConductual[]> {
+    return of([
+      { codigo: 'pedir_suavemente', etiqueta: 'Pedir suavemente', orden: 1 },
+      { codigo: 'insinuar', etiqueta: 'Insinuar', orden: 2 },
+      { codigo: 'delegar', etiqueta: 'Delegar', orden: 3 },
+      { codigo: 'todas', etiqueta: 'Todas', orden: 4 },
+      { codigo: 'otro', etiqueta: 'Otro', orden: 5 }
+    ]);
   }
 
   firmarConsentimiento(pacienteId: string): Observable<boolean> {
@@ -180,5 +218,42 @@ export class ExpedienteLocalStorageAdapter implements ExpedienteRepository {
       status: 'pendiente',
       createdAt: new Date().toISOString()
     });
+  }
+
+  // Historia Clínica
+  listarCategoriasPsicofarmacos(): Observable<CategoriaPsicofarmaco[]> {
+    return of([
+      { codigo: 'bzd', etiqueta: 'Benzodiacepinas (BZD)', orden: 1 },
+      { codigo: 'isrs', etiqueta: 'Antidepresivos ISRS', orden: 2 },
+      { codigo: 'duales', etiqueta: 'Antidepresivos Duales', orden: 3 },
+      { codigo: 'triciclicos_tetraciclicos', etiqueta: 'Antidepresivos Tricíclicos/Tetracíclicos', orden: 4 },
+      { codigo: 'neurolepticos_tipicos', etiqueta: 'Neurolépticos Típicos', orden: 5 },
+      { codigo: 'neurolepticos_atipicos', etiqueta: 'Neurolépticos Atípicos', orden: 6 },
+      { codigo: 'psicoestabilizadores', etiqueta: 'Psicoestabilizadores', orden: 7 },
+      { codigo: 'inductores_sueno', etiqueta: 'Inductores del Sueño', orden: 8 },
+      { codigo: 'otros', etiqueta: 'Otros', orden: 9 }
+    ]);
+  }
+
+  listarTratamientosPrevios(pacienteId: string): Observable<TratamientoPrevio[]> {
+    return of([]);
+  }
+
+  guardarTratamientosPrevios(pacienteId: string, items: TratamientoPrevio[]): Observable<TratamientoPrevio[]> {
+    return of(items.map((t, i) => ({ ...t, id: t.id ?? `trat-${Date.now()}-${i}` })));
+  }
+
+  obtenerSede(sedeId: string): Observable<Establecimiento | null> {
+    return of(null);
+  }
+
+  actualizarPaciente(pacienteId: string, datos: Partial<Patient>): Observable<Patient | null> {
+    const raw = localStorage.getItem(this.patientsKey);
+    const patients: Patient[] = raw ? JSON.parse(raw) : mockPatients;
+    const index = patients.findIndex(p => p.id === pacienteId);
+    if (index === -1) return of(null);
+    patients[index] = { ...patients[index], ...datos };
+    localStorage.setItem(this.patientsKey, JSON.stringify(patients));
+    return of(patients[index]);
   }
 }

@@ -2,12 +2,17 @@ package com.syborx.brevemente.paciente.infrastructure.adapters.in.rest;
 
 import com.syborx.brevemente.paciente.application.ports.in.ActualizarPacienteUseCase;
 import com.syborx.brevemente.paciente.application.ports.in.CrearPacienteUseCase;
+import com.syborx.brevemente.paciente.application.ports.in.GenerarPasswordTemporalPacienteUseCase;
 import com.syborx.brevemente.paciente.application.ports.in.ListarPacientesUseCase;
 import com.syborx.brevemente.paciente.application.ports.in.ObtenerPacienteUseCase;
+import com.syborx.brevemente.auth.domain.model.PasswordTemporal;
 import com.syborx.brevemente.paciente.domain.model.Paciente;
+import com.syborx.brevemente.paciente.domain.model.PacienteCreado;
 import com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.dto.PacienteCreateRequest;
+import com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.dto.PacienteCreadoDTO;
 import com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.dto.PacientePatchRequest;
 import com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.dto.PacienteResponseDTO;
+import com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.dto.PasswordTemporalPacienteResponse;
 import com.syborx.brevemente.paciente.infrastructure.adapters.in.rest.mapper.PacienteRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,6 +41,7 @@ public class PacienteRestController {
     private final ObtenerPacienteUseCase obtenerPacienteUseCase;
     private final CrearPacienteUseCase crearPacienteUseCase;
     private final ActualizarPacienteUseCase actualizarPacienteUseCase;
+    private final GenerarPasswordTemporalPacienteUseCase generarPasswordTemporalPacienteUseCase;
     private final PacienteRestMapper pacienteRestMapper;
 
     @GetMapping
@@ -98,12 +104,31 @@ public class PacienteRestController {
             @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o faltantes"),
             @ApiResponse(responseCode = "409", description = "Conflicto por CURP duplicado")
     })
-    public ResponseEntity<PacienteResponseDTO> crear(
+    public ResponseEntity<PacienteCreadoDTO> crear(
             @Valid @RequestBody PacienteCreateRequest request
     ) {
         Paciente nuevo = pacienteRestMapper.toDomain(request);
-        Paciente creado = crearPacienteUseCase.crear(nuevo);
-        return ResponseEntity.status(HttpStatus.CREATED).body(pacienteRestMapper.toResponse(creado));
+        PacienteCreado creado = crearPacienteUseCase.crear(nuevo);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new PacienteCreadoDTO(
+                pacienteRestMapper.toResponse(creado.paciente()), creado.passwordTemporal()));
+    }
+
+    @PostMapping("/{id}/password-temporal")
+    @PreAuthorize("hasAuthority('PACIENTES_EDITAR')")
+    @Operation(
+            summary = "Generar/restablecer contraseña temporal de acceso del paciente",
+            description = "Genera una contraseña temporal para el portal del paciente. Si el paciente aún no tiene identidad de acceso, la crea (rol patient)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Contraseña temporal generada"),
+            @ApiResponse(responseCode = "404", description = "Paciente no encontrado o fuera de alcance"),
+            @ApiResponse(responseCode = "409", description = "El paciente no tiene correo registrado o ya está en uso")
+    })
+    public ResponseEntity<PasswordTemporalPacienteResponse> generarPasswordTemporal(
+            @Parameter(description = "Identificador del paciente", example = "pac-001")
+            @PathVariable String id) {
+        PasswordTemporal temporal = generarPasswordTemporalPacienteUseCase.generarPasswordTemporal(id);
+        return ResponseEntity.ok(new PasswordTemporalPacienteResponse(temporal.valor()));
     }
 
     @PatchMapping("/{id}")

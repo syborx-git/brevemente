@@ -2,6 +2,8 @@ package com.syborx.brevemente.auth.infrastructure.adapters.in.rest.advice;
 
 import com.syborx.brevemente.auth.domain.exception.CredencialesInvalidasException;
 import com.syborx.brevemente.auth.domain.exception.DemasiadosIntentosException;
+import com.syborx.brevemente.auth.domain.exception.PasswordActualIncorrectaException;
+import com.syborx.brevemente.auth.domain.exception.PasswordInvalidaException;
 import com.syborx.brevemente.auth.domain.exception.SesionInvalidaException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -42,6 +44,20 @@ public class AuthExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
                 .body(problem);
+    }
+
+    @ExceptionHandler(PasswordInvalidaException.class)
+    public ResponseEntity<ProblemDetail> handlePasswordInvalida(PasswordInvalidaException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Contraseña inválida");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    @ExceptionHandler(PasswordActualIncorrectaException.class)
+    public ResponseEntity<ProblemDetail> handlePasswordActualIncorrecta(PasswordActualIncorrectaException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Contraseña actual incorrecta");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

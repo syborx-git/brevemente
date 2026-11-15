@@ -31,7 +31,7 @@ public class TranscriptionTaskPersistenceAdapter implements TranscriptionTaskRep
 
     @Override
     public Optional<TranscriptionTask> findBySessionId(String sessionId) {
-        return repository.findBySessionId(sessionId).map(this::toDomain);
+        return repository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).map(this::toDomain);
     }
 
     private TranscriptionTaskJpaEntity toEntity(TranscriptionTask domain) {
@@ -42,6 +42,9 @@ public class TranscriptionTaskPersistenceAdapter implements TranscriptionTaskRep
                 .terapeutaId(domain.getTerapeutaId())
                 .status(domain.getStatus())
                 .audioFileName(domain.getAudioFileName())
+                .audioStoragePath(domain.getAudioStoragePath())
+                .audioContentType(domain.getAudioContentType())
+                .audioSizeBytes(domain.getAudioSizeBytes())
                 .durationSeconds(domain.getDurationSeconds() != null ? java.math.BigDecimal.valueOf(domain.getDurationSeconds()) : null)
                 .languageDetected(domain.getLanguageDetected())
                 .rawResult(domain.getRawResult())
@@ -59,6 +62,9 @@ public class TranscriptionTaskPersistenceAdapter implements TranscriptionTaskRep
                 .terapeutaId(entity.getTerapeutaId())
                 .status(entity.getStatus())
                 .audioFileName(entity.getAudioFileName())
+                .audioStoragePath(entity.getAudioStoragePath())
+                .audioContentType(entity.getAudioContentType())
+                .audioSizeBytes(entity.getAudioSizeBytes())
                 .durationSeconds(entity.getDurationSeconds() != null ? entity.getDurationSeconds().doubleValue() : null)
                 .languageDetected(entity.getLanguageDetected())
                 .rawResult(entity.getRawResult())

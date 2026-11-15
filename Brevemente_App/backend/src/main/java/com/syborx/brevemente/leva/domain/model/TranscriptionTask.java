@@ -19,6 +19,10 @@ public class TranscriptionTask {
     @Builder.Default
     private TranscriptionTaskStatus status = TranscriptionTaskStatus.PENDIENTE;
     private String audioFileName;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String audioStoragePath;
+    private String audioContentType;
+    private Long audioSizeBytes;
     private Double durationSeconds;
     private String languageDetected;
     private RawTranscriptionResult rawResult;

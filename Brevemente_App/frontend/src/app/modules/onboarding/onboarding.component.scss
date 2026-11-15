@@ -1,0 +1,8 @@
+:host {
+  display: block;
+}
+
+/* Fondo decorativo del onboarding (coherente con el login). */
+.onboarding-backdrop {
+  background: linear-gradient(135deg, #304768 0%, #435a7d 50%, #75afbc 100%);
+}

@@ -5,12 +5,15 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { LoginRepository } from './modules/login/ports/login.repository';
 import { LoginHttpAdapter } from './modules/login/adapters/login-http.adapter';
+import { DashboardRepository } from './modules/dashboard/ports/dashboard.repository';
+import { DashboardHttpAdapter } from './modules/dashboard/adapters/dashboard-http.adapter';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
-    { provide: LoginRepository, useClass: LoginHttpAdapter }
+    { provide: LoginRepository, useClass: LoginHttpAdapter },
+    { provide: DashboardRepository, useClass: DashboardHttpAdapter }
   ]
 };

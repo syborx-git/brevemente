@@ -61,7 +61,7 @@ export const SupervisionLogModal: React.FC<SupervisionLogModalProps> = ({
           supervisorLicense,
           patientId: patient.id,
           patientName: patient.name,
-          therapistId: patient.therapistId || 'therapist-1',
+          therapistId: patient.therapistId || 'ter-001',
           therapistName: patient.therapistName || userName,
           sessionNumber,
           problemDefinition,

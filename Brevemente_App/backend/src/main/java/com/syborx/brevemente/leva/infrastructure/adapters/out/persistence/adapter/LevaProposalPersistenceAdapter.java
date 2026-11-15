@@ -36,7 +36,7 @@ public class LevaProposalPersistenceAdapter implements LevaProposalRepositoryPor
 
     @Override
     public Optional<LevaClinicalProposal> findByCitaId(String citaId) {
-        return repository.findByCitaId(citaId).map(this::toDomain);
+        return repository.findFirstByCitaIdOrderByCreatedAtDesc(citaId).map(this::toDomain);
     }
 
     private LevaProposalJpaEntity toEntity(LevaClinicalProposal domain) {

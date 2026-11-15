@@ -1,20 +1,24 @@
 <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 select-none relative z-30 shadow-xs">
-  <!-- Sensitive Clinical Data Badge -->
-  <div class="flex items-center gap-3">
-    <div class="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
-      <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-      Dato Clínico Sensible. Acceso Auditado TBE.
+  <!-- Sensitive Clinical Data Badge (oculto para patient) -->
+  @if (!roleService.hasRole('patient')) {
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
+        <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+        Dato Clínico Sensible. Acceso Auditado TBE.
+      </div>
     </div>
-  </div>
+  }
 
   <!-- Acciones y Perfil de Usuario Autenticado -->
   <div class="flex items-center gap-4">
-    <!-- LEVA Toggle Header Shortcut -->
-    <button 
-      (click)="roleService.toggleLeva()"
-      class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-clinical-accent/15 text-clinical-textDark border border-clinical-accent/30 hover:bg-clinical-accent/25 transition-all">
-      <span>LEVA IA</span>
-    </button>
+    <!-- LEVA Toggle Header Shortcut (oculto para patient) -->
+    @if (!roleService.hasRole('patient')) {
+      <button 
+        (click)="roleService.toggleLeva()"
+        class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-clinical-accent/15 text-clinical-textDark border border-clinical-accent/30 hover:bg-clinical-accent/25 transition-all">
+        <span>LEVA IA</span>
+      </button>
+    }
 
     <!-- Roles del usuario autenticado (con selector visual si es multi-rol) -->
     <div class="flex items-center gap-1.5">

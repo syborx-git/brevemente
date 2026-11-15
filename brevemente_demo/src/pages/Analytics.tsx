@@ -127,20 +127,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-semibold">
             <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-slate-400 font-bold block uppercase tracking-wider text-[9px]">Efectividad de Resolución (TBE)</span>
-                <span className="text-2xl font-extrabold text-clinical-teal mt-1 block">88%</span>
-                <span className="text-[10px] text-slate-400 block mt-1">Casos con mejoría o alta definitiva</span>
-              </div>
-              <div className="bg-teal-50 p-3 rounded-lg text-clinical-teal">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-slate-400 font-bold block uppercase tracking-wider text-[9px]">Promedio de Sesiones por Caso</span>
-                <span className="text-2xl font-extrabold text-clinical-dark mt-1 block">6.2</span>
-                <span className="text-[10px] text-slate-400 block mt-1">Límite clínico estratégico TBE: &lt; 10</span>
+                <span className="text-slate-400 font-bold block uppercase tracking-wider text-[9px]">Citas Mensuales</span>
+                <span className="text-2xl font-extrabold text-clinical-dark mt-1 block">110</span>
+                <span className="text-[10px] text-slate-400 block mt-1">agosto 2026 (simulado)</span>
               </div>
               <div className="bg-blue-50 p-3 rounded-lg text-[#75AFBC]">
                 <BarIcon className="w-6 h-6" />
@@ -149,12 +138,23 @@ export const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
 
             <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-slate-400 font-bold block uppercase tracking-wider text-[9px]">Tasa de Deserción (Drop Out)</span>
-                <span className="text-2xl font-extrabold text-clinical-risk mt-1 block">4%</span>
-                <span className="text-[10px] text-slate-400 block mt-1">Pacientes que abandonan voluntariamente</span>
+                <span className="text-slate-400 font-bold block uppercase tracking-wider text-[9px]">Efectividad TBE</span>
+                <span className="text-2xl font-extrabold text-clinical-teal mt-1 block">72%</span>
+                <span className="text-[10px] text-slate-400 block mt-1">casos resueltos</span>
               </div>
-              <div className="bg-red-50 p-3 rounded-lg text-clinical-risk">
-                <PieIcon className="w-6 h-6" />
+              <div className="bg-teal-50 p-3 rounded-lg text-clinical-teal">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-slate-400 font-bold block uppercase tracking-wider text-[9px]">Índice de Fidelidad</span>
+                <span className="text-2xl font-extrabold text-clinical-dark mt-1 block">8.4 / 10</span>
+                <span className="text-[10px] text-slate-400 block mt-1">adherencia al modelo</span>
+              </div>
+              <div className="bg-emerald-50 p-3 rounded-lg text-emerald-600">
+                <FileCheck className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -277,7 +277,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
             <div>
               <span className="font-bold text-amber-900 block">Observación del Supervisor Clínico:</span>
               <p className="text-amber-800 mt-0.5 font-medium leading-relaxed">
-                "Dr. Silva, se detecta en la bitácora de Sofía Martínez una reducción en la alarma de la Peor Fantasía de 30 a 15 minutos en la última sesión. Recuerde que el protocolo de Arezzo exige el periodo de 30 minutos completo para disolver la paradoja del control. Favor de restablecer la literalidad técnica en la siguiente consulta."
+                "Dra. Ramírez, se detecta en la bitácora de Valeria Gómez Fuentes una reducción en la alarma de la Peor Fantasía de 30 a 15 minutos en la última sesión. Recuerde que el protocolo de Arezzo exige el periodo de 30 minutos completo para disolver la paradoja del control. Favor de restablecer la literalidad técnica en la siguiente consulta."
               </p>
             </div>
           </div>
@@ -355,7 +355,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
             <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-3">
               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                 <div>
-                  <span className="font-bold text-clinical-dark text-xs block">Caso: Sofía Martínez (Sesión 2)</span>
+                  <span className="font-bold text-clinical-dark text-xs block">Caso: Valeria Gómez Fuentes (Sesión 2)</span>
                   <span className="text-[10px] text-slate-400 font-bold block mt-0.5">Supervisor: Dra. Isabel Cárdenas (Fecha: 18 de Agosto, 2026)</span>
                 </div>
                 <span className="px-2.5 py-0.5 bg-emerald-50 border border-emerald-250 text-emerald-800 rounded font-bold uppercase text-[9px]">Atendido / Resuelto</span>

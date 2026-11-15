@@ -27,6 +27,8 @@ public class SesionPersistenceMapper {
                 .fase(e.getFase())
                 .protocolo(e.getProtocolo())
                 .dxOperativo(e.getDxOperativo())
+                .significado(e.getSignificado())
+                .spr(e.getSpr())
                 .trastorno(e.getTrastorno())
                 .px(e.getPx() != null ? e.getPx() : List.of())
                 .f1(e.getF1())
@@ -42,6 +44,7 @@ public class SesionPersistenceMapper {
                 .duracionAudio(e.getDuracionAudio())
                 .status(e.getStatus())
                 .creadoPorId(e.getCreadoPorId())
+                .citaId(e.getCitaId())
                 .valoracionCambio(mapToVc(e.getValoracionCambio()))
                 .valoracionGlobal(mapToVg(e.getValoracionGlobal()))
                 .build();
@@ -57,6 +60,8 @@ public class SesionPersistenceMapper {
                 .fase(d.getFase())
                 .protocolo(d.getProtocolo())
                 .dxOperativo(d.getDxOperativo())
+                .significado(d.getSignificado())
+                .spr(d.getSpr())
                 .trastorno(d.getTrastorno())
                 .px(d.getPx() != null ? d.getPx() : List.of())
                 .f1(d.getF1())
@@ -72,6 +77,7 @@ public class SesionPersistenceMapper {
                 .duracionAudio(d.getDuracionAudio())
                 .status(d.getStatus())
                 .creadoPorId(d.getCreadoPorId())
+                .citaId(d.getCitaId())
                 .valoracionCambio(vcToMap(d.getValoracionCambio()))
                 .valoracionGlobal(vgToMap(d.getValoracionGlobal()))
                 .build();

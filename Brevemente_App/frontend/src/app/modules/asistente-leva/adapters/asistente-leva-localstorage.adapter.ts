@@ -32,7 +32,7 @@ export class AsistenteLevaLocalStorageAdapter implements AsistenteLevaRepository
     return of(this.getStored());
   }
 
-  enviarConsulta(mensaje: string): Observable<MensajeLeva> {
+  enviarConsulta(mensaje: string, protocoloFiltro?: string): Observable<MensajeLeva> {
     const items = this.getStored();
     const userMsg: MensajeLeva = {
       id: `msg-${Date.now()}-user`,
@@ -50,8 +50,31 @@ export class AsistenteLevaLocalStorageAdapter implements AsistenteLevaRepository
       timestamp: new Date().toISOString()
     };
     items.push(levaReply);
-
     localStorage.setItem(this.storageKey, JSON.stringify(items));
+
     return of(levaReply);
+  }
+
+  consultarStream(mensaje: string, protocoloFiltro?: string): Observable<{ token?: string; done?: boolean; error?: string }> {
+    return new Observable(observer => {
+      const tokens = [
+        'Analizando ', 'el caso ', 'bajo el ', 'modelo de Giorgio Nardone... ',
+        'Se detecta ', 'tentativa redundante ', 'de control. ',
+        'Recomendación: ', 'Prescripción paradójica.'
+      ];
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < tokens.length) {
+          observer.next({ token: tokens[i] });
+          i++;
+        } else {
+          clearInterval(interval);
+          observer.next({ done: true });
+          observer.complete();
+        }
+      }, 150);
+
+      return () => clearInterval(interval);
+    });
   }
 }

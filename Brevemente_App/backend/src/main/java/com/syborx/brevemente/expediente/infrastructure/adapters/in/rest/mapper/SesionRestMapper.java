@@ -3,6 +3,7 @@ package com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.mapper;
 import com.syborx.brevemente.expediente.domain.model.Sesion;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.SesionCreateRequest;
 import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.SesionResponseDTO;
+import com.syborx.brevemente.expediente.infrastructure.adapters.in.rest.dto.SesionUpdateRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -21,6 +22,8 @@ public class SesionRestMapper {
                 s.getFase(),
                 s.getProtocolo(),
                 s.getDxOperativo(),
+                s.getSignificado(),
+                s.getSpr(),
                 s.getTrastorno(),
                 s.getPx() != null ? s.getPx() : List.of(),
                 s.getF1(),
@@ -64,6 +67,22 @@ public class SesionRestMapper {
                 .duracionAudio(r.audioDuration())
                 .valoracionCambio(r.valoracionCambio())
                 .valoracionGlobal(r.valoracionGlobal())
+                .build();
+    }
+
+    public Sesion toParcial(SesionUpdateRequest r) {
+        if (r == null) return null;
+        return Sesion.builder()
+                .fase(r.phase())
+                .significado(r.significado())
+                .dxOperativo(r.dxOp())
+                .spr(r.spr())
+                .trastorno(r.trastorno())
+                .px(r.px() != null ? r.px() : List.of())
+                .oss(r.oss())
+                .adherencia(r.add())
+                .rss(r.rss())
+                .status(r.status())
                 .build();
     }
 }

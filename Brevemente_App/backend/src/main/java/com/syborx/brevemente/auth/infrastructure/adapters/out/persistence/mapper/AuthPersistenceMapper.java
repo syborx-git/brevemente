@@ -45,6 +45,10 @@ public class AuthPersistenceMapper {
                 .pacienteId(pacienteId)
                 .activo(Boolean.TRUE.equals(entity.getActivo()))
                 .tokenVersion(entity.getTokenVersion() != null ? entity.getTokenVersion() : 1)
+                .debeCambiarPassword(Boolean.TRUE.equals(entity.getDebeCambiarPassword()))
+                .passwordTemporalVenceEn(entity.getPasswordTemporalVenceEn() != null
+                        ? entity.getPasswordTemporalVenceEn().toInstant()
+                        : null)
                 .build();
     }
 

@@ -1,19 +1,25 @@
 import { Observable } from 'rxjs';
 import {
   AuditLog,
+  CategoriaPsicofarmaco,
   ClinicalRecord,
+  CriterioClinico,
+  Establecimiento,
+  OpcionConductual,
   Patient,
   Payment,
   PaymentStatus,
   PhysicalCertificateLog,
   Session,
   SupervisionLog,
-  SupervisionRequest
+  SupervisionRequest,
+  TratamientoPrevio
 } from '../../../core/types/clinical.types';
 
 export type PagoNuevo = Omit<Payment, 'id' | 'patientName' | 'registeredBy' | 'createdAt'>;
 export type ConstanciaNueva = Omit<PhysicalCertificateLog, 'id' | 'patientName' | 'status' | 'registeredBy' | 'registeredAt'>;
 export type BitacoraNueva = Omit<SupervisionLog, 'id' | 'patientName' | 'therapistName'>;
+export type SesionParcial = Partial<Pick<Session, 'phase' | 'protocol' | 'dxOp' | 'spr' | 'trastorno' | 'px' | 'oss' | 'add' | 'rss'>> & { significado?: string; status?: 'borrador' | 'validado' };
 
 export abstract class ExpedienteRepository {
   abstract listarPacientes(): Observable<Patient[]>;
@@ -22,6 +28,10 @@ export abstract class ExpedienteRepository {
   abstract actualizarExpediente(pacienteId: string, datos: Partial<ClinicalRecord>): Observable<ClinicalRecord | null>;
   abstract obtenerSesiones(pacienteId: string): Observable<Session[]>;
   abstract agregarSesion(pacienteId: string, sesion: Omit<Session, 'id' | 'patientId' | 'status'>): Observable<Session>;
+  abstract actualizarSesion(sesionId: string, datos: SesionParcial): Observable<Session>;
+  abstract listarCriteriosSesion(sesionId: string): Observable<CriterioClinico[]>;
+  abstract guardarCriteriosSesion(sesionId: string, criterios: CriterioClinico[]): Observable<CriterioClinico[]>;
+  abstract listarOpcionesConductuales(): Observable<OpcionConductual[]>;
   abstract firmarConsentimiento(pacienteId: string): Observable<boolean>;
   
   // Pagos
@@ -44,4 +54,11 @@ export abstract class ExpedienteRepository {
   abstract eliminarBitacora(bitacoraId: string): Observable<void>;
   abstract listarSolicitudes(pacienteId: string): Observable<SupervisionRequest[]>;
   abstract crearSolicitud(pacienteId: string, reason: string): Observable<SupervisionRequest>;
+
+  // Historia Clínica
+  abstract listarCategoriasPsicofarmacos(): Observable<CategoriaPsicofarmaco[]>;
+  abstract listarTratamientosPrevios(pacienteId: string): Observable<TratamientoPrevio[]>;
+  abstract guardarTratamientosPrevios(pacienteId: string, items: TratamientoPrevio[]): Observable<TratamientoPrevio[]>;
+  abstract obtenerSede(sedeId: string): Observable<Establecimiento | null>;
+  abstract actualizarPaciente(pacienteId: string, datos: Partial<Patient>): Observable<Patient | null>;
 }

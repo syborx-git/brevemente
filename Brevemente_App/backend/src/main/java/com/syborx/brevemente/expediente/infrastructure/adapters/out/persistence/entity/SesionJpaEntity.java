@@ -50,6 +50,12 @@ public class SesionJpaEntity {
     @Column(name = "dx_operativo", columnDefinition = "TEXT")
     private String dxOperativo;
 
+    @Column(name = "significado", columnDefinition = "TEXT")
+    private String significado;
+
+    @Column(name = "spr", columnDefinition = "TEXT")
+    private String spr;
+
     @Column(name = "trastorno", columnDefinition = "TEXT")
     private String trastorno;
 
@@ -95,6 +101,9 @@ public class SesionJpaEntity {
 
     @Column(name = "creado_por_id", length = 36)
     private String creadoPorId;
+
+    @Column(name = "cita_id", length = 36)
+    private String citaId;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "valoracion_cambio", columnDefinition = "jsonb")

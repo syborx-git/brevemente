@@ -10,7 +10,7 @@ function selectByLabel(page: Page, label: string) {
   return page.locator('label', { hasText: label }).locator('xpath=following-sibling::select');
 }
 
-test.describe('Módulo Mi Consulta — Validación E2E de Oráculo, CRUD y Regresión Visual', () => {
+test.describe('Configuración del Terapeuta (ex Mi Consulta) — Validación E2E de Oráculo, CRUD y Regresión Visual', () => {
   const consoleErrors: string[] = [];
   const http500Errors: string[] = [];
 
@@ -59,11 +59,12 @@ test.describe('Módulo Mi Consulta — Validación E2E de Oráculo, CRUD y Regre
   });
 
   test('TC-MC-01: Carga de configuración desde el oráculo (Spring Boot + PostgreSQL)', async ({ page }) => {
-    await page.goto('/mi-consulta');
+    // La configuración del terapeuta migró de /mi-consulta a /configuracion.
+    await page.goto('/configuracion');
     await page.waitForLoadState('networkidle');
 
     // Encabezado del módulo.
-    await expect(page.getByRole('heading', { name: /Mi Consulta/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Configuraci/ })).toBeVisible();
 
     // Identidad proveniente de `usuarios` (oráculo), no del mock local.
     await expect(inputByLabel(page, 'Nombre Completo')).toHaveValue(/Sofía/);
@@ -81,7 +82,7 @@ test.describe('Módulo Mi Consulta — Validación E2E de Oráculo, CRUD y Regre
   });
 
   test('TC-MC-02: Guardar configuración persiste y se audita', async ({ page }) => {
-    await page.goto('/mi-consulta');
+    await page.goto('/configuracion');
     await page.waitForLoadState('networkidle');
 
     // Editar un parámetro editable y guardar.
@@ -106,7 +107,7 @@ test.describe('Módulo Mi Consulta — Validación E2E de Oráculo, CRUD y Regre
   });
 
   test('TC-MC-03: Gestión de sedes (agregar, guardar, quitar)', async ({ page }) => {
-    await page.goto('/mi-consulta');
+    await page.goto('/configuracion');
     await page.waitForLoadState('networkidle');
 
     // Agregar una sede desde el catálogo de sedes disponibles.
@@ -130,6 +131,7 @@ test.describe('Módulo Mi Consulta — Validación E2E de Oráculo, CRUD y Regre
   });
 
   test('TC-MC-04: Regresión Visual de la pantalla Mi Consulta', async ({ page }) => {
+    // Mi Consulta conserva su propia vista operativa (nueva UI); la configuración vive en /configuracion.
     await page.goto('/mi-consulta');
     await page.waitForLoadState('networkidle');
 
