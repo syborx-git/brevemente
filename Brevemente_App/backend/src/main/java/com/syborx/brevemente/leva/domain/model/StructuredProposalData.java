@@ -25,6 +25,7 @@ public class StructuredProposalData {
     private String estratagemaAplicada;
     private String reaccionPaciente;
     private String notaEvolucionSoap;
+    private String tipoFuente; // "PROTOCOLO", "LIBRO", "MANUAL", "GUIA"
     private String protocoloCodigo;
     private String protocoloReferencia;
     private String justificacionEstrategica;

@@ -214,6 +214,59 @@ class LevaOrchestrationServiceTest {
     }
 
     @Test
+    @DisplayName("processCallback: detecta libros clínicos extensos en RAG y los cita apropiadamente")
+    void processCallbackDetectaLibrosClinicos() {
+        String taskId = "task-book-001";
+        TranscriptionTask task = TranscriptionTask.builder()
+                .id(taskId)
+                .sessionId("ses-001")
+                .pacienteId("pac-001")
+                .status(TranscriptionTaskStatus.PROCESSING)
+                .build();
+
+        RawTranscriptionResult rawResult = RawTranscriptionResult.builder()
+                .taskId(taskId)
+                .status("COMPLETED")
+                .fullText("El paciente refiere obsesión con la duda y verificación reiterada.")
+                .durationSeconds(100.0)
+                .segments(Collections.emptyList())
+                .build();
+
+        ClinicalCorpusChunk chunk = ClinicalCorpusChunk.builder()
+                .id("chk-book-1")
+                .documentId("corp-book-001")
+                .protocolCode("LIB-NAR-01")
+                .title("Capítulo 3: Prescripciones Paradójicas")
+                .content("Apagar el fuego añadiendo leña")
+                .build();
+
+        ClinicalCorpusDocument bookDoc = ClinicalCorpusDocument.builder()
+                .id("corp-book-001")
+                .title("Tratado de Psicoterapia Breve Estratégica")
+                .protocolCode("LIB-NAR-01")
+                .category("LIBRO_CLINICO")
+                .build();
+
+        StructuredProposalData proposalData = StructuredProposalData.builder()
+                .diagnosticoOperativo("Duda patológica y ritualización")
+                .build();
+
+        when(taskRepositoryPort.findById(taskId)).thenReturn(Optional.of(task));
+        when(taskRepositoryPort.save(any(TranscriptionTask.class))).thenReturn(task);
+        when(corpusRepositoryPort.findTopRelevantChunks(anyString(), eq(3))).thenReturn(List.of(chunk));
+        when(corpusRepositoryPort.findById("corp-book-001")).thenReturn(Optional.of(bookDoc));
+        when(localLlmPort.generateStructuredProposal(anyString(), anyList(), anyList())).thenReturn(proposalData);
+        when(proposalRepositoryPort.save(any(LevaClinicalProposal.class))).thenAnswer(i -> i.getArgument(0));
+
+        LevaClinicalProposal result = service.processCallback(rawResult);
+
+        assertNotNull(result);
+        assertEquals("LIBRO", result.getStructuredProposal().getTipoFuente());
+        assertTrue(result.getStructuredProposal().getProtocoloReferencia().contains("Libro Clínico de Referencia"));
+        assertTrue(result.getStructuredProposal().getProtocoloReferencia().contains("Tratado de Psicoterapia Breve Estratégica"));
+    }
+
+    @Test
     @DisplayName("approveProposal: sella la propuesta en estado APPROVED (Human-in-the-Loop)")
     void approveProposalSellaPropuesta() {
         String proposalId = "prop-001";

@@ -29,6 +29,7 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
 
   // Modelo de datos editable en pantalla
   editableData: StructuredProposalData = {
+    tipoFuente: '',
     protocoloCodigo: '',
     protocoloReferencia: '',
     justificacionEstrategica: '',
@@ -95,6 +96,7 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
       : (this.proposal.structuredProposal || {});
 
     this.editableData = {
+      tipoFuente: source.tipoFuente || '',
       protocoloCodigo: source.protocoloCodigo || '',
       protocoloReferencia: source.protocoloReferencia || '',
       justificacionEstrategica: source.justificacionEstrategica || '',
@@ -111,6 +113,13 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
       notaEvolucionSoap: source.notaEvolucionSoap || '',
       dialogue: source.dialogue ? [...source.dialogue] : []
     };
+  }
+
+  get esFuenteLibro(): boolean {
+    const tf = (this.editableData.tipoFuente || '').toUpperCase();
+    const cod = (this.editableData.protocoloCodigo || '').toUpperCase();
+    const ref = (this.editableData.protocoloReferencia || '').toLowerCase();
+    return tf === 'LIBRO' || cod.startsWith('LIB-') || ref.includes('libro') || ref.includes('tratado');
   }
 
   get isApproved(): boolean {

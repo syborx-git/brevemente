@@ -98,7 +98,7 @@
   <!-- Contenido de la Pestaña 1: Formulación Estratégica TBE -->
   <div *ngIf="activeTab === 'clinico'" class="p-5 space-y-5">
 
-    <!-- Protocolo Clínico de Referencia -->
+    <!-- Protocolo o Libro Clínico de Referencia -->
     <div class="p-4 bg-gradient-to-r from-teal-50/90 via-emerald-50/60 to-slate-50 border border-teal-200/90 rounded-2xl space-y-3 shadow-2xs">
       
       <!-- Fila Superior: Código, Título y Estado Clínico -->
@@ -112,7 +112,7 @@
           <div>
             <div class="flex items-center gap-2">
               <span class="text-[10px] font-bold uppercase tracking-wider text-teal-800 font-mono">
-                Protocolo Clínico de Referencia:
+                {{ esFuenteLibro ? 'Libro o Tratado Clínico de Referencia:' : 'Protocolo Clínico de Referencia:' }}
               </span>
               <span class="px-2 py-0.5 rounded text-[11px] font-mono font-extrabold bg-teal-200/90 text-teal-950 border border-teal-300 shadow-2xs">
                 {{ editableData.protocoloCodigo || 'TBE-PROTOCOLO-HIDRO' }}
@@ -125,23 +125,23 @@
         </div>
         <div class="flex items-center gap-2 text-[11px] font-semibold text-emerald-800 bg-white px-3 py-1.5 rounded-xl border border-teal-200 shadow-2xs">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Guía Clínica TBE Homologada</span>
+          <span>{{ esFuenteLibro ? 'Tratado TBE Homologado' : 'Guía Clínica TBE Homologada' }}</span>
         </div>
       </div>
 
-      <!-- Fila Inferior: Punto Clave / Técnica Central del Protocolo -->
+      <!-- Fila Inferior: Punto Clave / Técnica Central del Protocolo o Libro -->
       <div class="p-3 bg-white/95 rounded-xl border border-teal-200/80 shadow-2xs space-y-1.5">
         <div class="flex items-center justify-between gap-2 flex-wrap">
           <span class="text-[10px] font-extrabold uppercase tracking-wider text-teal-900 flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5 text-clinical-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
-            Técnica y Punto Clave del Protocolo:
+            {{ esFuenteLibro ? 'Capítulo y Técnica Clave del Libro:' : 'Técnica y Punto Clave del Protocolo:' }}
           </span>
           <button type="button" *ngIf="editableData.fragmentoProtocolo"
             (click)="showCorpusFragment = !showCorpusFragment"
             class="text-[10px] font-semibold text-clinical-teal hover:text-teal-800 underline cursor-pointer">
-            {{ showCorpusFragment ? 'Ocultar fundamento clínico' : 'Ver fundamento del protocolo' }}
+            {{ showCorpusFragment ? 'Ocultar fundamento clínico' : (esFuenteLibro ? 'Ver pasaje del libro' : 'Ver fundamento del protocolo') }}
           </button>
         </div>
 
@@ -149,10 +149,12 @@
           {{ editableData.puntoClaveProtocolo || 'Estratagema de \'El Espejo Líquido\': Exposición de 5 minutos diarios a las 8:00 AM frente al lavabo lleno mirando el reflejo sin tocar el agua y anotando sensaciones en libreta para quebrar la evitación fóbica y cancelar la delegación de auxilio familiar.' }}
         </p>
 
-        <!-- Bloque Plegable con el Fundamento Clínico del Protocolo -->
+        <!-- Bloque Plegable con el Fundamento Clínico del Protocolo o Libro -->
         <div *ngIf="showCorpusFragment && editableData.fragmentoProtocolo"
           class="mt-2 p-2.5 bg-teal-50/50 rounded-lg border border-teal-100 text-[11px] text-teal-900 leading-relaxed whitespace-pre-wrap">
-          <span class="font-bold text-[10px] text-teal-700 uppercase block mb-1">Fundamento Clínico del Protocolo:</span>
+          <span class="font-bold text-[10px] text-teal-700 uppercase block mb-1">
+            {{ esFuenteLibro ? 'Pasaje Textual del Libro / Tratado Clínico:' : 'Fundamento Clínico del Protocolo:' }}
+          </span>
           {{ editableData.fragmentoProtocolo }}
         </div>
       </div>

@@ -23,6 +23,7 @@ export interface StructuredProposalData {
   estratagemaAplicada?: string;
   reaccionPaciente?: string;
   notaEvolucionSoap?: string;
+  tipoFuente?: 'PROTOCOLO' | 'LIBRO' | 'MANUAL' | string;
   protocoloCodigo?: string;
   protocoloReferencia?: string;
   justificacionEstrategica?: string;

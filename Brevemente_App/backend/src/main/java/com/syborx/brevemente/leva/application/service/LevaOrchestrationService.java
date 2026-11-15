@@ -138,20 +138,42 @@ public class LevaOrchestrationService implements
                 relevantChunks
         );
 
-        // Garantizar vinculación del protocolo clínico de referencia si se recuperó del corpus
+        // Garantizar vinculación del protocolo o libro clínico de referencia si se recuperó del corpus
         if (relevantChunks != null && !relevantChunks.isEmpty()) {
             ClinicalCorpusChunk topChunk = relevantChunks.get(0);
+
+            // Determinar tipo de fuente (Libro vs Protocolo vs Guía)
+            String docCategory = "PROTOCOLO_TBE";
+            String docTitle = "";
+            if (topChunk.getDocumentId() != null) {
+                var docOpt = corpusRepositoryPort.findById(topChunk.getDocumentId());
+                if (docOpt.isPresent()) {
+                    docCategory = docOpt.get().getCategory();
+                    docTitle = docOpt.get().getTitle();
+                }
+            }
+
+            boolean isBook = "LIBRO_CLINICO".equalsIgnoreCase(docCategory)
+                    || "MANUAL_TECNICO".equalsIgnoreCase(docCategory)
+                    || (topChunk.getProtocolCode() != null && topChunk.getProtocolCode().toUpperCase().startsWith("LIB-"))
+                    || (docTitle != null && (docTitle.toLowerCase().contains("libro") || docTitle.toLowerCase().contains("tratado")));
+
+            proposalData.setTipoFuente(isBook ? "LIBRO" : "PROTOCOLO");
+
             if (proposalData.getProtocoloCodigo() == null || proposalData.getProtocoloCodigo().isBlank() || "TBE-GENERAL".equals(proposalData.getProtocoloCodigo())) {
                 proposalData.setProtocoloCodigo(topChunk.getProtocolCode());
             }
             if (proposalData.getProtocoloReferencia() == null || proposalData.getProtocoloReferencia().isBlank() || proposalData.getProtocoloReferencia().contains("General")) {
-                String ref = (topChunk.getTitle() != null && !topChunk.getTitle().isBlank())
-                        ? topChunk.getTitle() + " [" + topChunk.getProtocolCode() + "]"
-                        : topChunk.getProtocolCode();
-                proposalData.setProtocoloReferencia(ref);
+                String prefix = isBook ? "Libro Clínico de Referencia: " : "Protocolo Clínico de Referencia: ";
+                String refTitle = (docTitle != null && !docTitle.isBlank()) ? docTitle : ((topChunk.getTitle() != null && !topChunk.getTitle().isBlank()) ? topChunk.getTitle() : topChunk.getProtocolCode());
+                proposalData.setProtocoloReferencia(prefix + refTitle + " [" + topChunk.getProtocolCode() + "]");
             }
             if (proposalData.getPuntoClaveProtocolo() == null || proposalData.getPuntoClaveProtocolo().isBlank()) {
-                proposalData.setPuntoClaveProtocolo(extractPuntoClaveFromChunk(topChunk));
+                String keyPoint = extractPuntoClaveFromChunk(topChunk);
+                if (isBook && topChunk.getTitle() != null && !topChunk.getTitle().isBlank() && !keyPoint.contains(topChunk.getTitle())) {
+                    keyPoint = topChunk.getTitle() + " — " + keyPoint;
+                }
+                proposalData.setPuntoClaveProtocolo(keyPoint);
             }
             if (proposalData.getFragmentoProtocolo() == null || proposalData.getFragmentoProtocolo().isBlank()) {
                 proposalData.setFragmentoProtocolo(topChunk.getContent());
@@ -161,6 +183,7 @@ public class LevaOrchestrationService implements
         // Heurística de respaldo clínico infalible: Si la sesión trata de hidrofobia/ansiedad al agua
         String fullLower = (rawResult.getFullText() != null) ? rawResult.getFullText().toLowerCase() : "";
         if (fullLower.contains("hidro") || fullLower.contains("agua") || fullLower.contains("lavabo") || fullLower.contains("espejo")) {
+            proposalData.setTipoFuente("PROTOCOLO");
             if (proposalData.getProtocoloCodigo() == null || proposalData.getProtocoloCodigo().isBlank() || "TBE-GENERAL".equals(proposalData.getProtocoloCodigo()) || "TBE-PANICO-01".equals(proposalData.getProtocoloCodigo())) {
                 proposalData.setProtocoloCodigo("TBE-PROTOCOLO-HIDRO");
                 proposalData.setProtocoloReferencia("Protocolo Clínico TBE: Hidrofobia y Ansiedad Acuática [TBE-PROTOCOLO-HIDRO]");
@@ -511,6 +534,9 @@ public class LevaOrchestrationService implements
         }
         if (code.contains("TOC")) {
             return "Estratagema de Violación del Ritual / Contraritual: 'Si realizas el ritual 1 vez, debes realizarlo 5 veces exactas' para quebrar la secuencia fóbica-compulsiva.";
+        }
+        if (code.startsWith("LIB") || code.contains("NAR") || content.toLowerCase().contains("tratado")) {
+            return "Principio Estratégico de Arezzo: Interrupción de soluciones intentadas redundantes y prescripción paradójica del síntoma ('apagar el fuego añadiendo leña').";
         }
         if (chunk.getTitle() != null && !chunk.getTitle().isBlank()) {
             return "Técnica clínica protocolizada: " + chunk.getTitle();

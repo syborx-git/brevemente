@@ -32,13 +32,19 @@ export class EducarLevaComponent implements OnInit {
   previewData: DocumentConversionPreview | null = null;
   markdownEditado = '';
 
-  // Metadatos del protocolo
+  // Selector de Tipo de Carga
+  tipoCarga: 'protocolo' | 'libro' = 'protocolo';
+
+  // Metadatos del protocolo o libro
   title = '';
   protocolCode = '';
   category = 'PROTOCOLO_TBE';
   sourceReference = '';
   archivoSeleccionado: File | null = null;
   nombreArchivo = '';
+
+  // Filtro de Pestañas del Corpus Publicado
+  tabCorpus: 'todos' | 'protocolos' | 'libros' | 'guias' = 'todos';
 
   // Estados de Ver, Editar y Eliminar de la tabla
   documentoDetalle: CorpusDocument | null = null;
@@ -56,7 +62,9 @@ export class EducarLevaComponent implements OnInit {
 
   readonly categorias = [
     { value: 'PROTOCOLO_TBE', label: 'Protocolo Clínico TBE' },
-    { value: 'MANUAL_TECNICO', label: 'Manual Técnico Arezzo' },
+    { value: 'LIBRO_CLINICO', label: 'Libro o Tratado Clínico Extenso' },
+    { value: 'MANUAL_TECNICO', label: 'Manual Técnico Arezzo / Nardone' },
+    { value: 'GUIA_DIAGNOSTICA', label: 'Guía Diagnóstica DSM-5TR / CIE-11' },
     { value: 'GUIA_FARMACOLOGICA', label: 'Guía Farmacológica / Psiquiátrica' },
     { value: 'CASO_SUPERVISADO', label: 'Caso Clínico Supervisado' }
   ];
@@ -65,6 +73,67 @@ export class EducarLevaComponent implements OnInit {
     private readonly educarService: EducarLevaService,
     private readonly roleState: RoleStateService
   ) {}
+
+  cambiarTipoCarga(tipo: 'protocolo' | 'libro'): void {
+    this.tipoCarga = tipo;
+    if (tipo === 'libro') {
+      this.category = 'LIBRO_CLINICO';
+      if (this.protocolCode.startsWith('TBE-')) {
+        this.protocolCode = 'LIB-' + this.protocolCode.replace(/^TBE-/, '');
+      } else if (!this.protocolCode) {
+        this.protocolCode = 'LIB-';
+      }
+    } else {
+      this.category = 'PROTOCOLO_TBE';
+      if (this.protocolCode.startsWith('LIB-')) {
+        this.protocolCode = 'TBE-' + this.protocolCode.replace(/^LIB-/, '');
+      } else if (!this.protocolCode) {
+        this.protocolCode = 'TBE-';
+      }
+    }
+  }
+
+  esLibro(doc: CorpusDocument): boolean {
+    const cat = (doc.category || '').toUpperCase();
+    const code = (doc.protocolCode || '').toUpperCase();
+    const title = (doc.title || '').toLowerCase();
+    return cat === 'LIBRO_CLINICO' || cat === 'MANUAL_TECNICO' || code.startsWith('LIB-') || title.includes('libro') || title.includes('tratado');
+  }
+
+  esGuia(doc: CorpusDocument): boolean {
+    const cat = (doc.category || '').toUpperCase();
+    const code = (doc.protocolCode || '').toUpperCase();
+    return cat === 'GUIA_DIAGNOSTICA' || cat === 'GUIA_FARMACOLOGICA' || code.startsWith('DSM') || code.startsWith('CIE');
+  }
+
+  esProtocolo(doc: CorpusDocument): boolean {
+    return !this.esLibro(doc) && !this.esGuia(doc);
+  }
+
+  contarProtocolos(): number {
+    return this.documentos.filter(d => this.esProtocolo(d)).length;
+  }
+
+  contarLibros(): number {
+    return this.documentos.filter(d => this.esLibro(d)).length;
+  }
+
+  contarGuias(): number {
+    return this.documentos.filter(d => this.esGuia(d)).length;
+  }
+
+  get documentosFiltrados(): CorpusDocument[] {
+    if (this.tabCorpus === 'protocolos') {
+      return this.documentos.filter(d => this.esProtocolo(d));
+    }
+    if (this.tabCorpus === 'libros') {
+      return this.documentos.filter(d => this.esLibro(d));
+    }
+    if (this.tabCorpus === 'guias') {
+      return this.documentos.filter(d => this.esGuia(d));
+    }
+    return this.documentos;
+  }
 
   get puedeAdministrar(): boolean {
     return this.roleState.esAdmin() || this.roleState.esSupervisor() || this.roleState.esTerapeuta();
@@ -130,7 +199,8 @@ export class EducarLevaComponent implements OnInit {
       this.sourceReference = file.name;
     }
     if (!this.protocolCode) {
-      this.protocolCode = 'TBE-' + baseName.toUpperCase().replace(/\s+/g, '-').slice(0, 15);
+      const prefix = this.tipoCarga === 'libro' ? 'LIB-' : 'TBE-';
+      this.protocolCode = prefix + baseName.toUpperCase().replace(/\s+/g, '-').slice(0, 15);
     }
 
     // Iniciar extracción determinista hacia Markdown con PyMuPDF4LLM / Mammoth
@@ -180,7 +250,8 @@ export class EducarLevaComponent implements OnInit {
     this.educarService.publicarDocumento(payload).subscribe({
       next: (docCreado) => {
         this.publicando = false;
-        this.mensajeExito = `¡Protocolo "${docCreado.title}" [${docCreado.protocolCode}] aprobado y publicado exitosamente en el corpus cerrado de LEVA!`;
+        const tipoLabel = this.esLibro(docCreado) ? 'Libro/Tratado' : 'Protocolo';
+        this.mensajeExito = `¡${tipoLabel} "${docCreado.title}" [${docCreado.protocolCode}] aprobado y publicado exitosamente en el corpus cerrado de LEVA!`;
         this.descartarRevision();
         this.cargarCorpus();
       },
@@ -283,7 +354,8 @@ export class EducarLevaComponent implements OnInit {
     this.educarService.eliminarDocumento(doc.id).subscribe({
       next: () => {
         this.eliminando = false;
-        this.mensajeExito = `Protocolo "${doc.title}" [${doc.protocolCode}] eliminado del corpus clínico.`;
+        const tipoLabel = this.esLibro(doc) ? 'Libro/Tratado' : 'Protocolo';
+        this.mensajeExito = `${tipoLabel} "${doc.title}" [${doc.protocolCode}] eliminado del corpus clínico.`;
         this.documentoParaEliminar = null;
         this.cargarCorpus();
       },
