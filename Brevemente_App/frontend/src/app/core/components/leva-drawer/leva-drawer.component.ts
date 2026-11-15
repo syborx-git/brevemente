@@ -101,6 +101,23 @@ export class LevaDrawerComponent implements OnInit {
         });
       },
       complete: () => {
+        if (!replyMsg.contenido) {
+          this.levaHttp.enviarConsulta(txt).subscribe({
+            next: (res) => {
+              replyMsg.cargando = false;
+              replyMsg.contenido = res.contenido;
+              replyMsg.sugerenciaEstratagema = res.sugerenciaEstratagema;
+              replyMsg.fuentesCitadas = res.fuentesCitadas;
+              this.isWaiting = false;
+            },
+            error: () => {
+              replyMsg.cargando = false;
+              replyMsg.contenido = 'No fue posible conectar con LEVA. Verifica el estado del servidor Spring Boot.';
+              this.isWaiting = false;
+            }
+          });
+          return;
+        }
         replyMsg.cargando = false;
         this.isWaiting = false;
       }

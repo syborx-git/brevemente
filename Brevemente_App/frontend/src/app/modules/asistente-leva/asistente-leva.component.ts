@@ -113,6 +113,24 @@ export class AsistenteLevaComponent implements OnInit {
         });
       },
       complete: () => {
+        if (!levaMsg.contenido) {
+          this.levaRepo.enviarConsulta(userText).subscribe({
+            next: (res) => {
+              levaMsg.cargando = false;
+              levaMsg.contenido = res.contenido;
+              levaMsg.fuentesCitadas = res.fuentesCitadas;
+              levaMsg.sugerenciaEstratagema = res.sugerenciaEstratagema;
+              this.isProcessing = false;
+            },
+            error: () => {
+              levaMsg.cargando = false;
+              levaMsg.contenido = 'No fue posible consultar el corpus cerrado de LEVA en este momento. Verifica la conexión con el servidor.';
+              this.errorMessage = 'Error de conexión con el motor LEVA.';
+              this.isProcessing = false;
+            }
+          });
+          return;
+        }
         levaMsg.cargando = false;
         this.isProcessing = false;
       }

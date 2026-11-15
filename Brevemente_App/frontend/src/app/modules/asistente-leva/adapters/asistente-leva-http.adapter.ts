@@ -74,7 +74,19 @@ export class AsistenteLevaHttpAdapter implements AsistenteLevaRepository {
         url.searchParams.set('protocolFilter', protocoloFiltro);
       }
 
+      // Adjuntar token de sesión para autenticación en Server-Sent Events (SSE)
+      const rawSession = localStorage.getItem('brevemente_session');
+      if (rawSession) {
+        try {
+          const session = JSON.parse(rawSession);
+          if (session?.token) {
+            url.searchParams.set('token', session.token);
+          }
+        } catch {}
+      }
+
       const eventSource = new EventSource(url.toString(), { withCredentials: true });
+      let tokensReceived = 0;
 
       eventSource.onmessage = (event) => {
         this.zone.run(() => {
@@ -83,6 +95,7 @@ export class AsistenteLevaHttpAdapter implements AsistenteLevaRepository {
             eventSource.close();
             observer.complete();
           } else {
+            tokensReceived++;
             observer.next({ token: event.data });
           }
         });
@@ -91,10 +104,12 @@ export class AsistenteLevaHttpAdapter implements AsistenteLevaRepository {
       eventSource.onerror = (err) => {
         this.zone.run(() => {
           eventSource.close();
-          if (eventSource.readyState === EventSource.CLOSED) {
+          if (tokensReceived > 0) {
+            // Ya se habían recibido tokens, completar limpiamente
             observer.next({ done: true });
             observer.complete();
           } else {
+            // Fallo sin tokens recibidos (ej. 401, CORS o desconexión)
             observer.error(err);
           }
         });
