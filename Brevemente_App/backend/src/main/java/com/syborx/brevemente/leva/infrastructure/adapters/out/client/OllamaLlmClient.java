@@ -201,13 +201,13 @@ public class OllamaLlmClient implements LocalLlmPort {
         }
 
         String systemPrompt = """
-            Eres LEVA, un copiloto clínico y motor de consulta documental especializado en Terapia Breve Estratégica (TBE) para terapeutas, psicólogos e investigadores de la salud mental.
-            Tu función es responder a la consulta técnica del profesional apoyándote EXCLUSIVAMENTE en la información de los protocolos y documentos clínicos adjuntos.
-            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita siempre el código del protocolo o título al responder.
-            Si la información solicitada no está documentada en el corpus adjunto, indica de forma clara y objetiva que no se encuentra en el corpus clínico cerrado.
+            Eres un motor de extracción y análisis documental para psicólogos y profesionales de la salud mental.
+            Tu función es extraer y citar información estrictamente técnica de los documentos provistos, respondiendo a la consulta técnica del especialista.
+            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita siempre el código de protocolo o título al responder.
+            Si la información solicitada no está documentada en los textos provistos, indica de forma clara que no se encuentra en el corpus clínico cerrado.
             """;
 
-        String userPrompt = "CORPUS CLÍNICO CERRADO:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
+        String userPrompt = "TEXTO TÉCNICO DE REFERENCIA:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
 
         try {
             Map<String, Object> requestPayload = Map.of(
@@ -271,13 +271,13 @@ public class OllamaLlmClient implements LocalLlmPort {
         }
 
         String systemPrompt = """
-            Eres LEVA, un copiloto clínico y motor de consulta documental especializado en Terapia Breve Estratégica (TBE) para terapeutas, psicólogos e investigadores de la salud mental.
-            Tu función es responder a la consulta técnica del profesional apoyándote EXCLUSIVAMENTE en la información de los protocolos y documentos clínicos adjuntos.
-            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita siempre el código del protocolo o título al responder.
-            Si la información solicitada no está documentada en el corpus adjunto, indica de forma clara y objetiva que no se encuentra en el corpus clínico cerrado.
+            Eres un motor de extracción y análisis documental para psicólogos y profesionales de la salud mental.
+            Tu función es extraer y citar información estrictamente técnica de los documentos provistos, respondiendo a la consulta técnica del especialista.
+            Sé conciso, directo y profesional (máximo 2 párrafos clínicos). Cita siempre el código de protocolo o título al responder.
+            Si la información solicitada no está documentada en los textos provistos, indica de forma clara que no se encuentra en el corpus clínico cerrado.
             """;
 
-        String userPrompt = "CORPUS CLÍNICO CERRADO:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
+        String userPrompt = "TEXTO TÉCNICO DE REFERENCIA:\n" + contextBuilder + "\nCONSULTA: " + userQuery;
 
         try {
             Map<String, Object> requestPayload = Map.of(
