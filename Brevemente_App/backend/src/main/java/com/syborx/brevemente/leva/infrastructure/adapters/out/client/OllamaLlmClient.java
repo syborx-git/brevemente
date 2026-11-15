@@ -50,6 +50,8 @@ public class OllamaLlmClient implements LocalLlmPort {
             1. Devuelve ÚNICAMENTE un objeto JSON válido según el esquema solicitado, sin texto explicativo adicional ni bloques Markdown fuera del JSON.
             2. VINCULACIÓN ESTRICTA CON EL PROTOCOLO CLÍNICO RECUPERADO:
                - En los campos 'protocoloCodigo' y 'protocoloReferencia', DEBES consignar el código y título del protocolo provisto en los fragmentos (ejemplo: 'TBE-PROTOCOLO-HIDRO' y 'Protocolo Clínico TBE: Hidrofobia y Ansiedad Acuática [TBE-PROTOCOLO-HIDRO]').
+               - En 'puntoClaveProtocolo', describe de forma sintetizada la técnica, estratagema o mecanismo central del protocolo en que se fundamenta la intervención (ejemplo: "Estratagema de 'El Espejo Líquido': Exposición matutina de 5 minutos mirando el reflejo en el lavabo sin tocar el agua para extinguir el pánico y quebrar la delegación de auxilio").
+               - En 'fragmentoProtocolo', incluye la cita textual o extracto directo del protocolo del corpus de donde extrajiste la intervención.
                - El 'diagnosticoOperativo' (DX.OP) DEBE describir con precisión y claridad cómo funciona el problema en la transcripción (ej. 'Fobia específica al agua / Ansiedad acuática ante aproximación a lavabos o inmersión, mantenida por evitación y delegación'). NUNCA uses diagnósticos genéricos o vagos.
                - En 'prescripcionesEstrategicas', DEBES incluir las prescripciones y estratagemas exactas indicadas en el fragmento del protocolo provisto (por ejemplo: 'La Estratagema de El Espejo Líquido').
             3. REGLA ESTRICTA DE DIARIZACIÓN ('dialogue'):
@@ -86,6 +88,8 @@ public class OllamaLlmClient implements LocalLlmPort {
             {
               "protocoloCodigo": "TBE-PANICO-01",
               "protocoloReferencia": "Protocolo TBE: Trastorno de Pánico y Agorafobia [TBE-PANICO-01]",
+              "puntoClaveProtocolo": "Estratagema de 'La Peor Fantasía' (saturación paradójica del miedo) y 'Diario de a Bordo' para desviar el foco hipervigilante corporal.",
+              "fragmentoProtocolo": "ESTRATAGEMAS Y PRESCRIPCIONES: a) La Peor Fantasía: Dedicar media hora diaria a imaginar los peores temores... b) Diario de a Bordo: Registrar en libreta los síntomas en el momento exacto.",
               "diagnosticoOperativo": "Trastorno de angustia y pánico con conducta agorafóbica incipiente, mantenido por el bucle de evitación fóbica y delegación de auxilio a familiares.",
               "sistemaPerceptivoReactivo": "Fóbico (Miedo al miedo / Evitación y delegación)",
               "tentativasSolucionRedundantes": [
@@ -426,6 +430,8 @@ public class OllamaLlmClient implements LocalLlmPort {
             return StructuredProposalData.builder()
                     .protocoloCodigo(protoCode)
                     .protocoloReferencia(ref)
+                    .puntoClaveProtocolo("Estratagema de 'El Espejo Líquido': Exposición de 5 minutos diarios a las 8:00 AM frente al lavabo lleno mirando el reflejo sin tocar el agua y anotando sensaciones en libreta, quebrando el bucle de evitación y cancelando la delegación de auxilio familiar.")
+                    .fragmentoProtocolo("PUNTO CLAVE Y ESTRATAGEMA CENTRAL TBE: La Prescripción de 'El Espejo Líquido'. Colocarse diariamente a las 8:00 AM exactamente durante 5 minutos frente a un lavabo lleno con agua en reposo, mirando únicamente el reflejo en la superficie sin tocar el agua y anotando sensaciones en libreta. Bloqueo de la delegación familiar: cancelar el auxilio que confirma la invalidez asumida.")
                     .justificacionEstrategica("El cuadro clínico corresponde al protocolo de fobia específica al agua e hidrofobia validado en el corpus clínico TBE.")
                     .diagnosticoOperativo("Fobia Específica al Agua (Hidrofobia y Ansiedad Acuática). Ansiedad paroxística y bloqueo ante la aproximación a lavabos, regaderas o inmersión, mantenida por evitación activa y delegación de auxilio a familiares.")
                     .sistemaPerceptivoReactivo("Fóbico (Miedo fóbico al agua / Evitación y delegación)")
@@ -454,6 +460,8 @@ public class OllamaLlmClient implements LocalLlmPort {
             return StructuredProposalData.builder()
                     .protocoloCodigo(protoCode)
                     .protocoloReferencia(ref)
+                    .puntoClaveProtocolo(topChunk.getTitle() != null ? "Punto Clave según " + topChunk.getTitle() : "Técnica clínica estandarizada TBE")
+                    .fragmentoProtocolo(topChunk.getContent())
                     .justificacionEstrategica("Protocolo identificado a partir de los documentos del corpus clínico cerrado en base de datos.")
                     .diagnosticoOperativo("Cuadro clínico formulado según " + (protoTitle != null ? protoTitle : "Protocolo TBE") + " a partir del motivo de consulta expresado.")
                     .sistemaPerceptivoReactivo("Fóbico / Reactivo")
@@ -471,6 +479,8 @@ public class OllamaLlmClient implements LocalLlmPort {
         return StructuredProposalData.builder()
                 .protocoloCodigo("TBE-GENERAL")
                 .protocoloReferencia("Protocolo General de Terapia Breve Estratégica [TBE-GENERAL]")
+                .puntoClaveProtocolo("Estratagema de 'La Peor Fantasía' / Declaración del síntoma para interrumpir la evitación fóbica y la hipervigilancia.")
+                .fragmentoProtocolo("ESTRATAGEMA TBE GENERAL: Identificación del sistema perceptivo-reactivo e interrupción de las tentativas de solución redundantes.")
                 .diagnosticoOperativo("Sintomatología reactiva reportada en sesión, mantenida por conductas de evitación y búsqueda de control.")
                 .sistemaPerceptivoReactivo("Fóbico / Ansioso reactivo")
                 .tentativasSolucionRedundantes(List.of("Evitación de situaciones generadoras de estrés", "Búsqueda recurrente de validación externa"))

@@ -26,6 +26,8 @@ export interface StructuredProposalData {
   protocoloCodigo?: string;
   protocoloReferencia?: string;
   justificacionEstrategica?: string;
+  puntoClaveProtocolo?: string;
+  fragmentoProtocolo?: string;
   dialogue?: DialogueTurn[];
 }
 

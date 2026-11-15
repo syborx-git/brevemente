@@ -943,6 +943,10 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + headerFirma + approvedData.notaEvolucionSoap;
       }
 
+      if (approvedData.puntoClaveProtocolo && !this.selectedSession.f2) {
+        this.selectedSession.f2 = approvedData.puntoClaveProtocolo;
+      }
+
       this.expedienteRepo.actualizarSesion(this.selectedSession.id, {
         protocol: this.selectedSession.protocol,
         dxOp: this.selectedSession.dxOp,
@@ -964,7 +968,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         spr: approvedData.sistemaPerceptivoReactivo || 'Fóbico',
         px: approvedData.prescripcionesEstrategicas ? [...approvedData.prescripcionesEstrategicas] : [],
         f1: 'Intervención de primera sesión',
-        f2: 'Reestructuración estratégica',
+        f2: approvedData.puntoClaveProtocolo || 'Reestructuración estratégica',
         oss: 'Sesión clínica analizada y sellada con LEVA Copilot',
         add: (approvedData.notaEvolucionSoap ? `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n` + approvedData.notaEvolucionSoap : ''),
         rss: 'En observación',

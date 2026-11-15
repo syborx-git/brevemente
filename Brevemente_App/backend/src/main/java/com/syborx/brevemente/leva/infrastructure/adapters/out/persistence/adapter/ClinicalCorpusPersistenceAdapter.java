@@ -144,7 +144,30 @@ public class ClinicalCorpusPersistenceAdapter implements ClinicalCorpusRepositor
             return Collections.emptyList();
         }
 
-        List<ClinicalCorpusChunkJpaEntity> allChunks = chunkRepository.findAll();
+        List<ClinicalCorpusChunkJpaEntity> allChunks = new ArrayList<>(chunkRepository.findAll());
+
+        // Asegurar que si un protocolo en clinical_corpus_documents no tiene chunks indexados, participe en RAG
+        List<ClinicalCorpusJpaEntity> allDocs = repository.findAll();
+        Set<String> chunkDocIds = new HashSet<>();
+        for (ClinicalCorpusChunkJpaEntity c : allChunks) {
+            if (c.getDocumentId() != null) {
+                chunkDocIds.add(c.getDocumentId());
+            }
+        }
+        for (ClinicalCorpusJpaEntity doc : allDocs) {
+            if (!chunkDocIds.contains(doc.getId())) {
+                allChunks.add(ClinicalCorpusChunkJpaEntity.builder()
+                        .id("vchunk-" + doc.getId())
+                        .documentId(doc.getId())
+                        .protocolCode(doc.getProtocolCode())
+                        .chunkIndex(0)
+                        .title(doc.getTitle())
+                        .content(doc.getContent())
+                        .wordCount(doc.getContent() != null ? doc.getContent().split("\\s+").length : 0)
+                        .build());
+            }
+        }
+
         if (allChunks.isEmpty()) {
             return Collections.emptyList();
         }
@@ -154,12 +177,24 @@ public class ClinicalCorpusPersistenceAdapter implements ClinicalCorpusRepositor
 
         record ScoredChunk(ClinicalCorpusChunkJpaEntity chunk, double score) {}
 
+        String queryLower = queryText.toLowerCase();
+        boolean queryHasWater = queryLower.contains("hidro") || queryLower.contains("agua")
+                || queryLower.contains("lavabo") || queryLower.contains("espejo")
+                || queryLower.contains("bañar") || queryLower.contains("ducha") || queryLower.contains("inmersi");
+
         List<ScoredChunk> scoredList = new ArrayList<>(allChunks.size());
         for (ClinicalCorpusChunkJpaEntity entity : allChunks) {
+            String protoCode = entity.getProtocolCode() != null ? entity.getProtocolCode().toLowerCase() : "";
+            String protoTitle = entity.getTitle() != null ? entity.getTitle().toLowerCase() : "";
             String combinedText = (entity.getTitle() != null ? entity.getTitle() + " " : "")
                     + (entity.getProtocolCode() != null ? entity.getProtocolCode() + " " : "")
                     + (entity.getContent() != null ? entity.getContent() : "");
             double lexicalScore = calculateLexicalOverlap(queryText, combinedText);
+
+            // Boost clínico de alta fidelidad: Si la consulta es de hidrofobia/agua, priorizar protocolo de hidrofobia
+            if (queryHasWater && (protoCode.contains("hidro") || protoTitle.contains("hidro") || protoTitle.contains("agua") || combinedText.toLowerCase().contains("hidro"))) {
+                lexicalScore += 100.0;
+            }
 
             double score;
             if (entity.getEmbedding() != null && !entity.getEmbedding().isEmpty() && !queryVector.isEmpty()) {

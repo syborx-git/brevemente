@@ -29,6 +29,11 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
 
   // Modelo de datos editable en pantalla
   editableData: StructuredProposalData = {
+    protocoloCodigo: '',
+    protocoloReferencia: '',
+    justificacionEstrategica: '',
+    puntoClaveProtocolo: '',
+    fragmentoProtocolo: '',
     diagnosticoOperativo: '',
     sistemaPerceptivoReactivo: '',
     tentativasSolucionRedundantes: [],
@@ -46,6 +51,7 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
   errorMessage: string | null = null;
   successMessage: string | null = null;
   showDialogue = false;
+  showCorpusFragment = false;
   activeTab: 'clinico' | 'soap' | 'dialogo' = 'clinico';
 
   // Inputs temporales para agregar nuevos elementos a listas
@@ -89,6 +95,11 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
       : (this.proposal.structuredProposal || {});
 
     this.editableData = {
+      protocoloCodigo: source.protocoloCodigo || '',
+      protocoloReferencia: source.protocoloReferencia || '',
+      justificacionEstrategica: source.justificacionEstrategica || '',
+      puntoClaveProtocolo: source.puntoClaveProtocolo || '',
+      fragmentoProtocolo: source.fragmentoProtocolo || '',
       diagnosticoOperativo: source.diagnosticoOperativo || '',
       sistemaPerceptivoReactivo: source.sistemaPerceptivoReactivo || '',
       tentativasSolucionRedundantes: source.tentativasSolucionRedundantes ? [...source.tentativasSolucionRedundantes] : [],
