@@ -484,6 +484,9 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       if (!this.selectedSession && s.length > 0) {
         this.selectedSession = s[0];
         this.cargarPropuestaDeSesion(s[0].id);
+      } else if (!this.selectedSession && s.length === 0) {
+        const defaultSessionId = this.pacienteId + '-s1';
+        this.cargarPropuestaDeSesion(defaultSessionId);
       }
       this.newConstancia.sessionsCount = s.length > 0 ? s.length : 1;
       this.newBitacora.sessionNumber = s.length > 0 ? s.length : 1;
@@ -887,6 +890,27 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       if (sp.sistemaPerceptivoReactivo) this.selectedSession.spr = sp.sistemaPerceptivoReactivo;
       if (sp.prescripcionesEstrategicas?.length) this.selectedSession.px = [...sp.prescripcionesEstrategicas];
       if (sp.notaEvolucionSoap) this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + sp.notaEvolucionSoap;
+    } else {
+      const nuevaSesion: any = {
+        number: this.sessions.length + 1,
+        date: new Date().toISOString().split('T')[0],
+        phase: 'Fase 1: Diagnóstico e Intervención',
+        protocol: (sp.protocoloCodigo || sp.protocoloReferencia) ?? 'TBE',
+        dxOp: sp.diagnosticoOperativo || 'Diagnóstico preliminar TBE',
+        spr: sp.sistemaPerceptivoReactivo || 'Fóbico',
+        px: sp.prescripcionesEstrategicas ? [...sp.prescripcionesEstrategicas] : [],
+        f1: 'Intervención de primera sesión',
+        f2: 'Reestructuración estratégica',
+        oss: 'Sesión clínica analizada con LEVA Copilot',
+        add: sp.notaEvolucionSoap || '',
+        rss: 'En observación',
+        eff: 'Inicio de tratamiento estratégico',
+        notes: 'Sesión generada a partir de propuesta LEVA',
+        observationsNextSession: 'Evaluar cumplimiento de prescripción.'
+      };
+      this.expedienteRepo.agregarSesion(this.pacienteId, nuevaSesion).subscribe(() => {
+        this.cargarDatos();
+      });
     }
   }
 
@@ -929,6 +953,27 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       }).subscribe({
         next: () => this.cargarDatos(),
         error: () => this.cargarDatos()
+      });
+    } else {
+      const nuevaSesion: any = {
+        number: this.sessions.length + 1,
+        date: new Date().toISOString().split('T')[0],
+        phase: 'Fase 1: Diagnóstico e Intervención',
+        protocol: (approvedData.protocoloCodigo || approvedData.protocoloReferencia) ?? 'TBE',
+        dxOp: approvedData.diagnosticoOperativo || 'Diagnóstico preliminar TBE',
+        spr: approvedData.sistemaPerceptivoReactivo || 'Fóbico',
+        px: approvedData.prescripcionesEstrategicas ? [...approvedData.prescripcionesEstrategicas] : [],
+        f1: 'Intervención de primera sesión',
+        f2: 'Reestructuración estratégica',
+        oss: 'Sesión clínica analizada y sellada con LEVA Copilot',
+        add: (approvedData.notaEvolucionSoap ? `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n` + approvedData.notaEvolucionSoap : ''),
+        rss: 'En observación',
+        eff: 'Inicio de tratamiento estratégico',
+        notes: 'Sesión oficial sellada por terapeuta',
+        observationsNextSession: 'Evaluar cumplimiento de prescripción.'
+      };
+      this.expedienteRepo.agregarSesion(this.pacienteId, nuevaSesion).subscribe(() => {
+        this.cargarDatos();
       });
     }
   }
