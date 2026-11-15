@@ -38,6 +38,7 @@ public class LevaOrchestrationService implements
     private final LevaProposalRepositoryPort proposalRepositoryPort;
     private final ClinicalCorpusRepositoryPort corpusRepositoryPort;
     private final CacheManager cacheManager;
+    private final SessionAudioStoragePort sessionAudioStoragePort;
 
 
     @Value("${app.leva.callback-url:http://localhost:8080/api/v1/internal/transcriptions/callback}")
@@ -57,6 +58,16 @@ public class LevaOrchestrationService implements
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+
+        // Persistir el audio original ANTES de transcribir: nunca se pierde la grabación
+        try {
+            SessionAudioStoragePort.StoredAudio stored = sessionAudioStoragePort.store(sessionId, audioFile);
+            task.setAudioStoragePath(stored.storagePath());
+            task.setAudioContentType(stored.contentType());
+            task.setAudioSizeBytes(stored.sizeBytes());
+        } catch (Exception ex) {
+            log.error("[LEVA Engine] No se pudo persistir el audio de la sesión {}: {}", sessionId, ex.getMessage());
+        }
 
         task = taskRepositoryPort.save(task);
 

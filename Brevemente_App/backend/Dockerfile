@@ -20,7 +20,7 @@ FROM eclipse-temurin:17-jre-alpine AS runner
 WORKDIR /app
 
 # Security: Run as unprivileged user & create storage directory
-RUN mkdir -p /app/storage/corpus/original_files && \
+RUN mkdir -p /app/storage/corpus/original_files /app/storage/sessions/audio && \
     addgroup -S appgroup && adduser -S appuser -G appgroup && \
     chown -R appuser:appgroup /app
 USER appuser

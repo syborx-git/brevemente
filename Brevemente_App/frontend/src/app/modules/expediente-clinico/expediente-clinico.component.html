@@ -1038,9 +1038,21 @@
 
               <!-- Estado ERROR -->
               <ng-container *ngIf="recordingState === 'ERROR'">
+                <button *ngIf="pendingAudioBlob" (click)="uploadPendingAudio()"
+                  class="px-3 py-2 rounded-xl font-bold text-xs bg-clinical-teal hover:bg-clinical-tealHover text-white transition-all cursor-pointer">
+                  Reintentar envío
+                </button>
+                <button *ngIf="!pendingAudioBlob && storedAudioAvailable" (click)="retranscribeStoredAudio()"
+                  class="px-3 py-2 rounded-xl font-bold text-xs bg-clinical-teal hover:bg-clinical-tealHover text-white transition-all cursor-pointer">
+                  Reintentar transcripción
+                </button>
+                <button *ngIf="!pendingAudioBlob && storedAudioAvailable" (click)="checkAnalysisResult()"
+                  class="px-3 py-2 rounded-xl font-medium text-xs border border-slate-300 hover:bg-slate-50 text-slate-700 transition-all cursor-pointer">
+                  Comprobar resultado
+                </button>
                 <button (click)="startRealRecording()"
                   class="px-3 py-2 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer">
-                  Reintentar Grabación
+                  Grabar de nuevo
                 </button>
                 <button (click)="resetRecordingState()"
                   class="px-2.5 py-2 rounded-xl text-xs text-slate-500 hover:bg-slate-100 transition-all cursor-pointer">
@@ -1116,6 +1128,28 @@
             <div class="flex-1">
               <p class="text-xs font-bold text-rose-900">Ocurrió un error en la grabación o procesamiento</p>
               <p class="text-[11px] text-rose-700 mt-0.5 leading-relaxed">{{ recordingErrorMessage }}</p>
+            </div>
+          </div>
+
+          <!-- Audio de la sesión (local recién grabado o persistido en el servidor) -->
+          <div *ngIf="audioObjectUrl && recordingState !== 'GRABANDO'" class="p-4 bg-white border border-slate-200 rounded-xl space-y-2">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Audio de la sesión</p>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                [ngClass]="storedAudioAvailable ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'">
+                {{ storedAudioAvailable ? 'Guardado en el servidor' : (audioSource === 'local' ? 'Solo en este navegador' : 'Audio') }}
+              </span>
+            </div>
+            <audio [src]="audioObjectUrl" controls preload="metadata" class="w-full"></audio>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button (click)="descargarAudio()"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 hover:bg-slate-50 text-slate-700 cursor-pointer">
+                Descargar audio
+              </button>
+              <button *ngIf="storedAudioAvailable && (recordingState === 'IDLE' || recordingState === 'COMPLETADO')" (click)="retranscribeStoredAudio()"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-clinical-teal text-clinical-teal hover:bg-clinical-teal/10 cursor-pointer">
+                Transcribir / Re-analizar
+              </button>
             </div>
           </div>
 

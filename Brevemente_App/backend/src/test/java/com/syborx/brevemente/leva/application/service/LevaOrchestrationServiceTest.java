@@ -3,6 +3,7 @@ package com.syborx.brevemente.leva.application.service;
 import com.syborx.brevemente.leva.application.ports.out.ClinicalCorpusRepositoryPort;
 import com.syborx.brevemente.leva.application.ports.out.LevaProposalRepositoryPort;
 import com.syborx.brevemente.leva.application.ports.out.LocalLlmPort;
+import com.syborx.brevemente.leva.application.ports.out.SessionAudioStoragePort;
 import com.syborx.brevemente.leva.application.ports.out.TranscriptionClientPort;
 import com.syborx.brevemente.leva.application.ports.out.TranscriptionTaskRepositoryPort;
 import com.syborx.brevemente.leva.domain.model.ClinicalCorpusChunk;
@@ -53,6 +54,9 @@ class LevaOrchestrationServiceTest {
     @Mock
     private CacheManager cacheManager;
 
+    @Mock
+    private SessionAudioStoragePort sessionAudioStoragePort;
+
     private LevaOrchestrationService service;
 
     @BeforeEach
@@ -63,7 +67,8 @@ class LevaOrchestrationServiceTest {
                 taskRepositoryPort,
                 proposalRepositoryPort,
                 corpusRepositoryPort,
-                cacheManager
+                cacheManager,
+                sessionAudioStoragePort
         );
     }
 

@@ -395,6 +395,11 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   transcriptText = '';
   levaAdvice = '';
   currentProposal: LevaProposalResponse | null = null;
+  // Audio de sesión: blob retenido localmente, URL de reproducción y disponibilidad en servidor
+  pendingAudioBlob: Blob | null = null;
+  audioObjectUrl: string | null = null;
+  audioSource: 'local' | 'server' | null = null;
+  storedAudioAvailable = false;
   private audioSubs: Subscription[] = [];
 
   constructor(
@@ -440,6 +445,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     if (this.isRecording) {
       this.audioRecorder.cancelRecording();
     }
+    this.revokeAudioUrl();
   }
 
   cargarDatos(): void {
@@ -673,6 +679,9 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     this.transcriptText = '';
     this.levaAdvice = '';
     this.currentProposal = null;
+    this.pendingAudioBlob = null;
+    this.revokeAudioUrl();
+    this.audioSource = null;
 
     try {
       this.recordingState = 'GRABANDO';
@@ -705,60 +714,147 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
     try {
       const recordingResult = await this.audioRecorder.stopRecording();
-      const sessionId = this.selectedSession?.id || (this.pacienteId + '-s' + (this.sessions.length + 1));
-
-      this.levaSessionService.uploadSessionAudio(sessionId, recordingResult.blob, 'sesion_clinica.webm', 'es')
-        .subscribe({
-          next: (task) => {
-            if (task.status === 'FAILED') {
-              this.recordingErrorMessage = task.errorMessage || 'El motor de transcripción no pudo iniciar.';
-              this.recordingState = 'ERROR';
-              return;
-            }
-
-            this.recordingState = 'PROCESANDO_IA';
-
-            // Polling hacia Spring Boot para esperar transcripción + propuesta LLM
-            this.levaSessionService.pollSessionAnalysis(sessionId, 2500, 90).subscribe({
-              next: (pollResult) => {
-                if (pollResult.completed) {
-                  this.recordingState = 'COMPLETADO';
-                  if (pollResult.proposal) {
-                    this.currentProposal = pollResult.proposal;
-                    const sp = pollResult.proposal.structuredProposal;
-                    if (sp) {
-                      this.transcriptText = pollResult.task?.rawResult?.fullText
-                        || (sp.dialogue && sp.dialogue.length > 0 ? sp.dialogue.map(d => `${d.speaker}: ${d.text}`).join('\n') : '')
-                        || 'Transcripción completada por Whisper.';
-
-                      const adviceParts: string[] = [];
-                      if (sp.diagnosticoOperativo) adviceParts.push(`Dx Operativo: ${sp.diagnosticoOperativo}`);
-                      if (sp.sistemaPerceptivoReactivo) adviceParts.push(`SPR: ${sp.sistemaPerceptivoReactivo}`);
-                      if (sp.tentativasSolucionRedundantes?.length) adviceParts.push(`Tentativas redundantes: ${sp.tentativasSolucionRedundantes.join(', ')}`);
-                      if (sp.prescripcionesEstrategicas?.length) adviceParts.push(`Prescripciones TBE: ${sp.prescripcionesEstrategicas.join(', ')}`);
-                      this.levaAdvice = adviceParts.join(' | ');
-                    }
-                  } else if (pollResult.task?.rawResult?.fullText) {
-                    this.transcriptText = pollResult.task.rawResult.fullText;
-                    this.levaAdvice = 'Transcripción generada correctamente. Pendiente de propuesta clínica.';
-                  }
-                }
-              },
-              error: (pollErr) => {
-                this.recordingErrorMessage = pollErr.message || 'Error durante el procesamiento inteligente de la sesión.';
-                this.recordingState = 'ERROR';
-              }
-            });
-          },
-          error: (uploadErr) => {
-            this.recordingErrorMessage = uploadErr.error?.message || uploadErr.message || 'Error al subir el audio de la sesión a Spring Boot.';
-            this.recordingState = 'ERROR';
-          }
-        });
+      // Conservar el audio en memoria: reproducible/descargable y reintentable aunque falle el envío
+      this.pendingAudioBlob = recordingResult.blob;
+      this.setAudioPlayback(recordingResult.blob, 'local');
+      this.uploadPendingAudio();
     } catch (err: any) {
       this.recordingErrorMessage = err.message || 'Error al detener y procesar la grabación.';
       this.recordingState = 'ERROR';
     }
+  }
+
+  private get currentSessionId(): string {
+    return this.selectedSession?.id || (this.pacienteId + '-s' + (this.sessions.length + 1));
+  }
+
+  /** Sube el audio retenido (también usado para "Reintentar envío"). */
+  uploadPendingAudio(): void {
+    if (!this.pendingAudioBlob) return;
+    const sessionId = this.currentSessionId;
+    this.recordingState = 'ENVIANDO_AUDIO';
+    this.recordingErrorMessage = null;
+
+    this.levaSessionService.uploadSessionAudio(sessionId, this.pendingAudioBlob, 'sesion_clinica.webm', 'es')
+      .subscribe({
+        next: (task) => {
+          if (task.status === 'FAILED') {
+            this.recordingErrorMessage = task.errorMessage || 'El motor de transcripción no pudo iniciar. Tu audio quedó guardado en el servidor.';
+            this.recordingState = 'ERROR';
+            this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+            return;
+          }
+          this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+          this.pendingAudioBlob = null;
+          this.pollAnalysis(sessionId);
+        },
+        error: (uploadErr) => {
+          this.recordingErrorMessage = (uploadErr.error?.message || uploadErr.message || 'Error al subir el audio de la sesión.')
+            + ' Tu grabación sigue en este navegador: puedes reintentar el envío o descargarla.';
+          this.recordingState = 'ERROR';
+        }
+      });
+  }
+
+  /** Reprocesa en el servidor el audio ya guardado (sin volver a grabar). */
+  retranscribeStoredAudio(): void {
+    const sessionId = this.currentSessionId;
+    this.recordingState = 'PROCESANDO_IA';
+    this.recordingErrorMessage = null;
+    this.currentProposal = null;
+    this.levaSessionService.retranscribe(sessionId, 'es').subscribe({
+      next: (task) => {
+        if (task.status === 'FAILED') {
+          this.recordingErrorMessage = task.errorMessage || 'No se pudo reiniciar la transcripción.';
+          this.recordingState = 'ERROR';
+          return;
+        }
+        this.pollAnalysis(sessionId);
+      },
+      error: (err) => {
+        this.recordingErrorMessage = err.error?.message || err.message || 'No se pudo reiniciar la transcripción.';
+        this.recordingState = 'ERROR';
+      }
+    });
+  }
+
+  /** Consulta de nuevo el resultado (útil si se agotó la espera pero el servidor siguió procesando). */
+  checkAnalysisResult(): void {
+    this.recordingState = 'PROCESANDO_IA';
+    this.recordingErrorMessage = null;
+    this.pollAnalysis(this.currentSessionId);
+  }
+
+  private pollAnalysis(sessionId: string): void {
+    this.recordingState = 'PROCESANDO_IA';
+    this.levaSessionService.pollSessionAnalysis(sessionId, 2500, 300).subscribe({
+      next: (pollResult) => {
+        if (!pollResult.completed) return;
+        this.recordingState = 'COMPLETADO';
+        if (pollResult.proposal) {
+          this.currentProposal = pollResult.proposal;
+          const sp = pollResult.proposal.structuredProposal;
+          if (sp) {
+            this.transcriptText = pollResult.task?.rawResult?.fullText
+              || (sp.dialogue && sp.dialogue.length > 0 ? sp.dialogue.map(d => `${d.speaker}: ${d.text}`).join('\n') : '')
+              || 'Transcripción completada por Whisper.';
+
+            const adviceParts: string[] = [];
+            if (sp.diagnosticoOperativo) adviceParts.push(`Dx Operativo: ${sp.diagnosticoOperativo}`);
+            if (sp.sistemaPerceptivoReactivo) adviceParts.push(`SPR: ${sp.sistemaPerceptivoReactivo}`);
+            if (sp.tentativasSolucionRedundantes?.length) adviceParts.push(`Tentativas redundantes: ${sp.tentativasSolucionRedundantes.join(', ')}`);
+            if (sp.prescripcionesEstrategicas?.length) adviceParts.push(`Prescripciones TBE: ${sp.prescripcionesEstrategicas.join(', ')}`);
+            this.levaAdvice = adviceParts.join(' | ');
+          }
+        } else if (pollResult.task?.rawResult?.fullText) {
+          this.transcriptText = pollResult.task.rawResult.fullText;
+          this.levaAdvice = 'Transcripción generada correctamente. Pendiente de propuesta clínica.';
+        }
+      },
+      error: (pollErr) => {
+        this.recordingErrorMessage = (pollErr.message || 'Error durante el procesamiento inteligente de la sesión.')
+          + ' El audio está guardado; puedes comprobar el resultado o reintentar la transcripción.';
+        this.recordingState = 'ERROR';
+      }
+    });
+  }
+
+  // --- Reproducción / descarga del audio de la sesión ---------------------------------------
+  private setAudioPlayback(blob: Blob, source: 'local' | 'server'): void {
+    this.revokeAudioUrl();
+    this.audioObjectUrl = URL.createObjectURL(blob);
+    this.audioSource = source;
+  }
+
+  private revokeAudioUrl(): void {
+    if (this.audioObjectUrl) {
+      URL.revokeObjectURL(this.audioObjectUrl);
+      this.audioObjectUrl = null;
+    }
+  }
+
+  /** Carga el audio persistido en el servidor para la sesión seleccionada (si existe). */
+  cargarAudioDeSesion(sessionId: string): void {
+    this.storedAudioAvailable = false;
+    this.levaSessionService.getTaskStatus(sessionId).subscribe({
+      next: (task) => {
+        this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+        if (!this.storedAudioAvailable || this.pendingAudioBlob) return;
+        this.levaSessionService.getStoredAudio(sessionId).subscribe({
+          next: (blob) => this.setAudioPlayback(blob, 'server'),
+          error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
+        });
+      },
+      error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
+    });
+  }
+
+  descargarAudio(): void {
+    if (!this.audioObjectUrl) return;
+    const a = document.createElement('a');
+    a.href = this.audioObjectUrl;
+    a.download = `sesion_${this.currentSessionId}.webm`;
+    a.click();
   }
 
   toggleRecording(): void {
@@ -841,6 +937,9 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   cargarPropuestaDeSesion(sessionId: string): void {
+    this.pendingAudioBlob = null;
+    this.revokeAudioUrl();
+    this.cargarAudioDeSesion(sessionId);
     this.levaSessionService.getProposal(sessionId).subscribe({
       next: (proposal) => {
         this.currentProposal = proposal;

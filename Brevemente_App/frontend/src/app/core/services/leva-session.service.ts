@@ -57,6 +57,8 @@ export interface TranscriptionTask {
   terapeutaId?: string;
   status: TaskStatus;
   audioFileName?: string;
+  audioContentType?: string;
+  audioSizeBytes?: number;
   durationSeconds?: number;
   languageDetected?: string;
   errorMessage?: string;
@@ -101,6 +103,24 @@ export class LevaSessionService {
   }
 
   /**
+   * Descarga el audio persistido en el servidor como Blob (el endpoint requiere JWT,
+   * por lo que no se puede usar directamente como src de <audio>).
+   */
+  public getStoredAudio(sessionId: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/leva/sessions/${sessionId}/audio`, { responseType: 'blob' });
+  }
+
+  /**
+   * Reintenta la transcripción con el audio ya almacenado (sin volver a grabar)
+   */
+  public retranscribe(sessionId: string, language: string = 'es'): Observable<TranscriptionTask> {
+    return this.http.post<TranscriptionTask>(
+      `${this.apiUrl}/leva/sessions/${sessionId}/retranscribe?language=${encodeURIComponent(language)}`,
+      null
+    );
+  }
+
+  /**
    * Consulta el estado de la tarea de transcripción
    */
   public getTaskStatus(sessionId: string): Observable<TranscriptionTask> {
@@ -127,7 +147,7 @@ export class LevaSessionService {
   public pollSessionAnalysis(
     sessionId: string,
     intervalMs: number = 2500,
-    maxWaitSeconds: number = 90
+    maxWaitSeconds: number = 300
   ): Observable<{ completed: boolean; proposal?: LevaProposalResponse; task?: TranscriptionTask; error?: string }> {
     const startTime = Date.now();
 

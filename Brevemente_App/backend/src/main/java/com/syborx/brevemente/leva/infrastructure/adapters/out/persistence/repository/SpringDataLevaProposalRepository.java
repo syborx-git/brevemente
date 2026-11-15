@@ -9,5 +9,5 @@ import java.util.Optional;
 @Repository
 public interface SpringDataLevaProposalRepository extends JpaRepository<LevaProposalJpaEntity, String> {
     Optional<LevaProposalJpaEntity> findByTaskId(String taskId);
-    Optional<LevaProposalJpaEntity> findByCitaId(String citaId);
+    Optional<LevaProposalJpaEntity> findFirstByCitaIdOrderByCreatedAtDesc(String citaId);
 }
