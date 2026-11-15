@@ -29,56 +29,66 @@ VALUES
     'Prescripciones directas: El Diario de a Bordo como interruptor cognitivo y la Técnica del Espejo Líquido para fobias acuáticas e interoceptivas.',
     'Giorgio Nardone & Paul Watzlawick - Herder Editorial (2018)'
 )
-ON CONFLICT (id) DO UPDATE SET
+ON CONFLICT (protocol_code) DO UPDATE SET
     title = EXCLUDED.title,
-    protocol_code = EXCLUDED.protocol_code,
     category = EXCLUDED.category,
     content = EXCLUDED.content,
     source_reference = EXCLUDED.source_reference;
 
--- 2. Insertar Fragmentos Semánticos (Chunks RAG de ~500 palabras por capítulo)
+-- 2. Limpiar fragmentos previos si existieran
+DELETE FROM clinical_corpus_chunks
+WHERE protocol_code = 'LIB-NAR-01'
+   OR id IN ('chk-book-001-1', 'chk-book-001-2', 'chk-book-001-3', 'chk-book-001-4');
+
+-- 3. Insertar fragmentos semánticos usando el ID real del documento
 INSERT INTO clinical_corpus_chunks (id, document_id, protocol_code, chunk_index, title, content, word_count)
-VALUES
-(
+SELECT
     'chk-book-001-1',
-    'corp-book-001',
+    id,
     'LIB-NAR-01',
     0,
     'Capítulo 1: La Arquitectura de las Soluciones Intentadas Redundantes',
     'FUNDAMENTO TEÓRICO: En la perspectiva estratégica desarrollada en Arezzo, los problemas psiquiátricos y fóbicos se autoalimentan de las soluciones que el paciente y su entorno ponen en marcha para resolverlos. Cuando una respuesta conductual no funciona, la respuesta del ser humano suele ser aplicar más de la misma solución con mayor intensidad. Tres mecanismos universales: 1) Evitación sistemática: cuanto más se evita una situación temida, más confirmación recibe la mente de que la situación es verdaderamente peligrosa e inmanejable. 2) Búsqueda de protección o delegación de auxilio: pedir compañía o ayuda delegada alivia momentáneamente pero sella a nivel inconsciente el mensaje: "Si necesito ayuda es porque soy incapaz de afrontarlo solo". 3) El intento de control deliberado: intentar forzar el sueño, la respiración, la serenidad o el ritmo cardíaco produce una aceleración fisiológica inmediata hacia el pánico.',
     132
-),
-(
+FROM clinical_corpus_documents
+WHERE protocol_code = 'LIB-NAR-01'
+LIMIT 1;
+
+INSERT INTO clinical_corpus_chunks (id, document_id, protocol_code, chunk_index, title, content, word_count)
+SELECT
     'chk-book-001-2',
-    'corp-book-001',
+    id,
     'LIB-NAR-01',
     1,
     'Capítulo 2: El Diálogo Estratégico y la Reestructuración Analógica',
     'MÉTODO CLÍNICO: El terapeuta estratégico no asume una postura de profesor ni de juez analítico. En su lugar, utiliza el Diálogo Estratégico mediante secuencias de preguntas con ilusión de alternativa ("¿Evitas la situación porque te da miedo o te da más miedo porque la evitas?"). Cada respuesta del paciente cierra una puerta a la justificación del problema y abre una ventana hacia la experiencia emocional correctiva. Se emplean aforismos y reestructuraciones analógicas: "El miedo mirado a la cara se convierte en valor, el miedo evitado se convierte en pánico". La reestructuración no busca convencer intelectualmente, sino provocar un impacto emocional que debilite la creencia fóbica antes de prescribir la tarea conductual.',
     108
-),
-(
+FROM clinical_corpus_documents
+WHERE protocol_code = 'LIB-NAR-01'
+LIMIT 1;
+
+INSERT INTO clinical_corpus_chunks (id, document_id, protocol_code, chunk_index, title, content, word_count)
+SELECT
     'chk-book-001-3',
-    'corp-book-001',
+    id,
     'LIB-NAR-01',
     2,
     'Capítulo 3: Prescripciones Paradójicas y el Uso de Estratagemas',
     'ESTRATAGEMA CLÍNICA CENTRAL: Principio de "Apagar el fuego añadiendo leña". Cuando un síntoma o pensamiento obsesivo se resiste a la voluntad, la prescripción consiste en ordenar deliberadamente la ejecución del síntoma bajo condiciones estrictas de tiempo y espacio. Prescripción de "La Peor Fantasía": obligar al paciente a aislarse 30 minutos cronometrados cada día para visualizar voluntariamente todas sus catástrofes; al forzar la aparición voluntaria del miedo, la mente satura el circuito de alarma somático y el miedo se extingue. Prescripción de "La Violación del Ritual": introducir una pequeña anomalía en el ritual compulsivo ("si te lavas las manos una vez, debes lavártelas cinco veces seguidas exactas") transformando el alivio en una penosa carga hasta disolver la compulsión.',
     124
-),
-(
+FROM clinical_corpus_documents
+WHERE protocol_code = 'LIB-NAR-01'
+LIMIT 1;
+
+INSERT INTO clinical_corpus_chunks (id, document_id, protocol_code, chunk_index, title, content, word_count)
+SELECT
     'chk-book-001-4',
-    'corp-book-001',
+    id,
     'LIB-NAR-01',
     3,
     'Capítulo 4: Desarticulación de Fobias Complejas y Ansiedades Específicas',
     'PROTOCOLO OPERATIVO PARA ANSIEDADES FÓBICAS: Para desarticular fobias complejas (espaciales, hidrofobia, agorafobia o hipocondría), la intervención se concentra en bloquear de inmediato los dos pilares que sostienen el problema: 1) Cancelar la delegación familiar: instruir a los familiares para que se declaren incapacitados de acompañar o validar, rompiendo la conspiración del silencio y la sobreprotección. 2) Prescripción analógica graduada: la Técnica del Espejo o exposición indirecta focalizada, donde el sujeto permanece 5 minutos observando el estímulo temido sin tocarlo ni escapar, anotando en una libreta de a bordo cada sensación física para redirigir la atención cortical y desescalar la respuesta fóbica simpática.',
     105
-)
-ON CONFLICT (id) DO UPDATE SET
-    document_id = EXCLUDED.document_id,
-    protocol_code = EXCLUDED.protocol_code,
-    chunk_index = EXCLUDED.chunk_index,
-    title = EXCLUDED.title,
-    content = EXCLUDED.content,
-    word_count = EXCLUDED.word_count;
+FROM clinical_corpus_documents
+WHERE protocol_code = 'LIB-NAR-01'
+LIMIT 1;
