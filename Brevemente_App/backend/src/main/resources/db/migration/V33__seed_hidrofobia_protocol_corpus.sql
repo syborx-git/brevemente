@@ -28,34 +28,39 @@ SET title = EXCLUDED.title,
     content = EXCLUDED.content,
     source_reference = EXCLUDED.source_reference;
 
--- 2. Insertar fragmentos semánticos (chunks) en clinical_corpus_chunks para búsqueda RAG
+-- 2. Limpiar fragmentos previos si existieran para evitar violaciones de clave foránea o duplicación
+DELETE FROM clinical_corpus_chunks
+WHERE protocol_code = 'TBE-PROTOCOLO-HIDRO'
+   OR id IN ('chk-tbe-004-1', 'chk-tbe-004-2');
+
+-- 3. Insertar fragmentos semánticos (chunks) vinculando dinámicamente con el ID real del documento
 INSERT INTO clinical_corpus_chunks (id, document_id, protocol_code, chunk_index, title, content, word_count)
-VALUES
-(
+SELECT
     'chk-tbe-004-1',
-    'corp-tbe-004',
+    id,
     'TBE-PROTOCOLO-HIDRO',
     0,
     'Hidrofobia: SPR, Bucle de Evitación y Tentativas Redundantes',
     'OBJETIVO: Interrumpir la tentativa de evitación fóbica y delegación de auxilio ante el agua. SISTEMA PERCEPTIVO-REACTIVO: Fóbico. El paciente intenta controlar deliberadamente reacciones fisiológicas involuntarias, desencadenando una escalada simbiótica hacia el pánico. TENTATIVAS DE SOLUCIÓN COMUNES: 1) Evitación activa de lavabos, regaderas y agua. 2) Delegación constante de auxilio a familiares. 3) Hipervigilancia somática ante la aproximación a medios acuáticos.',
     60
-),
-(
+FROM clinical_corpus_documents
+WHERE protocol_code = 'TBE-PROTOCOLO-HIDRO'
+LIMIT 1;
+
+INSERT INTO clinical_corpus_chunks (id, document_id, protocol_code, chunk_index, title, content, word_count)
+SELECT
     'chk-tbe-004-2',
-    'corp-tbe-004',
+    id,
     'TBE-PROTOCOLO-HIDRO',
     1,
     'Hidrofobia: Punto Clave y Prescripción de El Espejo Líquido',
     'PUNTO CLAVE Y ESTRATAGEMA CENTRAL TBE: La Prescripción de "El Espejo Líquido". Colocarse diariamente a las 8:00 AM exactamente durante 5 minutos frente a un lavabo lleno con agua en reposo, mirando únicamente el reflejo en la superficie sin tocar el agua y anotando en una libreta cada sensación experimentada. La saturación visual controlada desarma la escalada de pánico. Bloqueo de la delegación familiar: cancelar el auxilio que confirma la invalidez asumida.',
     75
-)
-ON CONFLICT (id) DO UPDATE
-SET title = EXCLUDED.title,
-    content = EXCLUDED.content,
-    word_count = EXCLUDED.word_count;
+FROM clinical_corpus_documents
+WHERE protocol_code = 'TBE-PROTOCOLO-HIDRO'
+LIMIT 1;
 
--- 3. Catálogo de protocolos para expedientes
+-- 4. Catálogo de protocolos para expedientes
 INSERT INTO protocolos (id, nombre, activo)
 VALUES ('prot-hidrofobia', 'Hidrofobia y Ansiedad Acuática', TRUE)
 ON CONFLICT (id) DO NOTHING;
-
