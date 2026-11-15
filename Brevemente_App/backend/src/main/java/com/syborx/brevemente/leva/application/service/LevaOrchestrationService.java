@@ -138,6 +138,20 @@ public class LevaOrchestrationService implements
                 relevantChunks
         );
 
+        // Garantizar vinculación del protocolo clínico de referencia si se recuperó del corpus
+        if (relevantChunks != null && !relevantChunks.isEmpty()) {
+            ClinicalCorpusChunk topChunk = relevantChunks.get(0);
+            if (proposalData.getProtocoloCodigo() == null || proposalData.getProtocoloCodigo().isBlank()) {
+                proposalData.setProtocoloCodigo(topChunk.getProtocolCode());
+            }
+            if (proposalData.getProtocoloReferencia() == null || proposalData.getProtocoloReferencia().isBlank()) {
+                String ref = (topChunk.getTitle() != null && !topChunk.getTitle().isBlank())
+                        ? topChunk.getTitle() + " [" + topChunk.getProtocolCode() + "]"
+                        : topChunk.getProtocolCode();
+                proposalData.setProtocoloReferencia(ref);
+            }
+        }
+
         // 3. Crear propuesta en estado PROPOSED (Human-in-the-Loop)
         LevaClinicalProposal proposal = LevaClinicalProposal.builder()
                 .id(UUID.randomUUID().toString())

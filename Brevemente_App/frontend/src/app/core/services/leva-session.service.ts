@@ -23,6 +23,9 @@ export interface StructuredProposalData {
   estratagemaAplicada?: string;
   reaccionPaciente?: string;
   notaEvolucionSoap?: string;
+  protocoloCodigo?: string;
+  protocoloReferencia?: string;
+  justificacionEstrategica?: string;
   dialogue?: DialogueTurn[];
 }
 

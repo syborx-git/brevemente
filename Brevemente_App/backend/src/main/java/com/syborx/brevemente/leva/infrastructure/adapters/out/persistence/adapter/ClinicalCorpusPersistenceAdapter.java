@@ -156,12 +156,17 @@ public class ClinicalCorpusPersistenceAdapter implements ClinicalCorpusRepositor
 
         List<ScoredChunk> scoredList = new ArrayList<>(allChunks.size());
         for (ClinicalCorpusChunkJpaEntity entity : allChunks) {
+            String combinedText = (entity.getTitle() != null ? entity.getTitle() + " " : "")
+                    + (entity.getProtocolCode() != null ? entity.getProtocolCode() + " " : "")
+                    + (entity.getContent() != null ? entity.getContent() : "");
+            double lexicalScore = calculateLexicalOverlap(queryText, combinedText);
+
             double score;
             if (entity.getEmbedding() != null && !entity.getEmbedding().isEmpty() && !queryVector.isEmpty()) {
-                score = embeddingPort.calculateCosineSimilarity(queryVector, entity.getEmbedding());
+                double vectorSim = embeddingPort.calculateCosineSimilarity(queryVector, entity.getEmbedding());
+                score = (vectorSim * 0.4) + (lexicalScore * 0.6);
             } else {
-                // Similitud léxica básica si no hay vectores
-                score = calculateLexicalOverlap(queryText, entity.getContent());
+                score = lexicalScore;
             }
             scoredList.add(new ScoredChunk(entity, score));
         }
@@ -176,12 +181,23 @@ public class ClinicalCorpusPersistenceAdapter implements ClinicalCorpusRepositor
 
     private double calculateLexicalOverlap(String query, String content) {
         if (query == null || content == null) return 0.0;
-        String[] qWords = query.toLowerCase().split("\\W+");
+        String[] qWords = query.toLowerCase().split("[^\\p{L}\\p{Nd}]+");
         String cLower = content.toLowerCase();
-        int matches = 0;
+        Set<String> stopWords = Set.of(
+                "para", "como", "cual", "cuales", "donde", "sobre", "entre", "este", "esta", "estos", "estas",
+                "consiste", "indica", "enumera", "explica", "segun", "tiene", "hacer", "hace", "doctor",
+                "buenas", "tardes", "cuentame", "bueno", "pero", "cuando", "cada", "tengo", "vamos"
+        );
+        double matches = 0.0;
         for (String w : qWords) {
-            if (w.length() > 3 && cLower.contains(w)) {
-                matches++;
+            if (w.length() >= 4 && !stopWords.contains(w) && cLower.contains(w)) {
+                if (w.contains("hidro") || w.contains("fobia") || w.contains("panico") || w.contains("pánico")
+                        || w.contains("espejo") || w.contains("agua") || w.contains("obsesi") || w.contains("compulsi")
+                        || w.contains("liquido") || w.contains("líquido")) {
+                    matches += 3.0;
+                } else {
+                    matches += 1.0;
+                }
             }
         }
         return matches;

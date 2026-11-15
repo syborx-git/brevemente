@@ -880,6 +880,9 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     }
 
     if (this.selectedSession) {
+      if (sp.protocoloCodigo || sp.protocoloReferencia) {
+        this.selectedSession.protocol = (sp.protocoloCodigo || sp.protocoloReferencia) ?? '';
+      }
       if (sp.diagnosticoOperativo) this.selectedSession.dxOp = sp.diagnosticoOperativo;
       if (sp.sistemaPerceptivoReactivo) this.selectedSession.spr = sp.sistemaPerceptivoReactivo;
       if (sp.prescripcionesEstrategicas?.length) this.selectedSession.px = [...sp.prescripcionesEstrategicas];
@@ -903,6 +906,9 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     }
 
     if (this.selectedSession) {
+      if (approvedData.protocoloCodigo || approvedData.protocoloReferencia) {
+        this.selectedSession.protocol = (approvedData.protocoloCodigo || approvedData.protocoloReferencia) ?? '';
+      }
       if (approvedData.diagnosticoOperativo) this.selectedSession.dxOp = approvedData.diagnosticoOperativo;
       if (approvedData.sistemaPerceptivoReactivo) this.selectedSession.spr = approvedData.sistemaPerceptivoReactivo;
       if (approvedData.prescripcionesEstrategicas?.length) {
@@ -914,6 +920,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       }
 
       this.expedienteRepo.actualizarSesion(this.selectedSession.id, {
+        protocol: this.selectedSession.protocol,
         dxOp: this.selectedSession.dxOp,
         spr: this.selectedSession.spr,
         px: this.selectedSession.px,

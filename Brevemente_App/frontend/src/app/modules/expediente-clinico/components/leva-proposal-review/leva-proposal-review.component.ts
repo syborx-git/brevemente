@@ -115,7 +115,8 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
   }
 
   get hasRiskAlert(): boolean {
-    return !!this.proposal?.riskLevel && this.proposal.riskLevel !== 'BAJO';
+    const level = this.proposal?.riskLevel;
+    return level === 'MODERADO' || level === 'ALTO' || level === 'CRITICO';
   }
 
   // --- Manejadores de listas dinámicas ---
