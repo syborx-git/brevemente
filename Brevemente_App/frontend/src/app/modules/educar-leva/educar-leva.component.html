@@ -336,14 +336,208 @@
           </p>
         </div>
 
-        <div class="text-right shrink-0">
-          <span class="text-[10px] text-slate-400 font-mono block">
-            {{ doc.createdAt ? (doc.createdAt | date:'shortDate') : 'Activo' }}
-          </span>
-          <span class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 justify-end">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Indexado
-          </span>
+        <div class="flex items-center gap-3 shrink-0">
+          <div class="text-right hidden sm:block">
+            <span class="text-[10px] text-slate-400 font-mono block">
+              {{ doc.createdAt ? (doc.createdAt | date:'shortDate') : 'Activo' }}
+            </span>
+            <span class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 justify-end">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Homologado
+            </span>
+          </div>
+
+          <!-- Acciones de Fila: Consultar, Editar y Eliminar -->
+          <div class="flex items-center gap-1">
+            <!-- Ver Detalle -->
+            <button (click)="verDetalle(doc)"
+              class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Consultar contenido del protocolo">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+
+            <!-- Modificar / Editar -->
+            <button *ngIf="puedeAdministrar" (click)="iniciarEdicion(doc)"
+              class="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+              title="Modificar protocolo">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+
+            <!-- Eliminar -->
+            <button *ngIf="puedeAdministrar" (click)="solicitarEliminar(doc)"
+              class="p-2 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Eliminar protocolo del corpus">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: Consultar Detalle del Protocolo -->
+  <div *ngIf="documentoDetalle" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2.5">
+          <span class="px-2.5 py-0.5 rounded font-mono font-bold text-xs bg-clinical-teal/10 text-clinical-teal border border-clinical-teal/20">
+            {{ documentoDetalle.protocolCode }}
+          </span>
+          <h3 class="text-sm font-bold text-slate-800">{{ documentoDetalle.title }}</h3>
+        </div>
+        <button (click)="cerrarDetalle()" class="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Categoría</span>
+            <span class="font-semibold text-slate-700">{{ documentoDetalle.category }}</span>
+          </div>
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Referencia</span>
+            <span class="font-semibold text-slate-700">{{ documentoDetalle.sourceReference || 'Manual Clínico TBE' }}</span>
+          </div>
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Fecha de Publicación</span>
+            <span class="font-semibold text-slate-700">{{ documentoDetalle.createdAt ? (documentoDetalle.createdAt | date:'mediumDate') : 'Activo' }}</span>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Contenido Clínico del Protocolo</span>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 whitespace-pre-wrap font-sans leading-relaxed max-h-96 overflow-y-auto">
+            {{ documentoDetalle.content }}
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+        <button (click)="cerrarDetalle()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 transition-all cursor-pointer">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Modificar / Editar Protocolo -->
+  <div *ngIf="documentoEnEdicion" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-sm font-bold text-slate-800">Modificar Protocolo Clínico</h3>
+          <p class="text-xs text-slate-500">Actualiza los datos y el texto de intervención para la inferencia de LEVA</p>
+        </div>
+        <button (click)="cancelarEdicion()" class="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2 space-y-1">
+            <label class="font-bold text-slate-700">Título del Protocolo o Manual</label>
+            <input type="text" [(ngModel)]="editTitle"
+              class="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-clinical-teal outline-hidden text-xs" />
+          </div>
+          <div class="space-y-1">
+            <label class="font-bold text-slate-700">Código Oficial</label>
+            <input type="text" [(ngModel)]="editProtocolCode"
+              class="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-clinical-teal outline-hidden font-mono text-xs uppercase" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="font-bold text-slate-700">Categoría Clínica</label>
+            <select [(ngModel)]="editCategory"
+              class="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-clinical-teal outline-hidden text-xs bg-white">
+              <option *ngFor="let cat of categorias" [value]="cat.value">{{ cat.label }}</option>
+            </select>
+          </div>
+          <div class="space-y-1">
+            <label class="font-bold text-slate-700">Referencia Bibliográfica o Fuente</label>
+            <input type="text" [(ngModel)]="editSourceReference"
+              class="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-clinical-teal outline-hidden text-xs" />
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <label class="font-bold text-slate-700 flex justify-between items-center">
+            <span>Contenido / Texto Clínico del Protocolo</span>
+            <span class="text-[10px] text-slate-400 font-normal">Soporta formato estructurado y Markdown</span>
+          </label>
+          <textarea [(ngModel)]="editContent" rows="12"
+            class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-clinical-teal outline-hidden font-mono text-xs leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+        <span class="text-[11px] text-slate-500">
+          Al guardar, LEVA actualizará sus fragmentos e invalidará la memoria caché de inferencia.
+        </span>
+        <div class="flex items-center gap-2">
+          <button (click)="cancelarEdicion()" [disabled]="guardandoEdicion"
+            class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-all cursor-pointer">
+            Cancelar
+          </button>
+          <button (click)="guardarEdicion()" [disabled]="guardandoEdicion"
+            class="px-5 py-2 rounded-xl text-xs font-bold bg-clinical-teal hover:bg-clinical-tealHover text-white transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-60">
+            <svg *ngIf="guardandoEdicion" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ guardandoEdicion ? 'Guardando...' : 'Guardar Cambios' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Confirmación de Eliminación -->
+  <div *ngIf="documentoParaEliminar" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">¿Eliminar protocolo del corpus?</h3>
+          <p class="text-xs text-slate-500">Esta acción no se puede deshacer.</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+        Estás a punto de despublicar <strong>{{ documentoParaEliminar.title }}</strong> (<code class="font-mono text-clinical-teal font-bold">{{ documentoParaEliminar.protocolCode }}</code>). LEVA ya no podrá consultarlo ni formular prescripciones basadas en él durante las sesiones.
+      </p>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button (click)="cancelarEliminar()" [disabled]="eliminando"
+          class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer">
+          Cancelar
+        </button>
+        <button (click)="confirmarEliminar()" [disabled]="eliminando"
+          class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-60">
+          <svg *ngIf="eliminando" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>{{ eliminando ? 'Eliminando...' : 'Eliminar Protocolo' }}</span>
+        </button>
       </div>
     </div>
   </div>

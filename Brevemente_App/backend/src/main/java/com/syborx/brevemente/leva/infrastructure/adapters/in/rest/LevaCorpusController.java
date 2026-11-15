@@ -120,6 +120,43 @@ public class LevaCorpusController {
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(saved);
     }
 
+    @PutMapping(value = "/documents/{id}", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Actualizar protocolo clínico", description = "Permite al terapeuta o administrador clínico modificar un protocolo o manual")
+    public ResponseEntity<ClinicalCorpusDocument> updateDocument(
+            @PathVariable String id,
+            @jakarta.validation.Valid @RequestBody PublishDocumentRequest request
+    ) {
+        log.info("[LEVA Corpus API] Actualizando documento ID: {} ('{}')", id, request.title());
+
+        ClinicalCorpusDocument doc = ClinicalCorpusDocument.builder()
+                .title(request.title())
+                .protocolCode(request.protocolCode().trim().toUpperCase())
+                .category(request.category())
+                .content(request.markdownContent())
+                .sourceReference(request.sourceReference() != null ? request.sourceReference() : "Manual Clínico TBE")
+                .build();
+
+        List<ClinicalCorpusChunk> chunks = buildChunksFromMarkdownOrDtos(
+                doc.getProtocolCode(),
+                request.markdownContent(),
+                request.chunks()
+        );
+
+        ClinicalCorpusDocument updated = queryCorpusUseCase.updateDocument(id, doc, chunks);
+        queryCorpusUseCase.evictCorpusCache();
+
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/documents/{id}")
+    @Operation(summary = "Eliminar protocolo clínico", description = "Elimina un protocolo o manual del corpus clínico de LEVA")
+    public ResponseEntity<Void> deleteDocument(@PathVariable String id) {
+        log.info("[LEVA Corpus API] Eliminando documento ID: {}", id);
+        queryCorpusUseCase.deleteDocument(id);
+        queryCorpusUseCase.evictCorpusCache();
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping(value = "/documents/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Ingestar y educar a LEVA con documentos PDF/DOCX/TXT", description = "Extrae el texto del documento e indexa el protocolo en el corpus clínico cerrado")
     public ResponseEntity<ClinicalCorpusDocument> uploadDocument(

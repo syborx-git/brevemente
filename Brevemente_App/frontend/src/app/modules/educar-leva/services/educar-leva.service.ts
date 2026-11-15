@@ -69,5 +69,13 @@ export class EducarLevaService {
   publicarDocumento(request: PublishDocumentRequest): Observable<CorpusDocument> {
     return this.http.post<CorpusDocument>(`${this.baseUrl}/documents/publish`, request);
   }
+
+  actualizarDocumento(id: string, request: PublishDocumentRequest): Observable<CorpusDocument> {
+    return this.http.put<CorpusDocument>(`${this.baseUrl}/documents/${id}`, request);
+  }
+
+  eliminarDocumento(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/documents/${id}`);
+  }
 }
 

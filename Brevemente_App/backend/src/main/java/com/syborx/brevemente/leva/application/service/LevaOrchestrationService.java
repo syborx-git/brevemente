@@ -454,6 +454,45 @@ public class LevaOrchestrationService implements
     }
 
     @Override
+    @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_CORPUS_QUERIES, CacheConfig.CACHE_CLINICAL_PROTOCOLS}, allEntries = true)
+    public ClinicalCorpusDocument updateDocument(String id, ClinicalCorpusDocument updatedDoc, List<ClinicalCorpusChunk> chunks) {
+        log.info("[LEVA Engine] Actualizando protocolo '{}' (ID: {})...", updatedDoc.getTitle(), id);
+        ClinicalCorpusDocument existing = corpusRepositoryPort.findById(id)
+                .orElseThrow(() -> new LevaException("No se encontró el protocolo clínico con ID: " + id));
+
+        existing.setTitle(updatedDoc.getTitle());
+        existing.setProtocolCode(updatedDoc.getProtocolCode().trim().toUpperCase());
+        existing.setCategory(updatedDoc.getCategory());
+        existing.setContent(updatedDoc.getContent());
+        if (updatedDoc.getSourceReference() != null && !updatedDoc.getSourceReference().isBlank()) {
+            existing.setSourceReference(updatedDoc.getSourceReference());
+        }
+
+        ClinicalCorpusDocument saved = corpusRepositoryPort.save(existing);
+        corpusRepositoryPort.deleteChunksByDocumentId(id);
+
+        if (chunks != null && !chunks.isEmpty()) {
+            for (ClinicalCorpusChunk chunk : chunks) {
+                chunk.setDocumentId(saved.getId());
+                if (chunk.getProtocolCode() == null || chunk.getProtocolCode().isBlank()) {
+                    chunk.setProtocolCode(saved.getProtocolCode());
+                }
+            }
+            corpusRepositoryPort.saveChunks(saved.getId(), chunks);
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_CORPUS_QUERIES, CacheConfig.CACHE_CLINICAL_PROTOCOLS}, allEntries = true)
+    public void deleteDocument(String id) {
+        log.info("[LEVA Engine] Eliminando protocolo ID: {} del corpus clínico.", id);
+        corpusRepositoryPort.deleteById(id);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<ClinicalCorpusChunk> getTopRelevantChunks(String query, int limit) {
         return corpusRepositoryPort.findTopRelevantChunks(query, limit);

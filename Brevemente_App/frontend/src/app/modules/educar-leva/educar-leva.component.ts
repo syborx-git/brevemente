@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RoleStateService } from '../../core/services/role-state.service';
 import {
   EducarLevaService,
   CorpusDocument,
@@ -39,6 +40,20 @@ export class EducarLevaComponent implements OnInit {
   archivoSeleccionado: File | null = null;
   nombreArchivo = '';
 
+  // Estados de Ver, Editar y Eliminar de la tabla
+  documentoDetalle: CorpusDocument | null = null;
+
+  documentoEnEdicion: CorpusDocument | null = null;
+  editTitle = '';
+  editProtocolCode = '';
+  editCategory = 'PROTOCOLO_TBE';
+  editSourceReference = '';
+  editContent = '';
+  guardandoEdicion = false;
+
+  documentoParaEliminar: CorpusDocument | null = null;
+  eliminando = false;
+
   readonly categorias = [
     { value: 'PROTOCOLO_TBE', label: 'Protocolo Clínico TBE' },
     { value: 'MANUAL_TECNICO', label: 'Manual Técnico Arezzo' },
@@ -46,7 +61,14 @@ export class EducarLevaComponent implements OnInit {
     { value: 'CASO_SUPERVISADO', label: 'Caso Clínico Supervisado' }
   ];
 
-  constructor(private readonly educarService: EducarLevaService) {}
+  constructor(
+    private readonly educarService: EducarLevaService,
+    private readonly roleState: RoleStateService
+  ) {}
+
+  get puedeAdministrar(): boolean {
+    return this.roleState.esAdmin() || this.roleState.esSupervisor() || this.roleState.esTerapeuta();
+  }
 
   ngOnInit(): void {
     this.cargarCorpus();
@@ -179,6 +201,95 @@ export class EducarLevaComponent implements OnInit {
       error: () => {
         this.evictingCache = false;
         this.mensajeError = 'No se pudo limpiar la caché.';
+      }
+    });
+  }
+
+  // --- Operaciones de Consulta, Edición y Eliminación del Corpus ---
+
+  verDetalle(doc: CorpusDocument): void {
+    this.documentoDetalle = doc;
+  }
+
+  cerrarDetalle(): void {
+    this.documentoDetalle = null;
+  }
+
+  iniciarEdicion(doc: CorpusDocument): void {
+    this.documentoEnEdicion = doc;
+    this.editTitle = doc.title;
+    this.editProtocolCode = doc.protocolCode;
+    this.editCategory = doc.category;
+    this.editSourceReference = doc.sourceReference || '';
+    this.editContent = doc.content;
+    this.mensajeError = '';
+  }
+
+  cancelarEdicion(): void {
+    this.documentoEnEdicion = null;
+    this.editTitle = '';
+    this.editProtocolCode = '';
+    this.editContent = '';
+  }
+
+  guardarEdicion(): void {
+    if (!this.documentoEnEdicion) return;
+
+    if (!this.editTitle.trim() || !this.editProtocolCode.trim() || !this.editContent.trim()) {
+      this.mensajeError = 'El título, código de protocolo y contenido no pueden estar vacíos.';
+      return;
+    }
+
+    this.guardandoEdicion = true;
+    this.mensajeError = '';
+
+    const payload: PublishDocumentRequest = {
+      title: this.editTitle.trim(),
+      protocolCode: this.editProtocolCode.trim().toUpperCase(),
+      category: this.editCategory,
+      markdownContent: this.editContent.trim(),
+      sourceReference: this.editSourceReference.trim() || 'Manual Clínico TBE'
+    };
+
+    this.educarService.actualizarDocumento(this.documentoEnEdicion.id, payload).subscribe({
+      next: (docActualizado) => {
+        this.guardandoEdicion = false;
+        this.mensajeExito = `Protocolo "${docActualizado.title}" [${docActualizado.protocolCode}] actualizado correctamente.`;
+        this.cancelarEdicion();
+        this.cargarCorpus();
+      },
+      error: (err) => {
+        this.guardandoEdicion = false;
+        this.mensajeError = err.error?.message || 'Error al actualizar el protocolo.';
+      }
+    });
+  }
+
+  solicitarEliminar(doc: CorpusDocument): void {
+    this.documentoParaEliminar = doc;
+    this.mensajeError = '';
+  }
+
+  cancelarEliminar(): void {
+    this.documentoParaEliminar = null;
+  }
+
+  confirmarEliminar(): void {
+    if (!this.documentoParaEliminar) return;
+
+    this.eliminando = true;
+    const doc = this.documentoParaEliminar;
+
+    this.educarService.eliminarDocumento(doc.id).subscribe({
+      next: () => {
+        this.eliminando = false;
+        this.mensajeExito = `Protocolo "${doc.title}" [${doc.protocolCode}] eliminado del corpus clínico.`;
+        this.documentoParaEliminar = null;
+        this.cargarCorpus();
+      },
+      error: (err) => {
+        this.eliminando = false;
+        this.mensajeError = err.error?.message || 'Error al eliminar el protocolo del corpus.';
       }
     });
   }

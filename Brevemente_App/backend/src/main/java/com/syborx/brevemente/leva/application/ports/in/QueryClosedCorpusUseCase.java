@@ -14,6 +14,8 @@ public interface QueryClosedCorpusUseCase {
     void evictCorpusCache();
     ClinicalCorpusDocument saveDocument(ClinicalCorpusDocument document);
     ClinicalCorpusDocument saveDocumentWithChunks(ClinicalCorpusDocument document, List<ClinicalCorpusChunk> chunks);
+    ClinicalCorpusDocument updateDocument(String id, ClinicalCorpusDocument document, List<ClinicalCorpusChunk> chunks);
+    void deleteDocument(String id);
     List<ClinicalCorpusChunk> getTopRelevantChunks(String query, int limit);
 }
 

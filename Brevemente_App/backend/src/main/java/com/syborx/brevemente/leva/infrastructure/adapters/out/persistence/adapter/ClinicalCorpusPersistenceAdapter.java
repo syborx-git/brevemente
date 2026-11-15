@@ -78,6 +78,24 @@ public class ClinicalCorpusPersistenceAdapter implements ClinicalCorpusRepositor
     }
 
     @Override
+    public Optional<ClinicalCorpusDocument> findById(String id) {
+        return repository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(String id) {
+        chunkRepository.deleteByDocumentId(id);
+        repository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteChunksByDocumentId(String documentId) {
+        chunkRepository.deleteByDocumentId(documentId);
+    }
+
+    @Override
     public ClinicalCorpusDocument save(ClinicalCorpusDocument document) {
         ClinicalCorpusJpaEntity entity = ClinicalCorpusJpaEntity.builder()
                 .id(document.getId())
