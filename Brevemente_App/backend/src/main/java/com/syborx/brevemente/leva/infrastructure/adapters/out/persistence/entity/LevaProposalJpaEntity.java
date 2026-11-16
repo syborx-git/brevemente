@@ -29,13 +29,13 @@ public class LevaProposalJpaEntity {
     @Column(name = "task_id", length = 36, nullable = false)
     private String taskId;
 
-    @Column(name = "cita_id", length = 36)
+    @Column(name = "cita_id", length = 100)
     private String citaId;
 
-    @Column(name = "paciente_id", length = 36)
+    @Column(name = "paciente_id", length = 100)
     private String pacienteId;
 
-    @Column(name = "terapeuta_id", length = 36)
+    @Column(name = "terapeuta_id", length = 100)
     private String terapeutaId;
 
     @Enumerated(EnumType.STRING)
@@ -58,7 +58,7 @@ public class LevaProposalJpaEntity {
     @Column(name = "approved_data", columnDefinition = "jsonb")
     private StructuredProposalData approvedData;
 
-    @Column(name = "reviewed_by_id", length = 36)
+    @Column(name = "reviewed_by_id", length = 255)
     private String reviewedById;
 
     @Column(name = "reviewed_at")
