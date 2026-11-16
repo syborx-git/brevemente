@@ -6,6 +6,7 @@ import com.syborx.brevemente.paciente.domain.exception.TerapeutaAccesoDenegadoEx
 import com.syborx.brevemente.paciente.domain.exception.TerapeutaConfigNotFoundException;
 import com.syborx.brevemente.paciente.domain.exception.TerapeutaSedeInvalidaException;
 import com.syborx.brevemente.paciente.domain.exception.TerapeutaVinculoException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class PacienteExceptionHandler {
 
@@ -40,6 +42,7 @@ public class PacienteExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.error("[DataIntegrityViolation] Restricción de base de datos vulnerada: {}", ex.getMostSpecificCause().getMessage(), ex);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                 "timestamp", OffsetDateTime.now(),
                 "status", HttpStatus.BAD_REQUEST.value(),

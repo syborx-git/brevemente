@@ -1167,6 +1167,7 @@
               [proposal]="currentProposal"
               [sessionId]="selectedSession?.id || (pacienteId + '-s' + (sessions.length || 1))"
               [therapistName]="patient?.therapistName || 'Dr. Carlos Mendoza'"
+              [therapistLicense]="currentTherapistLicense"
               (approved)="onProposalApproved($event)"
               (rejected)="onProposalRejected($event)">
             </app-leva-proposal-review>

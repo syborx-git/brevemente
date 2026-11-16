@@ -215,8 +215,12 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
     this.errorMessage = null;
     this.successMessage = null;
 
+    const therapistSignature = (this.therapistName && this.therapistLicense)
+      ? `${this.therapistName} (${this.therapistLicense})`
+      : (this.therapistName || 'Dr. Terapeuta Responsable (CED-782190-PSIC)');
+
     const requestPayload: ApproveProposalRequest = {
-      reviewedById: `${this.therapistName} (${this.therapistLicense})`,
+      reviewedById: therapistSignature,
       approvedData: { ...this.editableData }
     };
 

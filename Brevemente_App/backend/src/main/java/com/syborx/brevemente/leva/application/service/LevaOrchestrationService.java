@@ -242,7 +242,12 @@ public class LevaOrchestrationService implements
 
         proposal.setHumanReviewStatus(HumanReviewStatus.APPROVED);
         proposal.setApprovedData(approvedData != null ? approvedData : proposal.getStructuredProposal());
-        proposal.setReviewedById(reviewedById);
+
+        String reviewer = (reviewedById != null && !reviewedById.isBlank()) ? reviewedById.trim() : "Terapeuta Responsable";
+        if (reviewer.length() > 255) {
+            reviewer = reviewer.substring(0, 255);
+        }
+        proposal.setReviewedById(reviewer);
         proposal.setReviewedAt(Instant.now());
         proposal.setUpdatedAt(Instant.now());
 

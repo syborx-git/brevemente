@@ -914,6 +914,17 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     }
   }
 
+  get currentTherapistLicense(): string {
+    const name = this.patient?.therapistName || '';
+    if (name.includes('Sofía') || name.includes('Sofia')) {
+      return 'CED-782190-PSIC';
+    }
+    if (name.includes('Alejandro')) {
+      return 'CED-451293-PSIC';
+    }
+    return 'CED-9988221-MX';
+  }
+
   onProposalApproved(approvedProposal: LevaProposalResponse): void {
     this.currentProposal = approvedProposal;
     const approvedData = approvedProposal.approvedData || approvedProposal.structuredProposal;

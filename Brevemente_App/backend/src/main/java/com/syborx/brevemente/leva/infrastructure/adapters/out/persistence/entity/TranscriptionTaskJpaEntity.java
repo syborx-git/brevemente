@@ -24,13 +24,13 @@ public class TranscriptionTaskJpaEntity {
     @Column(name = "id", length = 36)
     private String id;
 
-    @Column(name = "session_id", length = 36)
+    @Column(name = "session_id", length = 100)
     private String sessionId;
 
-    @Column(name = "paciente_id", length = 36)
+    @Column(name = "paciente_id", length = 100)
     private String pacienteId;
 
-    @Column(name = "terapeuta_id", length = 36)
+    @Column(name = "terapeuta_id", length = 100)
     private String terapeutaId;
 
     @Enumerated(EnumType.STRING)
