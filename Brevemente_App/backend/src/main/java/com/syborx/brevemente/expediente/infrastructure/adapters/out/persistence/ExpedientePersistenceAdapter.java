@@ -51,4 +51,14 @@ public class ExpedientePersistenceAdapter implements ExpedienteRepositoryPort {
         }
         return expediente;
     }
+
+    @Override
+    public boolean existsByPacienteId(String pacienteId) {
+        return expedienteRepository.existsByPacienteId(pacienteId);
+    }
+
+    @Override
+    public String siguienteFolio() {
+        return expedienteRepository.siguienteFolio();
+    }
 }

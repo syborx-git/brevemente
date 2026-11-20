@@ -435,9 +435,15 @@ export class ExpedienteClinicoComponent implements OnInit {
         }
       }
     });
-    this.expedienteRepo.obtenerExpediente(this.pacienteId).subscribe(r => {
-      this.record = r;
-      this.antecedentes = r?.antecedentes ?? null;
+    this.expedienteRepo.obtenerExpediente(this.pacienteId).subscribe({
+      next: r => {
+        this.record = r;
+        this.antecedentes = r?.antecedentes ?? null;
+      },
+      error: () => {
+        this.record = null;
+        this.antecedentes = null;
+      }
     });
     this.expedienteRepo.obtenerSesiones(this.pacienteId).subscribe(s => {
       this.sessions = s;
@@ -673,7 +679,10 @@ export class ExpedienteClinicoComponent implements OnInit {
       sprInicial: this.record.sprInicial,
       objectivePatient: this.record.objectivePatient,
       objectiveTherapist: this.record.objectiveTherapist
-    }).subscribe(r => this.record = r);
+    }).subscribe({
+      next: r => { if (r) this.record = r; },
+      error: () => alert('No se pudo guardar el expediente.')
+    });
   }
 
   guardarExpedientePsiquiatrico(): void {
@@ -699,9 +708,12 @@ export class ExpedienteClinicoComponent implements OnInit {
       payload.usoDrogas = this.empDrogasSi ? 'SI' : 'NO';
       payload.drogasEsquema = this.empDrogasSi ? this.empDrogasDraft : [];
     }
-    this.expedienteRepo.actualizarExpediente(this.pacienteId, payload).subscribe(r => {
-      this.record = r;
-      this.editandoEMP = false;
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, payload).subscribe({
+      next: r => {
+        if (r) this.record = r;
+        this.editandoEMP = false;
+      },
+      error: () => alert('No se pudo guardar el expediente psiquiátrico.')
     });
   }
 
@@ -723,7 +735,10 @@ export class ExpedienteClinicoComponent implements OnInit {
       this.expedienteRepo.actualizarExpediente(this.pacienteId, {
         tipoExpediente: this.record.tipoExpediente,
         fechaApertura: this.record.fechaApertura
-      }).subscribe(r => this.record = r);
+      }).subscribe({
+        next: r => { if (r) this.record = r; },
+        error: () => alert('No se pudieron guardar los datos generales.')
+      });
     }
   }
 
@@ -861,10 +876,13 @@ export class ExpedienteClinicoComponent implements OnInit {
 
   guardarAntecedentes(): void {
     if (!this.antecedentesDraft) return;
-    this.expedienteRepo.actualizarExpediente(this.pacienteId, { antecedentes: this.antecedentesDraft }).subscribe(r => {
-      this.record = r;
-      this.antecedentes = r?.antecedentes ?? null;
-      this.cancelarAntecedentes();
+    this.expedienteRepo.actualizarExpediente(this.pacienteId, { antecedentes: this.antecedentesDraft }).subscribe({
+      next: r => {
+        if (r) this.record = r;
+        this.antecedentes = r?.antecedentes ?? null;
+        this.cancelarAntecedentes();
+      },
+      error: () => alert('No se pudieron guardar los antecedentes.')
     });
   }
 
@@ -891,9 +909,12 @@ export class ExpedienteClinicoComponent implements OnInit {
       riesgoHeteroagresivo: this.riesgoDraft.riesgoHeteroagresivo ?? undefined,
       riesgoHeteroagresivoEspecificar: this.riesgoDraft.riesgoHeteroagresivoEspecificar,
       otrosRiesgos: this.riesgoDraft.otrosRiesgos
-    }).subscribe(r => {
-      this.record = r;
-      this.editandoRiesgo = false;
+    }).subscribe({
+      next: r => {
+        if (r) this.record = r;
+        this.editandoRiesgo = false;
+      },
+      error: () => alert('No se pudo guardar la evaluación de riesgo.')
     });
   }
 
@@ -963,9 +984,12 @@ export class ExpedienteClinicoComponent implements OnInit {
     this.expedienteRepo.actualizarExpediente(this.pacienteId, {
       examenMental,
       fechaExamenMental: new Date().toISOString().split('T')[0]
-    }).subscribe(r => {
-      this.record = r;
-      this.showExamenModal = false;
+    }).subscribe({
+      next: r => {
+        if (r) this.record = r;
+        this.showExamenModal = false;
+      },
+      error: () => alert('No se pudo guardar el examen mental.')
     });
   }
 
@@ -1060,12 +1084,18 @@ export class ExpedienteClinicoComponent implements OnInit {
       historialFarmacos: this.farmacosSi ? this.farmacosDraft : [],
       historialPsicofarmacos: this.psicofarmacosSi ? this.psicofarmacosDraft : [],
       historialDrogas: this.drogasSi ? this.drogasDraft : []
-    }).subscribe(r => {
-      this.record = r;
-      this.expedienteRepo.guardarTratamientosPrevios(this.pacienteId, this.tratamientosSi ? this.tratamientosDraft : []).subscribe(() => {
-        this.cargarFicha();
-        this.editandoFicha = false;
-      });
+    }).subscribe({
+      next: r => {
+        if (r) this.record = r;
+        this.expedienteRepo.guardarTratamientosPrevios(this.pacienteId, this.tratamientosSi ? this.tratamientosDraft : []).subscribe({
+          next: () => {
+            this.cargarFicha();
+            this.editandoFicha = false;
+          },
+          error: () => alert('No se pudieron guardar los tratamientos previos.')
+        });
+      },
+      error: () => alert('No se pudo guardar la ficha de identificación.')
     });
   }
 

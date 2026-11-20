@@ -8,4 +8,8 @@ public interface ExpedienteRepositoryPort {
     Optional<Expediente> findByPacienteId(String pacienteId);
 
     Expediente save(Expediente expediente);
+
+    boolean existsByPacienteId(String pacienteId);
+
+    String siguienteFolio();
 }
