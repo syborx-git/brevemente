@@ -25,7 +25,7 @@ export abstract class ExpedienteRepository {
   abstract listarPacientes(): Observable<Patient[]>;
   abstract obtenerPaciente(pacienteId: string): Observable<Patient | null>;
   abstract obtenerExpediente(pacienteId: string): Observable<ClinicalRecord | null>;
-  abstract actualizarExpediente(pacienteId: string, datos: Partial<ClinicalRecord>): Observable<ClinicalRecord | null>;
+  abstract actualizarExpediente(pacienteId: string, datos: Partial<ClinicalRecord>): Observable<ClinicalRecord>;
   abstract obtenerSesiones(pacienteId: string): Observable<Session[]>;
   abstract agregarSesion(pacienteId: string, sesion: Omit<Session, 'id' | 'patientId' | 'status'>): Observable<Session>;
   abstract actualizarSesion(sesionId: string, datos: SesionParcial): Observable<Session>;

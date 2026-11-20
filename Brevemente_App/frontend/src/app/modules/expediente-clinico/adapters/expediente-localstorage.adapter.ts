@@ -57,8 +57,16 @@ export class ExpedienteLocalStorageAdapter implements ExpedienteRepository {
     return of(found);
   }
 
-  actualizarExpediente(pacienteId: string, datos: Partial<ClinicalRecord>): Observable<ClinicalRecord | null> {
-    return this.obtenerExpediente(pacienteId);
+  actualizarExpediente(pacienteId: string, datos: Partial<ClinicalRecord>): Observable<ClinicalRecord> {
+    const raw = localStorage.getItem(this.recordsKey);
+    const records: ClinicalRecord[] = raw ? JSON.parse(raw) : mockClinicalRecords;
+    const index = records.findIndex(r => r.patientId === pacienteId);
+    if (index === -1) {
+      throw new Error('Expediente no encontrado');
+    }
+    records[index] = { ...records[index], ...datos };
+    localStorage.setItem(this.recordsKey, JSON.stringify(records));
+    return of(records[index]);
   }
 
   obtenerSesiones(pacienteId: string): Observable<Session[]> {

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from '../ports/expediente.repository';
 import {
@@ -40,12 +40,14 @@ export class ExpedienteHttpAdapter implements ExpedienteRepository {
 
   obtenerExpediente(pacienteId: string): Observable<ClinicalRecord | null> {
     return this.http.get<ClinicalRecord>(`${this.base}/expedientes/paciente/${pacienteId}`)
-      .pipe(catchError(() => of(null)));
+      .pipe(catchError((err: HttpErrorResponse) => {
+        if (err.status === 404) return of(null);
+        return throwError(() => err);
+      }));
   }
 
-  actualizarExpediente(pacienteId: string, datos: Partial<ClinicalRecord>): Observable<ClinicalRecord | null> {
-    return this.http.patch<ClinicalRecord>(`${this.base}/expedientes/paciente/${pacienteId}`, datos)
-      .pipe(catchError(() => of(null)));
+  actualizarExpediente(pacienteId: string, datos: Partial<ClinicalRecord>): Observable<ClinicalRecord> {
+    return this.http.patch<ClinicalRecord>(`${this.base}/expedientes/paciente/${pacienteId}`, datos);
   }
 
   // Pagos

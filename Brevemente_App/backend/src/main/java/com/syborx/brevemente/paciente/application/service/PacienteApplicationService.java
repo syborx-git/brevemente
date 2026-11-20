@@ -2,6 +2,7 @@ package com.syborx.brevemente.paciente.application.service;
 
 import com.syborx.brevemente.auth.application.ports.in.GenerarPasswordTemporalUseCase;
 import com.syborx.brevemente.auth.domain.model.PasswordTemporal;
+import com.syborx.brevemente.expediente.application.ports.in.CrearExpedienteUseCase;
 import com.syborx.brevemente.paciente.application.ports.in.*;
 import com.syborx.brevemente.paciente.application.ports.out.IdentidadPacientePort;
 import com.syborx.brevemente.paciente.application.ports.out.IdentidadTerapeutaPort;
@@ -39,6 +40,7 @@ public class PacienteApplicationService implements
     private final SupervisionScopePort supervisionScopePort;
     private final IdentidadPacientePort identidadPacientePort;
     private final GenerarPasswordTemporalUseCase generarPasswordTemporalUseCase;
+    private final CrearExpedienteUseCase crearExpedienteUseCase;
 
     @Override
     @Transactional(readOnly = true)
@@ -159,6 +161,8 @@ public class PacienteApplicationService implements
         nuevoPaciente.setUsuarioId(usuarioId);
 
         Paciente guardado = pacienteRepositoryPort.save(nuevoPaciente);
+
+        crearExpedienteUseCase.crear(guardado.getId(), guardado.getTerapeutaId(), identidadTerapeutaPort.sub());
 
         PasswordTemporal temporal = generarPasswordTemporalUseCase.generarPasswordTemporal(
                 usuarioId, identidadTerapeutaPort.sub(), "ALTA_PACIENTE");
