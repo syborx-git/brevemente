@@ -2,8 +2,11 @@ package com.syborx.brevemente.leva.infrastructure.adapters.out.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.syborx.brevemente.leva.application.ports.out.DocumentConverterPort.DocumentChunkDto;
 import com.syborx.brevemente.leva.application.ports.out.LocalLlmPort;
 import com.syborx.brevemente.leva.domain.model.*;
+import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GenerateProtocolDraftRequest;
+import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GeneratedProtocolDraftResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -119,6 +122,26 @@ public class OllamaLlmClient implements LocalLlmPort {
                 { "speaker": "Paciente", "text": "De acuerdo, lo llevaré conmigo y anotaré cada crisis." }
               ]
             }
+            """;
+
+    private static final String PROTOCOL_GENERATOR_SYSTEM_PROMPT = """
+            Eres LEVA Protocol Architect, motor clínico experto en Terapia Breve Estratégica (TBE, Escuela de Arezzo, modelo Giorgio Nardone).
+            Tu función es estructurar la formulación canónica completa de un nuevo protocolo clínico a partir de las indicaciones de un psicoterapeuta colegiado.
+
+            REGLAS METODOLÓGICAS DE AREZZO:
+            1. Devuelve ÚNICAMENTE un objeto JSON válido con los siguientes atributos exactos:
+               - 'title': "Protocolo Clínico TBE: [Nombre del Problema / Fobia / Conducta]"
+               - 'protocolCode': Código único en mayúsculas (ej. "TBE-AMAXOFOBIA-01", "TBE-GLOSOFOBIA-01")
+               - 'category': "PROTOCOLO_TBE"
+               - 'sourceReference': Autor o tratado de referencia (ej. "Escuela de TBE Arezzo - Protocolos Específicos")
+               - 'objetivo': Meta operativa para desactivar el bucle disfuncional (ej. "Interrumpir la tentativa de evitación...")
+               - 'sistemaPerceptivoReactivo': Modalidad perceptiva (Fóbico, Obsesivo-Compulsivo, Duda Patológica, Depresivo / Desilusión, etc.)
+               - 'tentativasSolucion': Lista de 3 a 5 conductas redundantes típicas que mantienen el síntoma.
+               - 'puntoClave': Descripción del mecanismo central y la estratagema TBE seleccionada.
+               - 'prescripcionesEstrategicas': Lista de 2 a 4 prescripciones operativas exactas con horario, duración y ritual de ejecución.
+               - 'reestructuracionArezzo': Aforismo estratégico o analogía paradójica de Arezzo.
+               - 'markdownContent': Documento Markdown completo y formateado con títulos (#, ##, ###), tablas de fases (Fase 1: Desbloqueo, Fase 2: Consolidación, Fase 3: Cierre) y listas de verificación.
+               - 'chunks': Lista de objetos con 'chunkIndex', 'title', 'content', 'wordCount' representando 2 a 3 fragmentos semánticos lógicos para indexación RAG.
             """;
 
     @Override
@@ -551,5 +574,278 @@ public class OllamaLlmClient implements LocalLlmPort {
             }
             proposal.setDialogue(turns);
         }
+    }
+
+    @Override
+    public GeneratedProtocolDraftResponse generateProtocolDraft(
+            GenerateProtocolDraftRequest request,
+            List<ClinicalCorpusChunk> exemplarChunks
+    ) {
+        log.info("[LEVA Protocol Architect] Diseñando borrador de protocolo clínico para: '{}' (SPR: {})",
+                request.getProblemaClinico(), request.getSprTentativo());
+
+        StringBuilder exemplarsText = new StringBuilder();
+        if (exemplarChunks != null && !exemplarChunks.isEmpty()) {
+            exemplarsText.append("EJEMPLOS DE REFERENCIA DE PROTOCOLOS TBE EXISTENTES EN EL CORPUS:\n");
+            for (ClinicalCorpusChunk chk : exemplarChunks) {
+                exemplarsText.append("--- [").append(chk.getProtocolCode()).append("] ").append(chk.getTitle()).append(" ---\n")
+                        .append(chk.getContent()).append("\n\n");
+            }
+        }
+
+        StringBuilder userPrompt = new StringBuilder();
+        if (exemplarsText.length() > 0) {
+            userPrompt.append(exemplarsText).append("\n");
+        }
+        userPrompt.append("SOLICITUD DEL TERAPEUTA PARA NUEVO PROTOCOLO CLÍNICO:\n")
+                .append("- Problema o Trastorno Clínico: ").append(request.getProblemaClinico()).append("\n")
+                .append("- Sistema Perceptivo-Reactivo (SPR): ").append(request.getSprTentativo()).append("\n");
+
+        if (request.getTentativasSolucionObservadas() != null && !request.getTentativasSolucionObservadas().isEmpty()) {
+            userPrompt.append("- Tentativas de solución observadas: ")
+                    .append(String.join(", ", request.getTentativasSolucionObservadas())).append("\n");
+        }
+        if (request.getEstratagemaSugerida() != null && !request.getEstratagemaSugerida().isBlank()) {
+            userPrompt.append("- Estratagema o técnica sugerida: ").append(request.getEstratagemaSugerida()).append("\n");
+        }
+        if (request.getPoblacionContexto() != null && !request.getPoblacionContexto().isBlank()) {
+            userPrompt.append("- Población / Contexto: ").append(request.getPoblacionContexto()).append("\n");
+        }
+        if (request.getLibroReferencia() != null && !request.getLibroReferencia().isBlank()) {
+            userPrompt.append("- Tratado o bibliografía de referencia: ").append(request.getLibroReferencia()).append("\n");
+        }
+
+        userPrompt.append("\nGenera el objeto JSON estricto con todos los atributos solicitados conforme al modelo canónico de Arezzo.");
+
+        try {
+            Map<String, Object> requestPayload = Map.of(
+                    "model", modelName,
+                    "messages", List.of(
+                            Map.of("role", "system", "content", PROTOCOL_GENERATOR_SYSTEM_PROMPT.trim()),
+                            Map.of("role", "user", "content", userPrompt.toString())
+                    ),
+                    "stream", false,
+                    "format", "json",
+                    "options", Map.of(
+                            "temperature", 0.1,
+                            "num_predict", 1500,
+                            "num_ctx", 4096
+                    )
+            );
+
+            String responseBody = restClient.post()
+                    .uri(ollamaUrl + "/api/chat")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(requestPayload)
+                    .retrieve()
+                    .body(String.class);
+
+            if (responseBody != null) {
+                JsonNode root = objectMapper.readTree(responseBody);
+                String contentJson = root.path("message").path("content").asText();
+                if (!contentJson.isBlank()) {
+                    GeneratedProtocolDraftResponse response = objectMapper.readValue(contentJson, GeneratedProtocolDraftResponse.class);
+                    normalizeProtocolDraft(response, request);
+                    return response;
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("[LEVA Protocol Architect] Inferencia no disponible en Ollama ({}): {}. Aplicando constructor heurístico TBE.",
+                    ollamaUrl, ex.getMessage());
+        }
+
+        return buildHeuristicProtocolDraft(request);
+    }
+
+    private void normalizeProtocolDraft(GeneratedProtocolDraftResponse response, GenerateProtocolDraftRequest request) {
+        if (response.getTitle() == null || response.getTitle().isBlank()) {
+            response.setTitle("Protocolo Clínico TBE: " + request.getProblemaClinico());
+        }
+        if (response.getCategory() == null || response.getCategory().isBlank()) {
+            response.setCategory("PROTOCOLO_TBE");
+        }
+        if (response.getSourceReference() == null || response.getSourceReference().isBlank()) {
+            response.setSourceReference(request.getLibroReferencia() != null && !request.getLibroReferencia().isBlank()
+                    ? request.getLibroReferencia()
+                    : "Escuela de TBE Arezzo - Protocolos Específicos");
+        }
+        if (response.getProtocolCode() == null || response.getProtocolCode().isBlank()) {
+            String sanitized = request.getProblemaClinico().toUpperCase()
+                    .replaceAll("[^A-Z0-9]+", "-")
+                    .replaceAll("^-|-$", "");
+            if (sanitized.length() > 18) sanitized = sanitized.substring(0, 18);
+            response.setProtocolCode("TBE-" + sanitized + "-01");
+        } else {
+            response.setProtocolCode(response.getProtocolCode().trim().toUpperCase());
+        }
+
+        if (response.getObjetivo() == null || response.getObjetivo().isBlank()) {
+            response.setObjetivo("Interrumpir la tentativa de solución redundante que mantiene el cuadro de " + request.getProblemaClinico() + ".");
+        }
+        if (response.getSistemaPerceptivoReactivo() == null || response.getSistemaPerceptivoReactivo().isBlank()) {
+            response.setSistemaPerceptivoReactivo(request.getSprTentativo());
+        }
+
+        if (response.getTentativasSolucion() == null || response.getTentativasSolucion().isEmpty()) {
+            if (request.getTentativasSolucionObservadas() != null && !request.getTentativasSolucionObservadas().isEmpty()) {
+                response.setTentativasSolucion(new ArrayList<>(request.getTentativasSolucionObservadas()));
+            } else {
+                response.setTentativasSolucion(List.of(
+                        "Evitación activa de las situaciones temidas o desencadenantes",
+                        "Búsqueda reiterada de auxilio o reaseguración en el entorno cercano",
+                        "Intento infructuoso de control racional voluntario de respuestas fisiológicas"
+                ));
+            }
+        }
+
+        if (response.getPuntoClave() == null || response.getPuntoClave().isBlank()) {
+            response.setPuntoClave(request.getEstratagemaSugerida() != null && !request.getEstratagemaSugerida().isBlank()
+                    ? "Estratagema central: " + request.getEstratagemaSugerida()
+                    : "Intervención paradójica para desbloquear la rigidez perceptiva.");
+        }
+
+        if (response.getPrescripcionesEstrategicas() == null || response.getPrescripcionesEstrategicas().isEmpty()) {
+            response.setPrescripcionesEstrategicas(List.of(
+                    "Diario de a bordo: Registro estricto del síntoma en libreta en el instante de su aparición.",
+                    "Prescripción paradójica: Orientación directa hacia el foco sintomático para saturar la resistencia."
+            ));
+        }
+
+        if (response.getReestructuracionArezzo() == null || response.getReestructuracionArezzo().isBlank()) {
+            response.setReestructuracionArezzo("El miedo mirado de frente se convierte en valor; el miedo evitado se transforma en pánico.");
+        }
+
+        if (response.getMarkdownContent() == null || response.getMarkdownContent().isBlank()) {
+            response.setMarkdownContent(synthesizeMarkdown(response));
+        }
+
+        if (response.getChunks() == null || response.getChunks().isEmpty()) {
+            response.setChunks(synthesizeChunks(response));
+        }
+    }
+
+    private GeneratedProtocolDraftResponse buildHeuristicProtocolDraft(GenerateProtocolDraftRequest request) {
+        String code = "TBE-" + request.getProblemaClinico().toUpperCase()
+                .replaceAll("[^A-Z0-9]+", "-")
+                .replaceAll("^-|-$", "");
+        if (code.length() > 22) code = code.substring(0, 22);
+
+        List<String> tentativas = (request.getTentativasSolucionObservadas() != null && !request.getTentativasSolucionObservadas().isEmpty())
+                ? new ArrayList<>(request.getTentativasSolucionObservadas())
+                : List.of(
+                        "Evitación activa de las situaciones o estímulos desencadenantes del cuadro",
+                        "Delegación de tareas y petición reiterada de auxilio a familiares cercanos",
+                        "Hipervigilancia somática y control deliberado de reacciones espontáneas"
+                );
+
+        String estratagema = (request.getEstratagemaSugerida() != null && !request.getEstratagemaSugerida().isBlank())
+                ? request.getEstratagemaSugerida()
+                : "Prescripción de la Peor Fantasía y Bloqueo de la Delegación";
+
+        List<String> prescripciones = List.of(
+                "La Estratagema de " + estratagema + ": Colocarse en un lugar seguro durante exactamente 5 minutos diarios anotando sensaciones.",
+                "Bloqueo de la delegación familiar: Cancelar el auxilio que confirma y alimenta la incapacidad percibida."
+        );
+
+        String reestructuracion = "Quien pide auxilio confirma en cada acto su propia incapacidad; el síntoma enfrentado se disuelve.";
+
+        GeneratedProtocolDraftResponse draft = GeneratedProtocolDraftResponse.builder()
+                .title("Protocolo Clínico TBE: " + request.getProblemaClinico())
+                .protocolCode(code)
+                .category("PROTOCOLO_TBE")
+                .sourceReference(request.getLibroReferencia() != null && !request.getLibroReferencia().isBlank()
+                        ? request.getLibroReferencia()
+                        : "Escuela de TBE Arezzo - Protocolos Específicos")
+                .objetivo("Interrumpir el bucle redundante de evitación fóbica y control disfuncional en " + request.getProblemaClinico() + ".")
+                .sistemaPerceptivoReactivo(request.getSprTentativo())
+                .tentativasSolucion(tentativas)
+                .puntoClave("Estratagema central: " + estratagema + " para desactivar el circuito de mantenimiento sintomático.")
+                .prescripcionesEstrategicas(prescripciones)
+                .reestructuracionArezzo(reestructuracion)
+                .build();
+
+        draft.setMarkdownContent(synthesizeMarkdown(draft));
+        draft.setChunks(synthesizeChunks(draft));
+        return draft;
+    }
+
+    private String synthesizeMarkdown(GeneratedProtocolDraftResponse proto) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# ").append(proto.getTitle()).append("\n\n")
+                .append("**Código Oficial:** `").append(proto.getProtocolCode()).append("` | ")
+                .append("**Categoría:** ").append(proto.getCategory()).append(" | ")
+                .append("**Referencia:** ").append(proto.getSourceReference()).append("\n\n")
+                .append("## 1. Objetivo Clínico y Diana TBE\n")
+                .append(proto.getObjetivo()).append("\n\n")
+                .append("## 2. Sistema Perceptivo-Reactivo (SPR)\n")
+                .append("**Modalidad:** ").append(proto.getSistemaPerceptivoReactivo()).append("\n\n")
+                .append("## 3. Tentativas de Solución Redundantes Típicas\n");
+
+        if (proto.getTentativasSolucion() != null) {
+            for (String t : proto.getTentativasSolucion()) {
+                sb.append("- ").append(t).append("\n");
+            }
+        }
+
+        sb.append("\n## 4. Punto Clave y Estratagema Central TBE\n")
+                .append(proto.getPuntoClave()).append("\n\n")
+                .append("## 5. Prescripciones Estratégicas Operativas (PX)\n");
+
+        if (proto.getPrescripcionesEstrategicas() != null) {
+            for (String p : proto.getPrescripcionesEstrategicas()) {
+                sb.append("- ").append(p).append("\n");
+            }
+        }
+
+        sb.append("\n## 6. Reestructuración Estratégica de Arezzo\n")
+                .append("> *\"").append(proto.getReestructuracionArezzo()).append("\"*\n\n")
+                .append("## 7. Fases de Intervención en Sesión\n")
+                .append("| Fase | Objetivo Terapéutico | Sesiones Estimadas |\n")
+                .append("| :--- | :--- | :--- |\n")
+                .append("| **Fase 1: Desbloqueo** | Diagnóstico operativo y quiebre de la tentativa redundante | Sesiones 1 a 3 |\n")
+                .append("| **Fase 2: Consolidación** | Afianzamiento de nuevas percepciones y autonomía | Sesiones 4 a 6 |\n")
+                .append("| **Fase 3: Cierre y Seguimiento** | Prevención de recaídas y balance clínico | A los 3, 6 y 12 meses |\n");
+
+        return sb.toString();
+    }
+
+    private List<DocumentChunkDto> synthesizeChunks(GeneratedProtocolDraftResponse proto) {
+        List<DocumentChunkDto> chunks = new ArrayList<>();
+
+        // Chunk 0: Objetivo, SPR y Tentativas
+        StringBuilder c0 = new StringBuilder();
+        c0.append("OBJETIVO: ").append(proto.getObjetivo())
+                .append(" SISTEMA PERCEPTIVO-REACTIVO: ").append(proto.getSistemaPerceptivoReactivo())
+                .append(" TENTATIVAS DE SOLUCIÓN COMUNES: ");
+        if (proto.getTentativasSolucion() != null) {
+            for (int i = 0; i < proto.getTentativasSolucion().size(); i++) {
+                c0.append((i + 1)).append(") ").append(proto.getTentativasSolucion().get(i)).append(". ");
+            }
+        }
+        chunks.add(new DocumentChunkDto(
+                0,
+                proto.getTitle().replace("Protocolo Clínico TBE: ", "") + ": SPR y Tentativas",
+                c0.toString().trim(),
+                c0.toString().split("\\s+").length
+        ));
+
+        // Chunk 1: Punto Clave y Prescripciones
+        StringBuilder c1 = new StringBuilder();
+        c1.append("PUNTO CLAVE Y ESTRATAGEMA CENTRAL TBE: ").append(proto.getPuntoClave())
+                .append(" PRESCRIPCIONES OPERATIVAS: ");
+        if (proto.getPrescripcionesEstrategicas() != null) {
+            for (int i = 0; i < proto.getPrescripcionesEstrategicas().size(); i++) {
+                c1.append((char) ('a' + i)).append(") ").append(proto.getPrescripcionesEstrategicas().get(i)).append(" ");
+            }
+        }
+        c1.append("REESTRUCTURACIÓN DE AREZZO: ").append(proto.getReestructuracionArezzo());
+        chunks.add(new DocumentChunkDto(
+                1,
+                proto.getTitle().replace("Protocolo Clínico TBE: ", "") + ": Punto Clave y Prescripciones",
+                c1.toString().trim(),
+                c1.toString().split("\\s+").length
+        ));
+
+        return chunks;
     }
 }

@@ -2,17 +2,21 @@ package com.syborx.brevemente.expediente.application.service;
 
 import com.syborx.brevemente.auditoria.application.ports.out.AuditoriaExpedientePort;
 import com.syborx.brevemente.expediente.application.ports.in.ActualizarExpedienteUseCase;
+import com.syborx.brevemente.expediente.application.ports.in.CrearExpedienteUseCase;
 import com.syborx.brevemente.expediente.application.ports.in.ObtenerExpedienteUseCase;
 import com.syborx.brevemente.expediente.application.ports.out.ExpedienteRepositoryPort;
 import com.syborx.brevemente.expediente.domain.exception.ExpedienteNotFoundException;
+import com.syborx.brevemente.expediente.domain.factory.ExpedienteFactory;
 import com.syborx.brevemente.expediente.domain.model.Expediente;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
-public class ExpedienteApplicationService implements ObtenerExpedienteUseCase, ActualizarExpedienteUseCase {
+public class ExpedienteApplicationService implements ObtenerExpedienteUseCase, ActualizarExpedienteUseCase, CrearExpedienteUseCase {
 
     private final ExpedienteRepositoryPort expedienteRepositoryPort;
     private final AuditoriaExpedientePort auditoriaExpedientePort;
@@ -22,6 +26,22 @@ public class ExpedienteApplicationService implements ObtenerExpedienteUseCase, A
     public Expediente obtenerPorPaciente(String pacienteId) {
         return expedienteRepositoryPort.findByPacienteId(pacienteId)
                 .orElseThrow(() -> new ExpedienteNotFoundException(pacienteId));
+    }
+
+    @Override
+    @Transactional
+    public Expediente crear(String pacienteId, String terapeutaId, String operadorId) {
+        if (expedienteRepositoryPort.existsByPacienteId(pacienteId)) {
+            return obtenerPorPaciente(pacienteId);
+        }
+        String folio = expedienteRepositoryPort.siguienteFolio();
+        Expediente nuevo = ExpedienteFactory.crearMinimo(pacienteId, terapeutaId, folio, LocalDate.now());
+        Expediente guardado = expedienteRepositoryPort.save(nuevo);
+        auditoriaExpedientePort.registrarEnMismaTransaccion(
+                guardado.getPacienteId(), operadorId,
+                "Apertura de expediente",
+                "Se abrió el expediente clínico automáticamente en el alta del paciente.", "expediente");
+        return guardado;
     }
 
     @Override

@@ -20,3 +20,4 @@ ALTER TABLE transcription_tasks DROP CONSTRAINT IF EXISTS transcription_tasks_pa
 ALTER TABLE transcription_tasks ALTER COLUMN session_id TYPE VARCHAR(100);
 ALTER TABLE transcription_tasks ALTER COLUMN terapeuta_id TYPE VARCHAR(100);
 ALTER TABLE transcription_tasks ALTER COLUMN paciente_id TYPE VARCHAR(100);
+

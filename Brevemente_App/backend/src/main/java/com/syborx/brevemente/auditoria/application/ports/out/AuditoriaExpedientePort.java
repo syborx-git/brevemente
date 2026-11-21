@@ -12,5 +12,12 @@ public interface AuditoriaExpedientePort {
      */
     void registrar(String pacienteId, String usuarioId, String accion, String detalle, String categoria);
 
+    /**
+     * Registra una traza clínica en la MISMA transacción del caso de uso que la
+     * origina (REQUIRED). Necesaria en el alta, donde la fila del paciente aún
+     * no está commiteada y {@code REQUIRES_NEW} provocaría FK/deadlock.
+     */
+    void registrarEnMismaTransaccion(String pacienteId, String usuarioId, String accion, String detalle, String categoria);
+
     List<AuditoriaExpediente> listarPorPaciente(String pacienteId);
 }

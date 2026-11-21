@@ -29,5 +29,10 @@ public interface LocalLlmPort {
             Consumer<Throwable> onError
     );
     RiskAssessment classifyRiskSemantics(String fullText);
+
+    com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GeneratedProtocolDraftResponse generateProtocolDraft(
+            com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GenerateProtocolDraftRequest request,
+            List<ClinicalCorpusChunk> exemplarChunks
+    );
 }
 

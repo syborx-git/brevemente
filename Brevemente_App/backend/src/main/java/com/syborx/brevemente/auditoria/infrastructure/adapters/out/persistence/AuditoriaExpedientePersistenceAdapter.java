@@ -26,6 +26,16 @@ public class AuditoriaExpedientePersistenceAdapter implements AuditoriaExpedient
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrar(String pacienteId, String usuarioId, String accion, String detalle, String categoria) {
+        guardar(pacienteId, usuarioId, accion, detalle, categoria);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void registrarEnMismaTransaccion(String pacienteId, String usuarioId, String accion, String detalle, String categoria) {
+        guardar(pacienteId, usuarioId, accion, detalle, categoria);
+    }
+
+    private void guardar(String pacienteId, String usuarioId, String accion, String detalle, String categoria) {
         repository.save(AuditoriaExpedienteJpaEntity.builder()
                 .id("aud-" + UUID.randomUUID().toString().substring(0, 8))
                 .pacienteId(pacienteId)
