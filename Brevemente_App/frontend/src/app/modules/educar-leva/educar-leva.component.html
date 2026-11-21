@@ -41,8 +41,33 @@
     <button (click)="mensajeError = ''" class="font-bold text-xs hover:text-red-950 cursor-pointer">✕</button>
   </div>
 
-  <!-- MODO 1: Selección y Carga del Documento (Si no está en modo revisión) -->
-  <div *ngIf="!modoRevision" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Selector de Modo de Incorporación al Corpus: Subir Archivo vs Diseñar con LEVA IA -->
+  <div *ngIf="!modoRevision" class="bg-white p-2 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-2">
+    <button type="button"
+      (click)="modoCreacion = 'archivo'"
+      class="flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+      [ngClass]="modoCreacion === 'archivo' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'">
+      <span class="text-base">📁</span>
+      <div class="text-left">
+        <p class="leading-tight">Ingesta Determinista de Documentos</p>
+        <p class="text-[10px] font-normal" [ngClass]="modoCreacion === 'archivo' ? 'text-slate-300' : 'text-slate-400'">Subir manuales, libros o tratados en PDF/Word con PyMuPDF4LLM</p>
+      </div>
+    </button>
+
+    <button type="button"
+      (click)="modoCreacion = 'asistente_ia'"
+      class="flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+      [ngClass]="modoCreacion === 'asistente_ia' ? 'bg-gradient-to-r from-purple-700 via-indigo-700 to-clinical-teal text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'">
+      <span class="text-base">✨</span>
+      <div class="text-left">
+        <p class="leading-tight">Diseñador de Protocolos con LEVA (IA Asistida)</p>
+        <p class="text-[10px] font-normal" [ngClass]="modoCreacion === 'asistente_ia' ? 'text-purple-200' : 'text-slate-400'">Formulación de protocolos faltantes con Escuela de Arezzo y LLaMA 3.1</p>
+      </div>
+    </button>
+  </div>
+
+  <!-- MODO 1: Selección y Carga del Documento (Si no está en modo revisión y modoCreacion === 'archivo') -->
+  <div *ngIf="!modoRevision && modoCreacion === 'archivo'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <!-- Tarjeta de Carga Drag & Drop -->
     <div class="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
@@ -169,7 +194,166 @@
     </div>
   </div>
 
-  <!-- MODO 2: Revisión Comparativa SPLIT-SCREEN (Humano al Mando) -->
+  <!-- MODO 2: Diseñador de Protocolos Faltantes con LEVA (IA Asistida) -->
+  <div *ngIf="!modoRevision && modoCreacion === 'asistente_ia'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Formulario Clínico TBE (7 Columnas) -->
+    <div class="lg:col-span-7 bg-white border border-purple-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+      <div class="border-b border-purple-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <span class="text-purple-600">✨</span> Formulación Asistida de Protocolo Clínico TBE
+          </h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            Ingresa las coordenadas clínicas básicas y LEVA sintetizará el protocolo completo con los 7 ejes canónicos de Arezzo.
+          </p>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shrink-0 self-start sm:self-auto">
+          Ollama · LLaMA 3.1
+        </span>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <!-- 1. Problema Clínico -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">
+            Nombre del Trastorno, Fobia o Problema Clínico *
+          </label>
+          <input type="text"
+            [(ngModel)]="formProtocoloIa.problemaClinico"
+            placeholder="ej. Amaxofobia (Fobia a conducir en autopistas y puentes)"
+            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white font-medium text-xs text-slate-800 placeholder:text-slate-400" />
+        </div>
+
+        <!-- 2. Sistema Perceptivo-Reactivo (SPR) -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">
+            Sistema Perceptivo-Reactivo Tentativo (SPR) *
+          </label>
+          <select [(ngModel)]="formProtocoloIa.sprTentativo"
+            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-xs font-semibold text-slate-800">
+            <option *ngFor="let opt of sprOpciones" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <!-- 3. Tentativas de Solución Observadas -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+            <span>Tentativas de Solución Típicas Observadas (Opcional)</span>
+            <span class="text-[10px] font-normal text-slate-400">Separa con saltos de línea o comas</span>
+          </label>
+          <textarea [(ngModel)]="formProtocoloIa.tentativasSolucionTexto"
+            rows="3"
+            placeholder="ej.&#10;1. Evitación sistemática de carriles de alta velocidad&#10;2. Delegación a familiares para que conduzcan por el paciente&#10;3. Ingesta preventiva de ansiolíticos o hiperventilación controlada"
+            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-xs text-slate-700 placeholder:text-slate-400 leading-relaxed"></textarea>
+        </div>
+
+        <!-- 4. Estratagema Sugerida y Atajos Rápidos -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">
+            Estratagema o Técnica Central Sugerida (Opcional)
+          </label>
+          <input type="text"
+            [(ngModel)]="formProtocoloIa.estratagemaSugerida"
+            placeholder="ej. La Peor Fantasía de 5 minutos, El Espejo Líquido, Contraritual"
+            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-xs text-slate-800 placeholder:text-slate-400" />
+          
+          <!-- Atajos de selección rápida -->
+          <div class="mt-2 flex flex-wrap gap-1.5 items-center">
+            <span class="text-[10px] text-slate-400 font-semibold">Técnicas frecuentes:</span>
+            <button *ngFor="let est of estratagemasSugeridasRapidas"
+              type="button"
+              (click)="aplicarEstratagemaRapida(est)"
+              class="px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 text-[10px] font-medium transition-colors cursor-pointer">
+              + {{ est.split(' ')[0] }} {{ est.split(' ')[1] }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 5. Contexto y Referencia Bibliográfica -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Población / Contexto</label>
+            <input type="text"
+              [(ngModel)]="formProtocoloIa.poblacionContexto"
+              placeholder="ej. Adultos jóvenes y conductores novatos"
+              class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-xs text-slate-800 placeholder:text-slate-400" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tratado / Referencia Arezzo</label>
+            <input type="text"
+              [(ngModel)]="formProtocoloIa.libroReferencia"
+              placeholder="ej. G. Nardone - Surcar el mar sin que el cielo lo sepa"
+              class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-xs text-slate-800 placeholder:text-slate-400" />
+          </div>
+        </div>
+
+        <!-- Botón de Invocación LEVA -->
+        <div class="pt-3 border-t border-slate-100">
+          <button type="button"
+            (click)="generarProtocoloConLeva()"
+            [disabled]="generandoProtocoloIa || !formProtocoloIa.problemaClinico.trim()"
+            class="w-full py-3 px-4 bg-gradient-to-r from-purple-700 via-indigo-700 to-clinical-teal hover:from-purple-800 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg *ngIf="generandoProtocoloIa" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ generandoProtocoloIa ? 'LEVA está estructurando el protocolo clínico en formato Arezzo...' : '✨ Diseñar Protocolo Clínico con LEVA (Ollama LLaMA 3.1)' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guía y Estándar de Calidad Arezzo (5 Columnas) -->
+    <div class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+        <h2 class="text-xs font-bold text-clinical-dark uppercase tracking-wider">
+          Metodología de la Escuela de Arezzo (Giorgio Nardone)
+        </h2>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-600">
+        <div class="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200/70 space-y-1">
+          <h3 class="font-bold text-purple-900 flex items-center gap-1.5">
+            <span>🎯</span> Diagnóstico Operativo (Cómo funciona)
+          </h3>
+          <p class="text-[11px] text-purple-950/80 leading-relaxed">
+            A diferencia de los diagnósticos nosológicos estáticos, en TBE se define el problema identificando qué soluciones intentadas lo alimentan y cómo el sujeto percibe su realidad.
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>⚙</span> Prescripciones Operativas Milimétricas
+          </h3>
+          <p class="text-[11px] leading-relaxed">
+            LEVA redactará prescripciones con instrucciones directas, lenguaje analógico o paradójico, rituales de ejecución fija y cancelación de la delegación del entorno.
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>📑</span> Integración Human-in-the-Loop
+          </h3>
+          <p class="text-[11px] leading-relaxed">
+            El borrador resultante se presentará en el editor Markdown para que puedas modificar dosis de prescripción, agregar aforismos y validarlo antes de publicarlo.
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span>🧠</span> Indexación Inmediata RAG
+          </h3>
+          <p class="text-[11px] leading-relaxed">
+            Al publicar, el protocolo se fragmentará en chunks vectorizados con `pgvector`. LEVA lo asociará al instante en las grabaciones de voz y transcripciones de tus pacientes.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODO 3: Revisión Comparativa SPLIT-SCREEN (Humano al Mando) -->
   <div *ngIf="modoRevision" class="bg-white border-2 border-clinical-accent/40 rounded-2xl shadow-sm overflow-hidden space-y-0">
 
     <!-- Barra de Estado de Revisión -->

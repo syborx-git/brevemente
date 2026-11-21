@@ -40,6 +40,30 @@ export interface PublishDocumentRequest {
   chunks?: DocumentChunk[];
 }
 
+export interface GenerateProtocolDraftRequest {
+  problemaClinico: string;
+  sprTentativo: string;
+  tentativasSolucionObservadas?: string[];
+  estratagemaSugerida?: string;
+  poblacionContexto?: string;
+  libroReferencia?: string;
+}
+
+export interface GeneratedProtocolDraftResponse {
+  title: string;
+  protocolCode: string;
+  category: string;
+  sourceReference: string;
+  objetivo: string;
+  sistemaPerceptivoReactivo: string;
+  tentativasSolucion: string[];
+  puntoClave: string;
+  prescripcionesEstrategicas: string[];
+  reestructuracionArezzo: string;
+  markdownContent: string;
+  chunks: DocumentChunk[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -76,6 +100,10 @@ export class EducarLevaService {
 
   eliminarDocumento(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/documents/${id}`);
+  }
+
+  generarBorradorProtocolo(request: GenerateProtocolDraftRequest): Observable<GeneratedProtocolDraftResponse> {
+    return this.http.post<GeneratedProtocolDraftResponse>(`${this.baseUrl}/protocols/generate-draft`, request);
   }
 }
 

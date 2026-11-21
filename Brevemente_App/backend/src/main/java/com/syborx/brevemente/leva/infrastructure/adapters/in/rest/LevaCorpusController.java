@@ -1,5 +1,6 @@
 package com.syborx.brevemente.leva.infrastructure.adapters.in.rest;
 
+import com.syborx.brevemente.leva.application.ports.in.GenerateProtocolDraftUseCase;
 import com.syborx.brevemente.leva.application.ports.in.QueryClosedCorpusUseCase;
 import com.syborx.brevemente.leva.application.ports.out.CorpusFileStoragePort;
 import com.syborx.brevemente.leva.application.ports.out.DocumentConverterPort;
@@ -8,6 +9,8 @@ import com.syborx.brevemente.leva.domain.model.ClinicalCorpusDocument;
 import com.syborx.brevemente.leva.domain.model.ClosedCorpusQueryResult;
 import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.CorpusQueryRequest;
 import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.CorpusQueryResponse;
+import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GenerateProtocolDraftRequest;
+import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GeneratedProtocolDraftResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,6 +34,17 @@ public class LevaCorpusController {
     private final QueryClosedCorpusUseCase queryCorpusUseCase;
     private final DocumentConverterPort documentConverterPort;
     private final CorpusFileStoragePort fileStoragePort;
+    private final GenerateProtocolDraftUseCase generateProtocolDraftUseCase;
+
+    @PostMapping(value = "/protocols/generate-draft", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Diseñar borrador de protocolo con LEVA (IA)", description = "Sintetiza un protocolo clínico TBE canónico a partir de las indicaciones del terapeuta y el modelo de Arezzo")
+    public ResponseEntity<GeneratedProtocolDraftResponse> generateProtocolDraft(
+            @Valid @RequestBody GenerateProtocolDraftRequest request
+    ) {
+        log.info("[LEVA Corpus API] Solicitud de diseño de protocolo TBE: '{}'", request.getProblemaClinico());
+        GeneratedProtocolDraftResponse draft = generateProtocolDraftUseCase.generateProtocolDraft(request);
+        return ResponseEntity.ok(draft);
+    }
 
     @PostMapping("/query")
     @Operation(summary = "Consultar el corpus clínico cerrado", description = "Responde dudas clínicas asistiendo al médico o alumno basándose exclusivamente en el corpus propietario")

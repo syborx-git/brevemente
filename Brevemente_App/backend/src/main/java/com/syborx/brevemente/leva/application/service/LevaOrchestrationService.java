@@ -17,6 +17,9 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.syborx.brevemente.leva.application.ports.in.GenerateProtocolDraftUseCase;
+import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GenerateProtocolDraftRequest;
+import com.syborx.brevemente.leva.infrastructure.adapters.in.rest.dto.GeneratedProtocolDraftResponse;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +33,8 @@ public class LevaOrchestrationService implements
         GetLevaProposalUseCase,
         ApproveClinicalProposalUseCase,
         QueryClosedCorpusUseCase,
-        EvaluateRiskUseCase {
+        EvaluateRiskUseCase,
+        GenerateProtocolDraftUseCase {
 
     private final TranscriptionClientPort transcriptionClientPort;
     private final LocalLlmPort localLlmPort;
@@ -524,6 +528,21 @@ public class LevaOrchestrationService implements
     @Transactional(readOnly = true)
     public List<ClinicalCorpusChunk> getTopRelevantChunks(String query, int limit) {
         return corpusRepositoryPort.findTopRelevantChunks(query, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GeneratedProtocolDraftResponse generateProtocolDraft(GenerateProtocolDraftRequest request) {
+        log.info("[LEVA Engine] Orquestando diseño de protocolo clínico TBE: '{}'", request.getProblemaClinico());
+
+        List<ClinicalCorpusChunk> exemplars = Collections.emptyList();
+        try {
+            exemplars = corpusRepositoryPort.findTopRelevantChunks(request.getProblemaClinico(), 2);
+        } catch (Exception ex) {
+            log.warn("[LEVA Engine] No se pudieron recuperar chunks ejemplares: {}", ex.getMessage());
+        }
+
+        return localLlmPort.generateProtocolDraft(request, exemplars);
     }
 
     private String extractPuntoClaveFromChunk(ClinicalCorpusChunk chunk) {

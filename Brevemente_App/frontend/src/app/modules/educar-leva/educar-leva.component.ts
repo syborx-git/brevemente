@@ -32,6 +32,39 @@ export class EducarLevaComponent implements OnInit {
   previewData: DocumentConversionPreview | null = null;
   markdownEditado = '';
 
+  // Selector de Modo de Creación: Archivo vs Asistente LEVA IA
+  modoCreacion: 'archivo' | 'asistente_ia' = 'archivo';
+
+  // Formulario Clínico del Asistente LEVA para Diseñar Protocolos Faltantes
+  formProtocoloIa = {
+    problemaClinico: '',
+    sprTentativo: 'Fóbico (Miedo paroxístico, evitación y delegación)',
+    tentativasSolucionTexto: '',
+    estratagemaSugerida: '',
+    poblacionContexto: 'Adultos en general',
+    libroReferencia: 'Escuela de Arezzo - Modelo Giorgio Nardone'
+  };
+  generandoProtocoloIa = false;
+
+  readonly sprOpciones = [
+    { value: 'Fóbico (Miedo paroxístico, evitación y delegación)', label: 'Fóbico (Miedo paroxístico, evitación y delegación de auxilio)' },
+    { value: 'Obsesivo-Compulsivo (Rituales / Control)', label: 'Obsesivo-Compulsivo (Rituales preventivos, reparatorios o mágicos)' },
+    { value: 'Duda Patológica (Bucle Racional)', label: 'Duda Patológica (Búsqueda incesante de certeza y respuestas racionales)' },
+    { value: 'Depresivo / Desilusionado (Renuncia)', label: 'Depresivo / Desilusionado (Renuncia tras esfuerzo o pérdida asumida)' },
+    { value: 'Trastorno de la Alimentación / Atracón', label: 'Trastorno Alimentario (Atracón, vómito o control dietético)' },
+    { value: 'Paranoico / Persecutorio', label: 'Paranoico / Persecutorio (Hipervigilancia y sospecha reactiva)' }
+  ];
+
+  readonly estratagemasSugeridasRapidas = [
+    'La Peor Fantasía (Saturación paradójica del miedo)',
+    'El Espejo Líquido (Exposición visual matutina sin contacto)',
+    'Diario de a Bordo (Registro inmediato de conatos de crisis)',
+    'Prescripción del Síntoma / Contraritual 1=5',
+    'La Pequeña Infracción Placentera Diaria',
+    'La Media Hora de la Queja / Desahogo',
+    'La Carta de Despedida / Odio'
+  ];
+
   // Selector de Tipo de Carga
   tipoCarga: 'protocolo' | 'libro' = 'protocolo';
 
@@ -91,6 +124,71 @@ export class EducarLevaComponent implements OnInit {
         this.protocolCode = 'TBE-';
       }
     }
+  }
+
+  aplicarEstratagemaRapida(estratagema: string): void {
+    this.formProtocoloIa.estratagemaSugerida = estratagema;
+  }
+
+  generarProtocoloConLeva(): void {
+    if (!this.formProtocoloIa.problemaClinico?.trim()) {
+      this.mensajeError = 'Por favor ingresa el nombre del problema clínico o trastorno a protocolizar.';
+      return;
+    }
+
+    this.generandoProtocoloIa = true;
+    this.mensajeError = '';
+    this.mensajeExito = '';
+
+    const tentativas = this.formProtocoloIa.tentativasSolucionTexto
+      ? this.formProtocoloIa.tentativasSolucionTexto.split(/[\n,]+/).map(t => t.trim()).filter(t => t.length > 0)
+      : [];
+
+    this.educarService.generarBorradorProtocolo({
+      problemaClinico: this.formProtocoloIa.problemaClinico.trim(),
+      sprTentativo: this.formProtocoloIa.sprTentativo,
+      tentativasSolucionObservadas: tentativas,
+      estratagemaSugerida: this.formProtocoloIa.estratagemaSugerida?.trim(),
+      poblacionContexto: this.formProtocoloIa.poblacionContexto?.trim(),
+      libroReferencia: this.formProtocoloIa.libroReferencia?.trim()
+    }).subscribe({
+      next: (res) => {
+        this.generandoProtocoloIa = false;
+        this.title = res.title;
+        this.protocolCode = res.protocolCode;
+        this.category = res.category || 'PROTOCOLO_TBE';
+        this.sourceReference = res.sourceReference;
+        this.markdownEditado = res.markdownContent;
+        this.nombreArchivo = `${res.protocolCode}.md (Diseñado con LEVA Copilot)`;
+
+        const words = res.markdownContent ? res.markdownContent.split(/\s+/).length : 250;
+        this.previewData = {
+          filename: `${res.protocolCode}.md`,
+          extension: 'md',
+          pageCount: 2,
+          wordCount: words,
+          markdown: res.markdownContent,
+          sections: [
+            '1. Objetivo Clínico y Diana TBE',
+            '2. Sistema Perceptivo-Reactivo',
+            '3. Tentativas de Solución Redundantes',
+            '4. Punto Clave y Estratagema Central',
+            '5. Prescripciones Estratégicas Operativas',
+            '6. Reestructuración de Arezzo',
+            '7. Fases de Intervención'
+          ],
+          chunkCount: res.chunks?.length || 0,
+          chunks: res.chunks || []
+        };
+
+        this.modoRevision = true;
+        this.mensajeExito = `Protocolo "${res.title}" diseñado con éxito por LEVA. Revisa los campos y el contenido antes de publicar.`;
+      },
+      error: (err) => {
+        this.generandoProtocoloIa = false;
+        this.mensajeError = err.error?.message || err.message || 'Error al generar el borrador de protocolo con LEVA.';
+      }
+    });
   }
 
   esLibro(doc: CorpusDocument): boolean {
