@@ -20,6 +20,15 @@ public interface LocalLlmPort {
         return generateStructuredProposal(fullText, segments);
     }
 
+    /** Variante que además recibe casos fuente (precedentes institucionales) para informar prescripciones. */
+    default StructuredProposalData generateStructuredProposal(
+            String fullText,
+            List<TranscriptSegment> segments,
+            List<ClinicalCorpusChunk> relevantChunks,
+            List<com.syborx.brevemente.leva.domain.model.SimilarCaseMatch> casePrecedents) {
+        return generateStructuredProposal(fullText, segments, relevantChunks);
+    }
+
     String queryClosedCorpus(String userQuery, List<ClinicalCorpusDocument> contextDocuments);
     void streamQueryClosedCorpus(
             String userQuery,

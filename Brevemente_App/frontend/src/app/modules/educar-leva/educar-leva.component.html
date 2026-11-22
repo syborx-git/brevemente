@@ -64,7 +64,21 @@
         <p class="text-[10px] font-normal" [ngClass]="modoCreacion === 'asistente_ia' ? 'text-purple-200' : 'text-slate-400'">Formulación de protocolos faltantes con Escuela de Arezzo y LLaMA 3.1</p>
       </div>
     </button>
+
+    <button type="button"
+      (click)="modoCreacion = 'casos_fuente'"
+      class="flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+      [ngClass]="modoCreacion === 'casos_fuente' ? 'bg-clinical-teal text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'">
+      <span class="text-base">⭐</span>
+      <div class="text-left">
+        <p class="leading-tight">Curaduría de Casos Fuente de Aprendizaje</p>
+        <p class="text-[10px] font-normal" [ngClass]="modoCreacion === 'casos_fuente' ? 'text-teal-100' : 'text-slate-400'">Buscar expedientes clínicos y aceptarlos como precedentes para LEVA</p>
+      </div>
+    </button>
   </div>
+
+  <!-- MODO 3: Curaduría de Casos Clínicos como Fuente de Aprendizaje -->
+  <app-casos-fuente-leva *ngIf="!modoRevision && modoCreacion === 'casos_fuente'"></app-casos-fuente-leva>
 
   <!-- MODO 1: Selección y Carga del Documento (Si no está en modo revisión y modoCreacion === 'archivo') -->
   <div *ngIf="!modoRevision && modoCreacion === 'archivo'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">

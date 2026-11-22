@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RoleStateService } from '../../core/services/role-state.service';
+import { CasosFuenteLevaComponent } from './casos-fuente/casos-fuente-leva.component';
 import {
   EducarLevaService,
   CorpusDocument,
@@ -12,7 +13,7 @@ import {
 @Component({
   selector: 'app-educar-leva',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CasosFuenteLevaComponent],
   templateUrl: './educar-leva.component.html',
   styleUrl: './educar-leva.component.scss'
 })
@@ -33,7 +34,7 @@ export class EducarLevaComponent implements OnInit {
   markdownEditado = '';
 
   // Selector de Modo de Creación: Archivo vs Asistente LEVA IA
-  modoCreacion: 'archivo' | 'asistente_ia' = 'archivo';
+  modoCreacion: 'archivo' | 'asistente_ia' | 'casos_fuente' = 'archivo';
 
   // Formulario Clínico del Asistente LEVA para Diseñar Protocolos Faltantes
   formProtocoloIa = {

@@ -73,6 +73,48 @@ public class OllamaLlmClient implements LocalLlmPort {
                  P (Plan): Tareas prescritas, objetivos de la siguiente sesión y temporalidad acordada.
             """;
 
+    /**
+     * Contexto compacto de precedentes institucionales (casos fuente anonimizados y aprobados por la
+     * dirección clínica). Se limita a 2 casos y ~500 caracteres por caso para no saturar la ventana.
+     */
+    private String buildCasePrecedentContext(List<com.syborx.brevemente.leva.domain.model.SimilarCaseMatch> casePrecedents) {
+        if (casePrecedents == null || casePrecedents.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("PRECEDENTES CLÍNICOS INSTITUCIONALES (casos reales anonimizados, solo como apoyo):\n");
+        int count = 0;
+        for (var match : casePrecedents) {
+            if (count++ >= 2 || match.getSource() == null) {
+                break;
+            }
+            var src = match.getSource();
+            sb.append("--- [").append(src.getCaseToken()).append("] similitud ")
+                    .append(Math.round(match.getSimilarity() * 100)).append("% ---\n");
+            if (src.getDiagnosticoOperativo() != null) {
+                sb.append("Dinámica: ").append(truncate(src.getDiagnosticoOperativo(), 220)).append("\n");
+            }
+            if (src.getPrescripciones() != null && !src.getPrescripciones().isEmpty()) {
+                sb.append("Prescripciones aplicadas: ")
+                        .append(truncate(String.join(" | ", src.getPrescripciones()), 220)).append("\n");
+            }
+            if (src.getResultado() != null && !src.getResultado().isBlank()) {
+                sb.append("Resultado: ").append(truncate(src.getResultado(), 120)).append("\n");
+            }
+            sb.append("\n");
+        }
+        sb.append("INSTRUCCIÓN: Si un precedente coincide con la dinámica de esta sesión, puedes inspirar las prescripciones "
+                + "en lo que funcionó allí y mencionarlo por su código REF-CASO en 'justificacionEstrategica'. "
+                + "NO inventes datos que no estén en los precedentes y NUNCA copies identidades.\n\n");
+        return sb.toString();
+    }
+
+    private static String truncate(String text, int max) {
+        if (text == null) {
+            return "";
+        }
+        return text.length() > max ? text.substring(0, max) + "…" : text;
+    }
+
     private static final String FEW_SHOT_USER_EXAMPLE = """
             Transcripción de la sesión:
             \"\"\"
@@ -154,6 +196,15 @@ public class OllamaLlmClient implements LocalLlmPort {
             String fullText,
             List<TranscriptSegment> segments,
             List<ClinicalCorpusChunk> relevantChunks) {
+        return generateStructuredProposal(fullText, segments, relevantChunks, Collections.emptyList());
+    }
+
+    @Override
+    public StructuredProposalData generateStructuredProposal(
+            String fullText,
+            List<TranscriptSegment> segments,
+            List<ClinicalCorpusChunk> relevantChunks,
+            List<com.syborx.brevemente.leva.domain.model.SimilarCaseMatch> casePrecedents) {
         int chunkCount = (relevantChunks != null) ? relevantChunks.size() : 0;
         log.info("[LEVA LLM] Generando propuesta clínica estructurada (Few-Shot) con {} fragmentos de protocolo RAG y modelo local: {}",
                 chunkCount, modelName);
@@ -174,7 +225,8 @@ public class OllamaLlmClient implements LocalLlmPort {
             }
         }
 
-        String userPrompt = (protocolContext.length() > 0 ? protocolContext.toString() : "")
+        String precedentContext = buildCasePrecedentContext(casePrecedents);
+        String userPrompt = (protocolContext.length() > 0 ? protocolContext.toString() : "") + precedentContext
                 + "Transcripción de la sesión:\n\"\"\"\n" + fullText + "\n\"\"\""
                 + (protocolContext.length() > 0 ? "\n\nINSTRUCCIÓN ESTRICTA: Basa el diagnóstico operativo (DX.OP) y las prescripciones estratégicas (PX) estrictamente en los fragmentos de protocolo clínico arriba indicados." : "");
 

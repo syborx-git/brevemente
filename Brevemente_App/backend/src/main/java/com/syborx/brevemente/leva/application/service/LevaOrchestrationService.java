@@ -43,6 +43,7 @@ public class LevaOrchestrationService implements
     private final ClinicalCorpusRepositoryPort corpusRepositoryPort;
     private final CacheManager cacheManager;
     private final SessionAudioStoragePort sessionAudioStoragePort;
+    private final FindSimilarCasesUseCase findSimilarCasesUseCase;
 
 
     @Value("${app.leva.callback-url:http://localhost:8080/api/v1/internal/transcriptions/callback}")
@@ -136,7 +137,7 @@ public class LevaOrchestrationService implements
 
         // 2. Extracción Estructurada con LLaMA 3.1 8B (Diagnóstico Operativo, Prescripciones, SOAP y Diálogo)
         log.info("[LEVA Engine] Generando propuesta clínica estructurada con LLaMA 3.1 restringida a protocolos...");
-        StructuredProposalData proposalData = localLlmPort.generateStructuredProposal(
+        StructuredProposalData proposalData = generateProposalWithPrecedents(
                 rawResult.getFullText(),
                 rawResult.getSegments(),
                 relevantChunks
@@ -200,6 +201,9 @@ public class LevaOrchestrationService implements
             }
         }
 
+        // 2.5 Tríada de fuentes del pre-diagnóstico: protocolo + libro + casos institucionales aprobados
+        attachReferenceSources(proposalData, rawResult.getFullText(), relevantChunks);
+
         // 3. Crear propuesta en estado PROPOSED (Human-in-the-Loop)
         LevaClinicalProposal proposal = LevaClinicalProposal.builder()
                 .id(UUID.randomUUID().toString())
@@ -245,7 +249,14 @@ public class LevaOrchestrationService implements
                 .orElseThrow(() -> new LevaException("No se encontró la propuesta clínica con ID: " + proposalId));
 
         proposal.setHumanReviewStatus(HumanReviewStatus.APPROVED);
-        proposal.setApprovedData(approvedData != null ? approvedData : proposal.getStructuredProposal());
+        StructuredProposalData finalData = approvedData != null ? approvedData : proposal.getStructuredProposal();
+        // Las fuentes de referencia son responsabilidad del servidor: no se aceptan modificaciones desde el cliente
+        StructuredProposalData original = proposal.getStructuredProposal();
+        if (finalData != null && original != null
+                && original.getFuentesReferencia() != null && !original.getFuentesReferencia().isEmpty()) {
+            finalData.setFuentesReferencia(original.getFuentesReferencia());
+        }
+        proposal.setApprovedData(finalData);
 
         String reviewer = (reviewedById != null && !reviewedById.isBlank()) ? reviewedById.trim() : "Terapeuta Responsable";
         if (reviewer.length() > 255) {
@@ -543,6 +554,141 @@ public class LevaOrchestrationService implements
         }
 
         return localLlmPort.generateProtocolDraft(request, exemplars);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Casos fuente de aprendizaje (memoria institucional) y tríada de fuentes del pre-diagnóstico
+    // ------------------------------------------------------------------------------------------
+
+    private StructuredProposalData generateProposalWithPrecedents(
+            String fullText,
+            List<TranscriptSegment> segments,
+            List<ClinicalCorpusChunk> chunks) {
+        List<SimilarCaseMatch> precedents = safeFindSimilarCases(fullText, null, 2);
+        if (precedents.isEmpty()) {
+            return localLlmPort.generateStructuredProposal(fullText, segments, chunks);
+        }
+        log.info("[LEVA Engine] {} caso(s) fuente de aprendizaje inyectados como precedente en la formulación.", precedents.size());
+        return localLlmPort.generateStructuredProposal(fullText, segments, chunks, precedents);
+    }
+
+    private List<SimilarCaseMatch> safeFindSimilarCases(String queryText, String sprHint, int limit) {
+        if (findSimilarCasesUseCase == null) {
+            return Collections.emptyList();
+        }
+        try {
+            List<SimilarCaseMatch> found = findSimilarCasesUseCase.findSimilar(queryText, sprHint, limit);
+            return found != null ? found : Collections.emptyList();
+        } catch (Exception ex) {
+            log.warn("[LEVA Engine] No se pudieron recuperar casos fuente de aprendizaje: {}", ex.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void attachReferenceSources(StructuredProposalData data, String fullText, List<ClinicalCorpusChunk> chunks) {
+        List<ReferenceSource> fuentes = new ArrayList<>();
+
+        // 1 y 2. Protocolo / Guía / Libro del corpus (el primero siempre; los demás solo si son realmente afines)
+        String formulation = String.join(" ", Arrays.asList(
+                fullText != null ? fullText : "",
+                data.getDiagnosticoOperativo() != null ? data.getDiagnosticoOperativo() : "",
+                data.getSistemaPerceptivoReactivo() != null ? data.getSistemaPerceptivoReactivo() : "",
+                data.getTentativasSolucionRedundantes() != null ? String.join(" ", data.getTentativasSolucionRedundantes()) : ""));
+        Set<String> queryTokens = ClinicalCaseSourceService.tokens(formulation);
+
+        Map<String, ClinicalCorpusChunk> byDocument = new LinkedHashMap<>();
+        if (chunks != null) {
+            for (ClinicalCorpusChunk c : chunks) {
+                String key = c.getDocumentId() != null ? c.getDocumentId() : c.getProtocolCode();
+                if (key != null) {
+                    byDocument.putIfAbsent(key, c);
+                }
+            }
+        }
+        boolean first = true;
+        List<ReferenceSource> corpusRefs = new ArrayList<>();
+        for (ClinicalCorpusChunk c : byDocument.values()) {
+            if (corpusRefs.size() >= 3) {
+                break;
+            }
+            if (first || sharedTokens(c, queryTokens) >= 3) {
+                corpusRefs.add(toCorpusReference(c));
+            }
+            first = false;
+        }
+        corpusRefs.sort(Comparator.comparingInt(r -> "LIBRO".equals(r.getTipo()) ? 1 : 0));
+        fuentes.addAll(corpusRefs);
+
+        // 3. Casos institucionales aprobados por el rol autorizado, afines a la formulación detectada
+        String caseQuery = formulation + " " + (data.getPrescripcionesEstrategicas() != null
+                ? String.join(" ", data.getPrescripcionesEstrategicas()) : "");
+        for (SimilarCaseMatch match : safeFindSimilarCases(caseQuery, data.getSistemaPerceptivoReactivo(), 2)) {
+            fuentes.add(toCaseReference(match));
+        }
+
+        data.setFuentesReferencia(fuentes);
+    }
+
+    private int sharedTokens(ClinicalCorpusChunk chunk, Set<String> queryTokens) {
+        Set<String> chunkTokens = ClinicalCaseSourceService.tokens(
+                (chunk.getTitle() != null ? chunk.getTitle() + " " : "") + (chunk.getContent() != null ? chunk.getContent() : ""));
+        int shared = 0;
+        for (String t : chunkTokens) {
+            if (t.length() >= 5 && queryTokens.contains(t)) {
+                shared++;
+            }
+        }
+        return shared;
+    }
+
+    private ReferenceSource toCorpusReference(ClinicalCorpusChunk chunk) {
+        String category = "PROTOCOLO_TBE";
+        String docTitle = null;
+        if (chunk.getDocumentId() != null) {
+            Optional<ClinicalCorpusDocument> doc = corpusRepositoryPort.findById(chunk.getDocumentId());
+            if (doc != null && doc.isPresent()) {
+                category = doc.get().getCategory() != null ? doc.get().getCategory() : category;
+                docTitle = doc.get().getTitle();
+            }
+        }
+        String code = chunk.getProtocolCode() != null ? chunk.getProtocolCode() : "";
+        String tipo;
+        if ("LIBRO_CLINICO".equalsIgnoreCase(category) || "MANUAL_TECNICO".equalsIgnoreCase(category)
+                || code.toUpperCase().startsWith("LIB-")) {
+            tipo = "LIBRO";
+        } else if (category.toUpperCase().startsWith("GUIA")) {
+            tipo = "GUIA";
+        } else {
+            tipo = "PROTOCOLO";
+        }
+        String titulo = docTitle != null && !docTitle.isBlank() ? docTitle
+                : (chunk.getTitle() != null && !chunk.getTitle().isBlank() ? chunk.getTitle() : code);
+        String content = chunk.getContent() != null ? chunk.getContent() : "";
+        return ReferenceSource.builder()
+                .tipo(tipo)
+                .codigo(code)
+                .titulo(titulo)
+                .resumen(content.length() > 280 ? content.substring(0, 280) + "…" : content)
+                .extracto(content.length() > 600 ? content.substring(0, 600) + "…" : content)
+                .build();
+    }
+
+    private ReferenceSource toCaseReference(SimilarCaseMatch match) {
+        ClinicalCaseSource src = match.getSource();
+        String dx = src.getDiagnosticoOperativo() != null ? src.getDiagnosticoOperativo() : "";
+        List<String> px = src.getPrescripciones() != null ? src.getPrescripciones() : List.of();
+        String detalle = px.isEmpty() ? null : String.join(" · ", px.subList(0, Math.min(3, px.size())));
+        return ReferenceSource.builder()
+                .tipo("CASO")
+                .codigo(src.getCaseToken())
+                .titulo("Caso institucional · " + (src.getSpr() != null ? src.getSpr() : "SPR no especificado"))
+                .resumen((src.getPerfilEtario() != null ? src.getPerfilEtario() + ". " : "")
+                        + (dx.length() > 280 ? dx.substring(0, 280) + "…" : dx))
+                .detalle(detalle)
+                .resultado(src.getResultado())
+                .numSesiones(src.getNumSesiones())
+                .similitud(Math.round(match.getSimilarity() * 100.0) / 100.0)
+                .build();
     }
 
     private String extractPuntoClaveFromChunk(ClinicalCorpusChunk chunk) {
