@@ -31,6 +31,9 @@ public class StructuredProposalData {
     private String justificacionEstrategica;
     private String puntoClaveProtocolo;
     private String fragmentoProtocolo;
+    /** Tríada de fuentes que respaldan el pre-diagnóstico: protocolo, libro y casos institucionales. */
+    @Builder.Default
+    private List<ReferenceSource> fuentesReferencia = new ArrayList<>();
     @Builder.Default
     private List<DialogueTurn> dialogue = new ArrayList<>();
 

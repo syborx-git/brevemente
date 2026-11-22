@@ -102,6 +102,7 @@ export class LevaProposalReviewComponent implements OnInit, OnChanges {
       justificacionEstrategica: source.justificacionEstrategica || '',
       puntoClaveProtocolo: source.puntoClaveProtocolo || '',
       fragmentoProtocolo: source.fragmentoProtocolo || '',
+      fuentesReferencia: source.fuentesReferencia ? [...source.fuentesReferencia] : [],
       diagnosticoOperativo: source.diagnosticoOperativo || '',
       sistemaPerceptivoReactivo: source.sistemaPerceptivoReactivo || '',
       tentativasSolucionRedundantes: source.tentativasSolucionRedundantes ? [...source.tentativasSolucionRedundantes] : [],

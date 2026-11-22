@@ -13,6 +13,18 @@ export interface DialogueTurn {
   timestampEnd?: number;
 }
 
+export interface ReferenceSource {
+  tipo: 'PROTOCOLO' | 'GUIA' | 'LIBRO' | 'CASO' | string;
+  codigo?: string;
+  titulo?: string;
+  resumen?: string;
+  detalle?: string;
+  resultado?: string;
+  extracto?: string;
+  similitud?: number;
+  numSesiones?: number;
+}
+
 export interface StructuredProposalData {
   diagnosticoOperativo?: string;
   sistemaPerceptivoReactivo?: string;
@@ -29,6 +41,7 @@ export interface StructuredProposalData {
   justificacionEstrategica?: string;
   puntoClaveProtocolo?: string;
   fragmentoProtocolo?: string;
+  fuentesReferencia?: ReferenceSource[];
   dialogue?: DialogueTurn[];
 }
 

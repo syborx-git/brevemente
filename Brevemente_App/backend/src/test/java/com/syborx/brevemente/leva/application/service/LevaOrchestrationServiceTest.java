@@ -57,6 +57,9 @@ class LevaOrchestrationServiceTest {
     @Mock
     private SessionAudioStoragePort sessionAudioStoragePort;
 
+    @Mock
+    private com.syborx.brevemente.leva.application.ports.in.FindSimilarCasesUseCase findSimilarCasesUseCase;
+
     private LevaOrchestrationService service;
 
     @BeforeEach
@@ -68,7 +71,8 @@ class LevaOrchestrationServiceTest {
                 proposalRepositoryPort,
                 corpusRepositoryPort,
                 cacheManager,
-                sessionAudioStoragePort
+                sessionAudioStoragePort,
+                findSimilarCasesUseCase
         );
     }
 
