@@ -8,6 +8,7 @@ import {
   DashboardRepository,
   DashboardStats,
   PendientePrioritario,
+  SesionIniciada,
   UrgentAlert
 } from '../ports/dashboard.repository';
 import { Appointment, PacienteResumen, Patient } from '../../../core/types/clinical.types';
@@ -301,5 +302,17 @@ export class DashboardLocalStorageAdapter implements DashboardRepository {
       grabacionLeva: nextPatient.registryMode === 'ia'
     };
     return of(accion);
+  }
+
+  iniciarSesion(citaId: string): Observable<SesionIniciada> {
+    const cita = this.citasFiltradas({}).find((a) => a.id === citaId);
+    return of({
+      id: `ses-${Date.now().toString(36)}`,
+      patientId: cita?.patientId ?? '',
+      number: 1,
+      date: new Date().toISOString().split('T')[0],
+      status: 'borrador',
+      citaId
+    });
   }
 }

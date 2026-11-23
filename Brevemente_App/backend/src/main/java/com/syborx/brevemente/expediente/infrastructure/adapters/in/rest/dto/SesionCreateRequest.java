@@ -27,5 +27,6 @@ public record SesionCreateRequest(
         String situation,
         String audioDuration,
         VcEntry valoracionCambio,
-        VgEntry valoracionGlobal
+        VgEntry valoracionGlobal,
+        @Schema(example = "cit-001", description = "Cita de origen de la sesión (nullable)") String citaId
 ) {}

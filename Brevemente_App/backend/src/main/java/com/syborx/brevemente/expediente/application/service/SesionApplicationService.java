@@ -4,11 +4,13 @@ import com.syborx.brevemente.auditoria.application.ports.out.AuditoriaExpediente
 import com.syborx.brevemente.expediente.application.ports.in.ActualizarSesionUseCase;
 import com.syborx.brevemente.expediente.application.ports.in.AgregarSesionUseCase;
 import com.syborx.brevemente.expediente.application.ports.in.ListarSesionesUseCase;
+import com.syborx.brevemente.expediente.application.ports.out.CitaEstadoPort;
 import com.syborx.brevemente.expediente.application.ports.out.ExpedienteRepositoryPort;
 import com.syborx.brevemente.expediente.application.ports.out.SesionRepositoryPort;
 import com.syborx.brevemente.expediente.domain.exception.ExpedienteNotFoundException;
 import com.syborx.brevemente.expediente.domain.exception.SesionInvalidaException;
 import com.syborx.brevemente.expediente.domain.exception.SesionNotFoundException;
+import com.syborx.brevemente.expediente.domain.exception.SesionPorCitaExistenteException;
 import com.syborx.brevemente.expediente.domain.model.Expediente;
 import com.syborx.brevemente.expediente.domain.model.Sesion;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class SesionApplicationService implements ListarSesionesUseCase, AgregarS
     private final AuditoriaExpedientePort auditoriaExpedientePort;
     private final ExpedienteRepositoryPort expedienteRepositoryPort;
     private final SesionRepositoryPort sesionRepositoryPort;
+    private final CitaEstadoPort citaEstadoPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -69,6 +72,14 @@ public class SesionApplicationService implements ListarSesionesUseCase, AgregarS
             sesion.setCreadoPorId(terapeutaIds.get(0));
         }
 
+        // Integridad "1 sesión por cita": rechazar una segunda sesión para la misma cita.
+        if (sesion.getCitaId() != null && !sesion.getCitaId().isBlank()) {
+            sesionRepositoryPort.findByCitaId(sesion.getCitaId()).ifPresent(existente -> {
+                throw new SesionPorCitaExistenteException(
+                        "Ya existe una sesión para la cita " + sesion.getCitaId() + ".");
+            });
+        }
+
         Sesion saved = sesionRepositoryPort.save(sesion);
         // El mapeo de persistencia no conserva pacienteId (la tabla expone expediente_id),
         // por lo que se usa el parámetro de entrada para la traza de auditoría.
@@ -90,6 +101,8 @@ public class SesionApplicationService implements ListarSesionesUseCase, AgregarS
             throw new SesionInvalidaException("El estado debe ser 'borrador' o 'validado'.");
         }
 
+        boolean estabaValidada = "validado".equals(target.getStatus());
+
         // Fusión PATCH: solo campos no nulos presentes en el request.
         if (datosParciales.getFase() != null) target.setFase(datosParciales.getFase());
         if (datosParciales.getSignificado() != null) target.setSignificado(datosParciales.getSignificado());
@@ -103,6 +116,14 @@ public class SesionApplicationService implements ListarSesionesUseCase, AgregarS
         if (datosParciales.getStatus() != null) target.setStatus(datosParciales.getStatus());
 
         Sesion saved = sesionRepositoryPort.save(target);
+
+        // Cierre automático: validar la sesión completa la cita vinculada (D-5/D-14).
+        // Pre-guard de idempotencia: no reintentar si ya estaba validada o la cita ya completó.
+        if ("validado".equals(saved.getStatus()) && saved.getCitaId() != null
+                && !estabaValidada
+                && !citaEstadoPort.estaCompletada(saved.getCitaId())) {
+            citaEstadoPort.marcarCompletada(saved.getCitaId());
+        }
 
         auditoriaExpedientePort.registrar(
                 saved.getPacienteId() != null ? saved.getPacienteId() : target.getPacienteId(),

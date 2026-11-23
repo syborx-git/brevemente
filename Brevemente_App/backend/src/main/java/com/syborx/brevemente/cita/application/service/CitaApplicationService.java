@@ -4,12 +4,14 @@ import com.syborx.brevemente.cita.application.ports.in.ActualizarEstadoCitaUseCa
 import com.syborx.brevemente.cita.application.ports.in.AgendarCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.in.ListarCitasUseCase;
 import com.syborx.brevemente.cita.application.ports.in.ConfirmarPagoCitaUseCase;
+import com.syborx.brevemente.cita.application.ports.in.IniciarSesionDesdeCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.in.ReprogramarCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.out.CitaRepositoryPort;
 import com.syborx.brevemente.cita.application.ports.out.DiaNoLaborablePort;
 import com.syborx.brevemente.cita.application.ports.out.IdentidadAutenticadaPort;
 import com.syborx.brevemente.cita.application.ports.out.PacienteConsentimientoPort;
 import com.syborx.brevemente.cita.application.ports.out.PasarelaPagosPort;
+import com.syborx.brevemente.cita.application.ports.out.RegistroSesionPort;
 import com.syborx.brevemente.cita.application.ports.out.SupervisionScopePort;
 import com.syborx.brevemente.cita.domain.exception.CitaBloqueadaPorNormativaException;
 import com.syborx.brevemente.cita.domain.exception.CitaEnPasadoException;
@@ -22,6 +24,7 @@ import com.syborx.brevemente.cita.domain.exception.TransicionEstadoCitaInvalidaE
 import com.syborx.brevemente.cita.domain.exception.MotivoCancelacionObligatorioException;
 import com.syborx.brevemente.cita.domain.model.Cita;
 import com.syborx.brevemente.cita.domain.model.CitaFiltro;
+import com.syborx.brevemente.cita.domain.model.SesionIniciada;
 import com.syborx.brevemente.auditoria.application.ports.out.AuditoriaExpedientePort;
 import com.syborx.brevemente.paciente.application.ports.out.TerapeutaConfigRepositoryPort;
 import com.syborx.brevemente.paciente.domain.model.TerapeutaConfig;
@@ -49,7 +52,8 @@ public class CitaApplicationService implements
         AgendarCitaUseCase,
         ActualizarEstadoCitaUseCase,
         ReprogramarCitaUseCase,
-        ConfirmarPagoCitaUseCase {
+        ConfirmarPagoCitaUseCase,
+        IniciarSesionDesdeCitaUseCase {
 
     private final CitaRepositoryPort citaRepositoryPort;
     private final DiaNoLaborablePort diaNoLaborablePort;
@@ -60,6 +64,7 @@ public class CitaApplicationService implements
     private final PagoRepositoryPort pagoRepositoryPort;
     private final TerapeutaConfigRepositoryPort terapeutaConfigRepositoryPort;
     private final AuditoriaExpedientePort auditoriaExpedientePort;
+    private final RegistroSesionPort registroSesionPort;
 
     /**
      * Máquina de estados de la cita. Los estados terminales
@@ -302,6 +307,46 @@ public class CitaApplicationService implements
                 "pagos");
 
         return cita;
+    }
+
+    @Override
+    @Transactional
+    public SesionIniciada iniciarSesion(String citaId) {
+        Cita cita = citaRepositoryPort.findById(citaId)
+                .orElseThrow(() -> new CitaNotFoundException(citaId));
+
+        validarAlcanceStaff(cita);
+
+        boolean pagoOk = cita.getPaymentStatus() != null
+                && ("pagada".equals(cita.getPaymentStatus()) || "exenta".equals(cita.getPaymentStatus()));
+        if (!"confirmada".equals(cita.getEstadoCita()) || !pagoOk) {
+            throw new TransicionEstadoCitaInvalidaException(
+                    "Solo se puede iniciar sesión en una cita confirmada con pago pagado o exento.");
+        }
+
+        if (pacienteConsentimientoPort.estaBloqueadoPorNormativa(cita.getPacienteId())) {
+            throw new CitaBloqueadaPorNormativaException();
+        }
+
+        LocalDate fecha = cita.getFechaHoraInicio() != null
+                ? cita.getFechaHoraInicio().toLocalDate()
+                : LocalDate.now(ZONA);
+
+        SesionIniciada sesion = registroSesionPort.iniciar(
+                cita.getPacienteId(),
+                fecha,
+                citaId,
+                identidadAutenticadaPort.sub(),
+                identidadAutenticadaPort.terapeutaIds());
+
+        auditoriaExpedientePort.registrarEnMismaTransaccion(
+                cita.getPacienteId(),
+                identidadAutenticadaPort.sub(),
+                "Inicio de sesión desde cita",
+                "Se inició la sesión " + sesion.id() + " desde la cita " + citaId + ".",
+                "sesion");
+
+        return sesion;
     }
 
     private void validarAlcanceStaff(Cita cita) {

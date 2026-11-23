@@ -1165,7 +1165,7 @@
           <div *ngIf="currentProposal" class="pt-2">
             <app-leva-proposal-review
               [proposal]="currentProposal"
-              [sessionId]="selectedSession?.id || (pacienteId + '-s' + (sessions.length || 1))"
+              [sessionId]="selectedSession?.id || ''"
               [therapistName]="patient?.therapistName || 'Dr. Carlos Mendoza'"
               [therapistLicense]="currentTherapistLicense"
               (approved)="onProposalApproved($event)"

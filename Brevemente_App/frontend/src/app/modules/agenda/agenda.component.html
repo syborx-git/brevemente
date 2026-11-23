@@ -315,6 +315,7 @@
       </div>
 
       <div class="flex gap-2 pt-2">
+        <button *ngIf="puedeAtender(selectedApp)" (click)="iniciarSesionDesdeCita(selectedApp)" class="flex-1 px-3 py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold text-[11px]">Atender / Iniciar sesión</button>
         <button *ngIf="puedeConfirmar(selectedApp)" (click)="cambiarEstado(selectedApp, 'confirmada')" class="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px]">Confirmar</button>
         <button *ngIf="puedeCancelar(selectedApp)" (click)="abrirConfirmacionCancelar(selectedApp)" class="flex-1 px-3 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 rounded-lg font-bold text-[11px]">Cancelar</button>
       </div>

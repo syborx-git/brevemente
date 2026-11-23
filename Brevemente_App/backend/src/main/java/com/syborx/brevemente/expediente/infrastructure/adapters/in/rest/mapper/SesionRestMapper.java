@@ -39,7 +39,8 @@ public class SesionRestMapper {
                 s.getDuracionAudio(),
                 s.getStatus(),
                 s.getValoracionCambio(),
-                s.getValoracionGlobal()
+                s.getValoracionGlobal(),
+                s.getCitaId()
         );
     }
 
@@ -67,6 +68,7 @@ public class SesionRestMapper {
                 .duracionAudio(r.audioDuration())
                 .valoracionCambio(r.valoracionCambio())
                 .valoracionGlobal(r.valoracionGlobal())
+                .citaId(r.citaId())
                 .build();
     }
 

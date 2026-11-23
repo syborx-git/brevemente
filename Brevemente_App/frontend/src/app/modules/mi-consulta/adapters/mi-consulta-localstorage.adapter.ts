@@ -6,6 +6,7 @@ import {
   BorradorSesion,
   CitaHoy,
   MiConsultaRepository,
+  SesionIniciada,
   SolicitudPendiente
 } from '../ports/mi-consulta.repository';
 
@@ -96,5 +97,17 @@ export class MiConsultaLocalStorageAdapter implements MiConsultaRepository {
 
   listarBorradores(): Observable<BorradorSesion[]> {
     return of(BORRADORES_DEMO);
+  }
+
+  iniciarSesion(citaId: string): Observable<SesionIniciada> {
+    const cita = CITAS_DEMO.find(c => c.id === citaId);
+    return of({
+      id: `ses-${Date.now().toString(36)}`,
+      patientId: cita?.pacienteId ?? 'patient-1',
+      number: 1,
+      date: new Date().toISOString().split('T')[0],
+      status: 'borrador',
+      citaId
+    });
   }
 }

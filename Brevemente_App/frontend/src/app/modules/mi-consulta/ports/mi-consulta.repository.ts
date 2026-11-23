@@ -61,6 +61,15 @@ export interface BorradorSesion {
   status: string;
 }
 
+export interface SesionIniciada {
+  id: string;
+  patientId: string;
+  number: number;
+  date: string | null;
+  status: string;
+  citaId: string | null;
+}
+
 export abstract class MiConsultaRepository {
   abstract obtenerAccionDominante(): Observable<AccionDominante | null>;
   abstract listarCitasHoy(): Observable<CitaHoy[]>;
@@ -68,4 +77,5 @@ export abstract class MiConsultaRepository {
   abstract resolverAlerta(id: string): Observable<AlertaStaff>;
   abstract listarSolicitudesPendientes(): Observable<SolicitudPendiente[]>;
   abstract listarBorradores(): Observable<BorradorSesion[]>;
+  abstract iniciarSesion(citaId: string): Observable<SesionIniciada>;
 }

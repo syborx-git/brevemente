@@ -10,6 +10,7 @@ import {
   DashboardRepository,
   DashboardStats,
   PendientePrioritario,
+  SesionIniciada,
   UrgentAlert
 } from '../ports/dashboard.repository';
 import { Appointment, PacienteResumen } from '../../../core/types/clinical.types';
@@ -93,5 +94,9 @@ export class DashboardHttpAdapter implements DashboardRepository {
     return this.http.get<AccionDominante | null>(`${this.apiUrl}/accion-dominante`, {
       params: this.buildParams(filtros)
     });
+  }
+
+  iniciarSesion(citaId: string): Observable<SesionIniciada> {
+    return this.http.post<SesionIniciada>(`/api/v1/citas/${citaId}/sesion`, null);
   }
 }

@@ -1,5 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import {
   AccionDominante,
@@ -106,9 +107,12 @@ type EstadoSesion = 'por_iniciar' | 'en_curso' | 'finalizada' | 'nota_pendiente'
 
               <div class="pt-2">
                 @if (sessionState() === 'por_iniciar') {
-                  <button type="button" class="w-full py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow text-xs transition-colors">
+                  <button type="button" (click)="atenderProximaSesion()" class="w-full py-2 bg-clinical-accent hover:bg-clinical-accentHover text-white rounded-lg font-bold shadow text-xs transition-colors">
                     Atender / Preparar Sesión →
                   </button>
+                  @if (mensajeError()) {
+                    <p class="text-[11px] text-red-600 font-semibold mt-2">{{ mensajeError() }}</p>
+                  }
                 }
                 @if (sessionState() === 'en_curso') {
                   <button type="button" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow text-xs transition-colors">
@@ -221,12 +225,14 @@ export class MiConsultaComponent implements OnInit {
   readonly solicitudes = signal<SolicitudPendiente[]>([]);
   readonly borradores = signal<BorradorSesion[]>([]);
   readonly sessionState = signal<EstadoSesion>('por_iniciar');
+  readonly mensajeError = signal<string | null>(null);
 
   readonly estadosSesion: EstadoSesion[] = ['por_iniciar', 'en_curso', 'finalizada', 'nota_pendiente'];
 
   constructor(
     http: HttpClient,
-    public readonly roleState: RoleStateService
+    public readonly roleState: RoleStateService,
+    private readonly router: Router
   ) {
     this.repo = environment.features.miConsultaBackend
       ? new MiConsultaHttpAdapter(http)
@@ -273,6 +279,31 @@ export class MiConsultaComponent implements OnInit {
   resolverAlerta(id: string): void {
     this.repo.resolverAlerta(id).subscribe(() => {
       this.alertas.update((lista) => lista.filter((a) => a.id !== id));
+    });
+  }
+
+  atenderProximaSesion(): void {
+    const a = this.accion();
+    this.mensajeError.set(null);
+    if (!a || !a.citaId) {
+      this.mensajeError.set('No hay una cita activa para iniciar sesión.');
+      return;
+    }
+    this.repo.iniciarSesion(a.citaId).subscribe({
+      next: (sesion) => {
+        this.router.navigate(['/expedientes', a.pacienteId], {
+          queryParams: { sesion: sesion.id, modo: 'grabacion' }
+        });
+      },
+      error: (err: any) => {
+        const msg = err?.error?.message || err?.message || '';
+        // Idempotencia de UX: si la sesión ya existe, llevar al expediente del paciente.
+        if (err?.status === 409 && msg.includes('Ya existe una sesión')) {
+          this.router.navigate(['/expedientes', a.pacienteId], { queryParams: { modo: 'grabacion' } });
+          return;
+        }
+        this.mensajeError.set(msg || 'No se pudo iniciar la sesión.');
+      }
     });
   }
 }

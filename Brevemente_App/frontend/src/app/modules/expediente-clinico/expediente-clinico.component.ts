@@ -239,6 +239,8 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   datosSubTab: 'generales' | 'historia' | 'ficha' = 'generales';
   psiquiatriaSubTab: 'esquema' | 'expediente' = 'expediente';
   selectedSession: Session | null = null;
+  private querySesionId: string | null = null;
+  private queryModoGrabacion = false;
 
   // Historia Clínica (estructurada — SDD-HC-3)
   antecedentes: Antecedentes | null = null;
@@ -424,6 +426,11 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       })
     );
 
+    this.route.queryParamMap.subscribe(q => {
+      this.querySesionId = q.get('sesion');
+      this.queryModoGrabacion = q.get('modo') === 'grabacion';
+    });
+
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
@@ -487,12 +494,22 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     });
     this.expedienteRepo.obtenerSesiones(this.pacienteId).subscribe(s => {
       this.sessions = s;
-      if (!this.selectedSession && s.length > 0) {
-        this.selectedSession = s[0];
-        this.cargarPropuestaDeSesion(s[0].id);
-      } else if (!this.selectedSession && s.length === 0) {
-        const defaultSessionId = this.pacienteId + '-s1';
-        this.cargarPropuestaDeSesion(defaultSessionId);
+      if (!this.selectedSession) {
+        const indicada = this.querySesionId
+          ? (s.find(x => x.id === this.querySesionId) || null)
+          : null;
+        if (indicada) {
+          this.selectedSession = indicada;
+          this.cargarPropuestaDeSesion(indicada.id);
+        } else if (s.length > 0) {
+          this.selectedSession = s[0];
+          this.cargarPropuestaDeSesion(s[0].id);
+        }
+      }
+      if (this.queryModoGrabacion) {
+        this.activeTab = 'tbe';
+        this.tbeSubTab = 'sesiones';
+        this.recordingState = 'IDLE';
       }
       this.newConstancia.sessionsCount = s.length > 0 ? s.length : 1;
       this.newBitacora.sessionNumber = s.length > 0 ? s.length : 1;
@@ -734,7 +751,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   private get currentSessionId(): string {
-    return this.selectedSession?.id || (this.pacienteId + '-s' + (this.sessions.length + 1));
+    return this.selectedSession?.id ?? '';
   }
 
   /** Sube el audio retenido (también usado para "Reintentar envío"). */
@@ -897,7 +914,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       if (sp.prescripcionesEstrategicas?.length) this.selectedSession.px = [...sp.prescripcionesEstrategicas];
       if (sp.notaEvolucionSoap) this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + sp.notaEvolucionSoap;
     } else {
-      const nuevaSesion: any = {
+      const nuevaSesion: Omit<Session, 'id' | 'patientId' | 'status'> = {
         number: this.sessions.length + 1,
         date: new Date().toISOString().split('T')[0],
         phase: 'Fase 1: Diagnóstico e Intervención',
@@ -912,7 +929,8 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         rss: 'En observación',
         eff: 'Inicio de tratamiento estratégico',
         notes: 'Sesión generada a partir de propuesta LEVA',
-        observationsNextSession: 'Evaluar cumplimiento de prescripción.'
+        observationsNextSession: 'Evaluar cumplimiento de prescripción.',
+        situation: ''
       };
       this.expedienteRepo.agregarSesion(this.pacienteId, nuevaSesion).subscribe(() => {
         this.cargarDatos();
@@ -976,7 +994,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         error: () => this.cargarDatos()
       });
     } else {
-      const nuevaSesion: any = {
+      const nuevaSesion: Omit<Session, 'id' | 'patientId' | 'status'> = {
         number: this.sessions.length + 1,
         date: new Date().toISOString().split('T')[0],
         phase: 'Fase 1: Diagnóstico e Intervención',
@@ -991,7 +1009,8 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         rss: 'En observación',
         eff: 'Inicio de tratamiento estratégico',
         notes: 'Sesión oficial sellada por terapeuta',
-        observationsNextSession: 'Evaluar cumplimiento de prescripción.'
+        observationsNextSession: 'Evaluar cumplimiento de prescripción.',
+        situation: ''
       };
       this.expedienteRepo.agregarSesion(this.pacienteId, nuevaSesion).subscribe(() => {
         this.cargarDatos();
