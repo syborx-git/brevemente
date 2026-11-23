@@ -1,5 +1,6 @@
 package com.syborx.brevemente.usuario.application.ports.out;
 
+import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PermisosPorRolDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioAdminDTO;
 
 import java.util.List;
@@ -10,6 +11,8 @@ public interface UsuarioAdminRepositoryPort {
     List<UsuarioAdminDTO> listar(String q, String rol, String estado, int offset, int limit);
 
     long contar(String q, String rol, String estado);
+
+    List<PermisosPorRolDTO> listarPermisosPorRol();
 
     Optional<UsuarioAdminDTO> findById(String id);
 

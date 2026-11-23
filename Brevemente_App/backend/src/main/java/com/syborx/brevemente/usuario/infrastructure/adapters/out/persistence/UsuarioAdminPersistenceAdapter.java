@@ -1,6 +1,7 @@
 package com.syborx.brevemente.usuario.infrastructure.adapters.out.persistence;
 
 import com.syborx.brevemente.usuario.application.ports.out.UsuarioAdminRepositoryPort;
+import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PermisosPorRolDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioAdminDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -187,6 +188,20 @@ public class UsuarioAdminPersistenceAdapter implements UsuarioAdminRepositoryPor
                               WHERE ur.usuario_id = u.id AND r.codigo = 'admin_platform')
                 """, Long.class);
         return n != null ? n : 0;
+    }
+
+    @Override
+    public List<PermisosPorRolDTO> listarPermisosPorRol() {
+        String sql = "SELECT r.codigo AS rol, "
+                + "COALESCE(string_agg(p.codigo, ',' ORDER BY p.codigo), '') AS permisos "
+                + "FROM roles r "
+                + "LEFT JOIN rol_permisos rp ON rp.rol_id = r.id "
+                + "LEFT JOIN permisos p ON p.id = rp.permiso_id "
+                + "GROUP BY r.codigo "
+                + "ORDER BY r.codigo";
+        return jdbcTemplate.query(sql, (rs, i) -> new PermisosPorRolDTO(
+                rs.getString("rol"),
+                split(rs.getString("permisos"))));
     }
 
     private record Where(String clausula, List<Object> params) {

@@ -70,6 +70,7 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             WHERE (c.terapeuta_id = :terapeutaId OR c.paciente_id = :pacienteId)
               AND c.fecha_hora_inicio < :fin
               AND c.fecha_hora_fin > :inicio
+              AND c.estado_cita IN ('pendiente', 'confirmada', 'solicita_reagendar')
               AND (:excluirId IS NULL OR c.id <> :excluirId)
             """, nativeQuery = true)
     long countOverlap(

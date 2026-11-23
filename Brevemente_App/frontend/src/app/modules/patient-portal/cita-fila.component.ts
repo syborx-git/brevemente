@@ -1,4 +1,4 @@
-import { Component, Input, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CitaPortal, SesionPortal } from './ports/patient-portal.repository';
 
@@ -63,6 +63,20 @@ const TIPO: Record<string, string> = {
             </span>
             <span class="text-slate-400 text-xs">{{ expanded() ? '▲' : '▼' }}</span>
           }
+          @if (puedePagar()) {
+            <button
+              type="button"
+              (click)="$event.stopPropagation(); pagar.emit()"
+              class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px]"
+            >Pagar</button>
+          }
+          @if (puedeCancelar()) {
+            <button
+              type="button"
+              (click)="$event.stopPropagation(); cancelar.emit()"
+              class="px-3 py-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 rounded-lg font-bold text-[11px]"
+            >Cancelar</button>
+          }
         </div>
       </div>
 
@@ -100,6 +114,11 @@ const TIPO: Record<string, string> = {
 export class CitaFilaComponent {
   @Input() cita!: CitaPortal;
   @Input() prescripciones: SesionPortal[] = [];
+  @Input() canPay = true;
+  @Input() canCancel = true;
+
+  @Output() pagar = new EventEmitter<void>();
+  @Output() cancelar = new EventEmitter<void>();
 
   readonly expanded = signal(false);
 
@@ -125,6 +144,17 @@ export class CitaFilaComponent {
 
   hasPrescripciones(): boolean {
     return this.totalPrescripciones > 0;
+  }
+
+  puedePagar(): boolean {
+    return this.canPay
+      && this.cita.status === 'pendiente'
+      && this.cita.paymentStatus === 'pendiente'
+      && this.cita.bloqueadaPorNormativa !== true;
+  }
+
+  puedeCancelar(): boolean {
+    return this.canCancel && ['pendiente', 'confirmada', 'solicita_reagendar'].includes(this.cita.status);
   }
 
   toggle(): void {

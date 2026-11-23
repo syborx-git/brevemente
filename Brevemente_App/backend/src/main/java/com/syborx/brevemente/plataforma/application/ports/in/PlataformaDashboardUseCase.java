@@ -7,6 +7,7 @@ import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.Desg
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.IndicadorClinicoDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.ResumenPlataformaDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.SaludPlataformaDTO;
+import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.TerapeutaPlataformaDTO;
 
 import java.util.List;
 
@@ -14,6 +15,8 @@ import java.util.List;
 public interface PlataformaDashboardUseCase {
 
     ResumenPlataformaDTO obtenerResumen();
+
+    List<TerapeutaPlataformaDTO> listarTerapeutas();
 
     List<IndicadorClinicoDTO> obtenerIndicadoresClinicos();
 

@@ -15,6 +15,7 @@ import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.CrearUs
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.EditarUsuarioRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.EstadoUsuario;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PasswordTemporalResponse;
+import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PermisosPorRolDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResumenUsuariosDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResetPasswordRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioAdminDTO;
@@ -62,6 +63,12 @@ public class UsuarioAdminApplicationService implements UsuarioAdminUseCase {
         List<UsuarioAdminDTO> items = repositoryPort.listar(q, rol, estado, offset, safeSize);
         long total = repositoryPort.contar(q, rol, estado);
         return new ResumenUsuariosDTO(items, total, safePage, safeSize);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PermisosPorRolDTO> listarPermisosPorRol() {
+        return repositoryPort.listarPermisosPorRol();
     }
 
     @Override
@@ -195,6 +202,9 @@ public class UsuarioAdminApplicationService implements UsuarioAdminUseCase {
     private void validarCedula(List<String> roles, String cedula) {
         if (roles.contains("therapist") && (cedula == null || cedula.isBlank())) {
             throw new IllegalArgumentException("La cédula profesional es requerida para terapeutas");
+        }
+        if (roles.contains("therapist") && cedula != null && cedula.trim().length() > 8) {
+            throw new IllegalArgumentException("La cédula profesional no puede tener más de 8 caracteres");
         }
     }
 }

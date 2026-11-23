@@ -6,6 +6,7 @@ import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.Cambiar
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.CrearUsuarioRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.EditarUsuarioRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PasswordTemporalResponse;
+import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PermisosPorRolDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResumenUsuariosDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResetPasswordRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioAdminDTO;
@@ -49,6 +50,11 @@ public class AdminUsuarioController {
     @GetMapping("/{id}")
     public UsuarioAdminDTO obtener(@PathVariable String id) {
         return usuarioAdminUseCase.obtener(id);
+    }
+
+    @GetMapping("/permisos-por-rol")
+    public List<PermisosPorRolDTO> permisosPorRol() {
+        return usuarioAdminUseCase.listarPermisosPorRol();
     }
 
     @PostMapping
