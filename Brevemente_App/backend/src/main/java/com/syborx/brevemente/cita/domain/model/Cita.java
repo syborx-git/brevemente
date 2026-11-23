@@ -33,4 +33,6 @@ public class Cita {
     private String consultorio;        // A | B | null (null si ONLINE)
     private String paymentStatus;      // pagada | pendiente | exenta
     private boolean bloqueadaPorNormativa;
+    private String motivoCancelacion;
+    private String motivoCancelacionDetalle;
 }

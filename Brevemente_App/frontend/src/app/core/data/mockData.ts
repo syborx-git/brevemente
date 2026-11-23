@@ -249,7 +249,7 @@ export const mockAppointments: Appointment[] = [
     time: '09:00',
     date: '2026-08-31',
     type: 'seguimiento',
-    status: 'confirmada',
+    status: 'pendiente',
     paymentStatus: 'pendiente'
   },
   // ─── Carlos Mendoza (patient-2) ───────────────────────────────────────────
@@ -260,7 +260,7 @@ export const mockAppointments: Appointment[] = [
     time: '11:30',
     date: '2026-08-24',
     type: 'primera',
-    status: 'confirmada',
+    status: 'pendiente',
     paymentStatus: 'pendiente'
   },
   // ─── Ana María Ruiz (patient-3) ───────────────────────────────────────────
@@ -373,7 +373,7 @@ export const mockAppointments: Appointment[] = [
     time: '14:00',
     date: '2026-08-15',
     type: 'seguimiento',
-    status: 'confirmada',
+    status: 'pendiente',
     paymentStatus: 'pendiente'
   },
   {

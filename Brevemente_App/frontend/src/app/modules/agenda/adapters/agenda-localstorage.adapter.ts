@@ -43,11 +43,14 @@ export class AgendaLocalStorageAdapter extends AgendaRepository {
     return of(raw ? JSON.parse(raw) : mockPatients);
   }
 
-  actualizarEstadoCita(id: string, status: Appointment['status']): Observable<Appointment> {
+  actualizarEstadoCita(id: string, status: Appointment['status'], motivo?: string, motivoDetalle?: string): Observable<Appointment> {
     const items = this.getAppointments();
     const index = items.findIndex(a => a.id === id);
     if (index !== -1) {
       items[index].status = status;
+      if (status === 'cancelada') {
+        items[index].motivoCancelacion = motivo;
+      }
       localStorage.setItem(this.appointmentsKey, JSON.stringify(items));
       return of(items[index]);
     }

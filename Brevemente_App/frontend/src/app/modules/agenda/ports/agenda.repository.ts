@@ -13,7 +13,7 @@ export abstract class AgendaRepository {
   abstract listarCitas(): Observable<Appointment[]>;
   abstract agendarCita(cita: Omit<Appointment, 'id'>): Observable<Appointment>;
   abstract obtenerPacientes(): Observable<Patient[]>;
-  abstract actualizarEstadoCita(id: string, status: Appointment['status']): Observable<Appointment>;
+  abstract actualizarEstadoCita(id: string, status: Appointment['status'], motivo?: string, motivoDetalle?: string): Observable<Appointment>;
 
   // Métodos extendidos (concretos por defecto; el mock no los implementa).
   reprogramarCita(id: string, cita: CitaReprogramarPayload): Observable<Appointment> {

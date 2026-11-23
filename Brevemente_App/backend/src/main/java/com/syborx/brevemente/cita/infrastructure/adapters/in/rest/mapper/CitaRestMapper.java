@@ -44,7 +44,9 @@ public class CitaRestMapper {
                 domain.getModalidad(),
                 domain.getConsultorio(),
                 domain.isBloqueadaPorNormativa(),
-                domain.getTipoSesion()
+                domain.getTipoSesion(),
+                domain.getMotivoCancelacion(),
+                domain.getMotivoCancelacionDetalle()
         );
     }
 
@@ -62,7 +64,7 @@ public class CitaRestMapper {
                 .duracionMinutos(request.duracionMinutos() != null ? request.duracionMinutos() : 30)
                 .modalidad(request.modalidad() != null ? request.modalidad() : "PRESENCIAL")
                 .consultorio(request.consultorio())
-                .estadoCita("confirmada")
+                .estadoCita("pendiente")
                 .paymentStatus("pendiente")
                 .bloqueadaPorNormativa(false)
                 .build();

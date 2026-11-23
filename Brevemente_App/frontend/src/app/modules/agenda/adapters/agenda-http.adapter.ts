@@ -40,8 +40,8 @@ export class AgendaHttpAdapter implements AgendaRepository {
     return this.http.get<Patient[]>(`${environment.apiBaseUrl}/pacientes`);
   }
 
-  actualizarEstadoCita(id: string, status: Appointment['status']): Observable<Appointment> {
-    return this.http.patch<Appointment>(`${this.apiUrl}/${id}/estado`, { status });
+  actualizarEstadoCita(id: string, status: Appointment['status'], motivo?: string, motivoDetalle?: string): Observable<Appointment> {
+    return this.http.patch<Appointment>(`${this.apiUrl}/${id}/estado`, { status, motivo, motivoDetalle });
   }
 
   listarDiasNoLaborables(): Observable<DiaNoLaborable[]> {

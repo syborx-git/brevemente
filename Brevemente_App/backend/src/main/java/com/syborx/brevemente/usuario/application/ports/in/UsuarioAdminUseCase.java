@@ -5,6 +5,7 @@ import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.Cambiar
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.CrearUsuarioRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.EditarUsuarioRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PasswordTemporalResponse;
+import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PermisosPorRolDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResumenUsuariosDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResetPasswordRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioAdminDTO;
@@ -16,6 +17,8 @@ import java.util.List;
 public interface UsuarioAdminUseCase {
 
     ResumenUsuariosDTO listar(String q, String rol, String estado, int page, int size);
+
+    List<PermisosPorRolDTO> listarPermisosPorRol();
 
     UsuarioAdminDTO obtener(String id);
 

@@ -52,8 +52,16 @@ export interface FeatureFlagBackend {
   activo: boolean;
 }
 
+export interface TerapeutaBackend {
+  id: string;
+  nombre: string;
+  especialidad: string;
+  estado: string;
+}
+
 export abstract class DashboardPlataformaRepository {
   abstract obtenerResumen(): Observable<{ kpis: KpisPlataformaBackend }>;
+  abstract obtenerTerapeutas(): Observable<TerapeutaBackend[]>;
   abstract obtenerIndicadores(): Observable<IndicadorClinicoBackend[]>;
   abstract obtenerDesglose(clave: string): Observable<DesgloseIndicadorBackend[]>;
   abstract obtenerActividad(limit?: number): Observable<{ accesos: AccesoRecienteBackend[]; usuarios: UsuarioRecienteBackend[] }>;

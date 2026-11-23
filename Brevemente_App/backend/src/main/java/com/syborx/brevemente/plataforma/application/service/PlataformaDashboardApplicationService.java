@@ -15,11 +15,13 @@ import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.Resu
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.SaludModuloDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.SaludPlataformaDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.Severidad;
+import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.TerapeutaPlataformaDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.TipoAlertaAdministrativa;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -44,6 +46,11 @@ public class PlataformaDashboardApplicationService implements PlataformaDashboar
     }
 
     @Override
+    public List<TerapeutaPlataformaDTO> listarTerapeutas() {
+        return repositoryPort.listarTerapeutas();
+    }
+
+    @Override
     public List<IndicadorClinicoDTO> obtenerIndicadoresClinicos() {
         return List.of(
                 new IndicadorClinicoDTO(ClaveIndicadorClinico.EFECTIVIDAD_TBE, "Efectividad TBE", new BigDecimal("72"), "%"),
@@ -51,23 +58,34 @@ public class PlataformaDashboardApplicationService implements PlataformaDashboar
                 new IndicadorClinicoDTO(ClaveIndicadorClinico.TASA_DESERCION, "Tasa de deserción", new BigDecimal("4"), "%"));
     }
 
-    private static final Map<ClaveIndicadorClinico, List<DesgloseIndicadorDTO>> DESGLOSE = Map.of(
-            ClaveIndicadorClinico.EFECTIVIDAD_TBE, List.of(
-                    new DesgloseIndicadorDTO("ter-001", "Dra. Sofía Ramírez Lozano", new BigDecimal("78"), 24),
-                    new DesgloseIndicadorDTO("ter-002", "Mtro. Alejandro Mendoza Garza", new BigDecimal("65"), 18),
-                    new DesgloseIndicadorDTO("ter-003", "Dra. Isabel Cárdenas", new BigDecimal("71"), 12)),
-            ClaveIndicadorClinico.INDICE_FIDELIDAD, List.of(
-                    new DesgloseIndicadorDTO("ter-001", "Dra. Sofía Ramírez Lozano", new BigDecimal("8.6"), 24),
-                    new DesgloseIndicadorDTO("ter-002", "Mtro. Alejandro Mendoza Garza", new BigDecimal("8.1"), 18),
-                    new DesgloseIndicadorDTO("ter-003", "Dra. Isabel Cárdenas", new BigDecimal("8.4"), 12)),
-            ClaveIndicadorClinico.TASA_DESERCION, List.of(
-                    new DesgloseIndicadorDTO("ter-001", "Dra. Sofía Ramírez Lozano", new BigDecimal("3"), 24),
-                    new DesgloseIndicadorDTO("ter-002", "Mtro. Alejandro Mendoza Garza", new BigDecimal("6"), 18),
-                    new DesgloseIndicadorDTO("ter-003", "Dra. Isabel Cárdenas", new BigDecimal("5"), 12)));
+    /**
+     * Valores de ejemplo por indicador (placeholder) mientras no existan las
+     * fórmulas clínicas reales. Se asignan a los terapeutas reales en orden.
+     */
+    private static final Map<ClaveIndicadorClinico, List<BigDecimal>> VALORES_MOCK = Map.of(
+            ClaveIndicadorClinico.EFECTIVIDAD_TBE, List.of(new BigDecimal("78"), new BigDecimal("65")),
+            ClaveIndicadorClinico.INDICE_FIDELIDAD, List.of(new BigDecimal("8.6"), new BigDecimal("8.1")),
+            ClaveIndicadorClinico.TASA_DESERCION, List.of(new BigDecimal("3"), new BigDecimal("6")));
+
+    private static final Map<ClaveIndicadorClinico, List<Integer>> CASOS_MOCK = Map.of(
+            ClaveIndicadorClinico.EFECTIVIDAD_TBE, List.of(24, 18),
+            ClaveIndicadorClinico.INDICE_FIDELIDAD, List.of(24, 18),
+            ClaveIndicadorClinico.TASA_DESERCION, List.of(24, 18));
 
     @Override
     public List<DesgloseIndicadorDTO> obtenerDesgloseIndicador(ClaveIndicadorClinico clave) {
-        return DESGLOSE.getOrDefault(clave, List.of());
+        List<TerapeutaPlataformaDTO> terapeutas = repositoryPort.listarTerapeutas();
+        List<BigDecimal> valores = VALORES_MOCK.getOrDefault(clave, List.of());
+        List<Integer> casos = CASOS_MOCK.getOrDefault(clave, List.of());
+
+        List<DesgloseIndicadorDTO> resultado = new ArrayList<>();
+        for (int i = 0; i < terapeutas.size(); i++) {
+            TerapeutaPlataformaDTO t = terapeutas.get(i);
+            BigDecimal valor = i < valores.size() ? valores.get(i) : BigDecimal.ZERO;
+            int numCasos = i < casos.size() ? casos.get(i) : 0;
+            resultado.add(new DesgloseIndicadorDTO(t.id(), t.nombre(), valor, numCasos));
+        }
+        return resultado;
     }
 
     @Override

@@ -21,11 +21,20 @@
   </div>
 
   <!-- Banner Normativo -->
-  <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
-    <span class="text-base"></span>
-    <span>
+  <div
+    *ngIf="mostrarBannerNormativo"
+    class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-xs text-amber-900"
+  >
+    <span class="text-base">⚠️</span>
+    <span class="flex-1">
       <strong>Control Normativo:</strong> Los pacientes menores de edad sin consentimiento formalizado de la persona de apoyo mantienen sus sesiones en estado <em>Bloqueada / Pendiente</em>.
     </span>
+    <button
+      type="button"
+      (click)="ocultarBannerNormativo()"
+      class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-amber-700 hover:bg-amber-200 transition-colors cursor-pointer"
+      aria-label="Cerrar aviso normativo"
+    >✕</button>
   </div>
 
   <!-- Calendario + leyenda -->
@@ -172,7 +181,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Fecha</label>
-            <input type="date" [(ngModel)]="newDate" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+            <input type="date" [min]="hoy" [(ngModel)]="newDate" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Hora</label>
@@ -216,6 +225,10 @@
         </div>
       </div>
 
+      <div *ngIf="mensajeErrorAgenda" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs">
+        {{ mensajeErrorAgenda }}
+      </div>
+
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
         <button (click)="closeNewModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
         <button (click)="guardarCita()" class="px-4 py-2 rounded-lg text-xs font-bold bg-clinical-accent hover:bg-clinical-accentHover text-clinical-textDark shadow-xs">Guardar Cita</button>
@@ -239,6 +252,23 @@
           Esta acción es reversible desde el panel de estado.
         </p>
 
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Motivo de cancelación *</label>
+          <select [(ngModel)]="motivoCancelacion" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs">
+            <option value="">— Motivo —</option>
+            <option value="EMERGENCIA">Emergencia</option>
+            <option value="NO_PUEDE_ASISTIR">No puedo asistir</option>
+            <option value="CAMBIO_DE_PLANES">Cambio de planes</option>
+            <option value="MOTIVO_CLINICO">Motivo clínico</option>
+            <option value="OTRO">Otro</option>
+          </select>
+        </div>
+
+        <div *ngIf="motivoCancelacion === 'OTRO'">
+          <label class="block font-semibold text-slate-700 mb-1">Detalle del motivo *</label>
+          <input type="text" [(ngModel)]="motivoCancelacionDetalle" placeholder="Describe el motivo" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+        </div>
+
         <label class="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" [(ngModel)]="notificarPorWhatsApp" class="w-4 h-4 accent-clinical-accent" />
           <span class="font-semibold text-slate-700">Notificar al paciente por WhatsApp</span>
@@ -247,7 +277,7 @@
 
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
         <button (click)="cerrarConfirmacionCancelar()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">No, mantener</button>
-        <button (click)="confirmarCancelacion()" class="px-4 py-2 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs">Sí, cancelar cita</button>
+        <button (click)="confirmarCancelacion()" [disabled]="!motivoCancelacion" class="px-4 py-2 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs disabled:opacity-50">Sí, cancelar cita</button>
       </div>
     </div>
   </div>

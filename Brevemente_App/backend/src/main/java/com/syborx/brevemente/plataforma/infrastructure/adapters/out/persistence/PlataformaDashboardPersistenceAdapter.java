@@ -2,6 +2,7 @@ package com.syborx.brevemente.plataforma.infrastructure.adapters.out.persistence
 
 import com.syborx.brevemente.plataforma.application.ports.out.PlataformaDashboardRepositoryPort;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.AccesoRecienteDTO;
+import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.TerapeutaPlataformaDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.UsuarioRecienteDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,6 +29,22 @@ public class PlataformaDashboardPersistenceAdapter implements PlataformaDashboar
         Integer n = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM pacientes WHERE status = 'activo'", Integer.class);
         return n != null ? n : 0;
+    }
+
+    @Override
+    public List<TerapeutaPlataformaDTO> listarTerapeutas() {
+        String sql = "SELECT t.id AS id, "
+                + "COALESCE(u.nombre || ' ' || u.apellidos, '') AS nombre, "
+                + "COALESCE(t.especialidad, '') AS especialidad, "
+                + "COALESCE(t.activo, FALSE) AS activo "
+                + "FROM terapeutas t "
+                + "LEFT JOIN usuarios u ON u.id = t.usuario_id "
+                + "ORDER BY u.nombre, u.apellidos";
+        return jdbcTemplate.query(sql, (rs, i) -> new TerapeutaPlataformaDTO(
+                rs.getString("id"),
+                rs.getString("nombre"),
+                rs.getString("especialidad"),
+                Boolean.TRUE.equals(rs.getBoolean("activo")) ? "activo" : "inactivo"));
     }
 
     @Override

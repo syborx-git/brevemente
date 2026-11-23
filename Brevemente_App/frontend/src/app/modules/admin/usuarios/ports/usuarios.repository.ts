@@ -57,8 +57,14 @@ export interface ResetPasswordPayload {
   passwordConfirmacion: string;
 }
 
+export interface PermisosPorRolBackend {
+  rol: string;
+  permisos: string[];
+}
+
 export abstract class UsuariosAdminRepository {
   abstract listar(q: string, rol: string, estado: string, page: number, size: number): Observable<ResumenUsuarios>;
+  abstract listarPermisosPorRol(): Observable<PermisosPorRolBackend[]>;
   abstract crear(payload: CrearUsuarioPayload): Observable<UsuarioCreado>;
   abstract editar(id: string, payload: EditarUsuarioPayload): Observable<UsuarioAdminBackend>;
   abstract cambiarEstado(id: string, payload: CambiarEstadoPayload): Observable<UsuarioAdminBackend>;

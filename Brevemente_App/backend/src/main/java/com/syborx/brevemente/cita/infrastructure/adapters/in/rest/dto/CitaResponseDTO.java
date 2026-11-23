@@ -44,5 +44,11 @@ public record CitaResponseDTO(
         Boolean bloqueadaPorNormativa,
 
         @Schema(description = "Tipo de terapia", example = "individual", allowableValues = {"individual", "pareja", "familiar", "grupal"})
-        String tipoTerapia
+        String tipoTerapia,
+
+        @Schema(description = "Motivo de cancelación (lista cerrada)", example = "CAMBIO_DE_PLANES")
+        String motivoCancelacion,
+
+        @Schema(description = "Detalle del motivo de cancelación (si motivo=OTRO)", example = "Cambio de domicilio")
+        String motivoCancelacionDetalle
 ) {}

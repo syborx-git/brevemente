@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import {
   AlertaPortal,
@@ -13,6 +14,7 @@ import { PatientPortalHttpAdapter } from './adapters/patient-portal-http.adapter
 import { PatientPortalLocalStorageAdapter } from './adapters/patient-portal-localstorage.adapter';
 import { CitaFilaComponent } from './cita-fila.component';
 import { environment } from '../../../environments/environment';
+import { RoleStateService } from '../../core/services/role-state.service';
 
 interface Badge {
   label: string;
@@ -44,7 +46,7 @@ const TIPO: Record<string, string> = {
 @Component({
   selector: 'app-patient-portal',
   standalone: true,
-  imports: [CommonModule, CitaFilaComponent],
+  imports: [CommonModule, FormsModule, CitaFilaComponent],
   providers: [
     {
       provide: PatientPortalRepository,
@@ -129,7 +131,14 @@ const TIPO: Record<string, string> = {
           <h3 class="text-sm font-bold text-clinical-dark">Próximas Citas</h3>
           <div class="space-y-2">
             @for (cita of proximas(); track cita.id) {
-              <app-cita-fila [cita]="cita" [prescripciones]="prescripcionesDe(cita.id)" />
+              <app-cita-fila
+                [cita]="cita"
+                [prescripciones]="prescripcionesDe(cita.id)"
+                [canPay]="canPagar()"
+                [canCancel]="canCancelar()"
+                (pagar)="pagarCita(cita)"
+                (cancelar)="abrirCancelacion(cita)"
+              />
             }
           </div>
         </section>
@@ -151,14 +160,59 @@ const TIPO: Record<string, string> = {
         } @else {
           <div class="space-y-2">
             @for (cita of historial(); track cita.id) {
-              <app-cita-fila [cita]="cita" [prescripciones]="prescripcionesDe(cita.id)" />
+              <app-cita-fila
+                [cita]="cita"
+                [prescripciones]="prescripcionesDe(cita.id)"
+                [canPay]="canPagar()"
+                [canCancel]="canCancelar()"
+                (pagar)="pagarCita(cita)"
+                (cancelar)="abrirCancelacion(cita)"
+              />
             }
           </div>
         }
       </section>
 
+      @if (cancelTarget(); as cita) {
+        <div class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
+          <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+            <h3 class="font-bold text-slate-800">Cancelar cita</h3>
+            <p class="text-xs text-slate-500 mt-1">Selecciona el motivo de cancelación.</p>
+            <select
+              [ngModel]="motivoCancelacion()"
+              (ngModelChange)="motivoCancelacion.set($event)"
+              class="w-full mt-3 px-3 py-2 border border-slate-200 rounded-lg text-xs"
+            >
+              <option value="">— Motivo —</option>
+              <option value="EMERGENCIA">Emergencia</option>
+              <option value="NO_PUEDE_ASISTIR">No puedo asistir</option>
+              <option value="CAMBIO_DE_PLANES">Cambio de planes</option>
+              <option value="MOTIVO_CLINICO">Motivo clínico</option>
+              <option value="OTRO">Otro</option>
+            </select>
+            @if (motivoCancelacion() === 'OTRO') {
+              <input
+                type="text"
+                [ngModel]="motivoDetalle()"
+                (ngModelChange)="motivoDetalle.set($event)"
+                placeholder="Describe el motivo"
+                class="w-full mt-2 px-3 py-2 border border-slate-200 rounded-lg text-xs"
+              />
+            }
+            <div class="flex justify-end gap-2 mt-5">
+              <button (click)="cerrarCancelacion()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
+              <button
+                (click)="confirmarCancelacion()"
+                [disabled]="!motivoCancelacion() || actionLoading()"
+                class="px-4 py-2 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+              >Confirmar</button>
+            </div>
+          </div>
+        </div>
+      }
+
       <p class="text-center text-[10px] text-slate-400 px-4">
-        Esta vista es de solo lectura. Para reprogramar o cancelar una cita, contacta al asistente o a tu terapeuta.
+        Puedes pagar tus citas pendientes o cancelarlas desde aquí. Para reprogramar una cita, contacta al asistente o a tu terapeuta.
       </p>
 
       @if (cargaError()) {
@@ -178,6 +232,10 @@ export class PatientPortalComponent implements OnInit {
   readonly contraReferencia = signal<ContraReferenciaPortal | null>(null);
   readonly crisisEnviada = signal(false);
   readonly cargaError = signal(false);
+  readonly cancelTarget = signal<CitaPortal | null>(null);
+  readonly motivoCancelacion = signal('');
+  readonly motivoDetalle = signal('');
+  readonly actionLoading = signal(false);
 
   readonly proximas = computed(() =>
     this.citas().filter((c) => c.status === 'confirmada' || c.status === 'pendiente')
@@ -192,7 +250,7 @@ export class PatientPortalComponent implements OnInit {
     this.alertas().find((a) => a.estado === 'resuelta' && a.tipo === 'crisis_atendida')
   );
 
-  constructor(http: HttpClient) {
+  constructor(http: HttpClient, private readonly roleState: RoleStateService) {
     this.repo = environment.features.pacientePortalBackend
       ? new PatientPortalHttpAdapter(http)
       : new PatientPortalLocalStorageAdapter();
@@ -209,6 +267,55 @@ export class PatientPortalComponent implements OnInit {
 
   prescripcionesDe(citaId: string): SesionPortal[] {
     return this.sesiones().filter((s) => s.citaId === citaId);
+  }
+
+  canPagar(): boolean {
+    return this.roleState.hasPermission('MIS_CITAS_PAGAR');
+  }
+
+  canCancelar(): boolean {
+    return this.roleState.hasPermission('MIS_CITAS_CANCELAR');
+  }
+
+  pagarCita(cita: CitaPortal): void {
+    if (this.actionLoading()) return;
+    this.actionLoading.set(true);
+    this.repo.pagarCita(cita.id).subscribe({
+      next: (updated) => {
+        this.reemplazarCita(updated);
+        this.actionLoading.set(false);
+      },
+      error: () => this.actionLoading.set(false)
+    });
+  }
+
+  abrirCancelacion(cita: CitaPortal): void {
+    this.cancelTarget.set(cita);
+    this.motivoCancelacion.set('');
+    this.motivoDetalle.set('');
+  }
+
+  cerrarCancelacion(): void {
+    this.cancelTarget.set(null);
+  }
+
+  confirmarCancelacion(): void {
+    const cita = this.cancelTarget();
+    const motivo = this.motivoCancelacion();
+    if (!cita || !motivo) return;
+    this.actionLoading.set(true);
+    this.repo.cancelarCita(cita.id, motivo, this.motivoDetalle() || undefined).subscribe({
+      next: (updated) => {
+        this.reemplazarCita(updated);
+        this.cerrarCancelacion();
+        this.actionLoading.set(false);
+      },
+      error: () => this.actionLoading.set(false)
+    });
+  }
+
+  private reemplazarCita(updated: CitaPortal): void {
+    this.citas.update((lista) => lista.map((c) => (c.id === updated.id ? updated : c)));
   }
 
   escalarCrisis(): void {

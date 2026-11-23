@@ -72,6 +72,12 @@ public class CitaJpaEntity {
     @Builder.Default
     private Boolean bloqueadaPorNormativa = false;
 
+    @Column(name = "motivo_cancelacion", length = 30)
+    private String motivoCancelacion;
+
+    @Column(name = "motivo_cancelacion_detalle", length = 255)
+    private String motivoCancelacionDetalle;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

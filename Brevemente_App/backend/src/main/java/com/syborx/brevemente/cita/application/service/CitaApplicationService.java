@@ -3,26 +3,38 @@ package com.syborx.brevemente.cita.application.service;
 import com.syborx.brevemente.cita.application.ports.in.ActualizarEstadoCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.in.AgendarCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.in.ListarCitasUseCase;
+import com.syborx.brevemente.cita.application.ports.in.ConfirmarPagoCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.in.ReprogramarCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.out.CitaRepositoryPort;
 import com.syborx.brevemente.cita.application.ports.out.DiaNoLaborablePort;
 import com.syborx.brevemente.cita.application.ports.out.IdentidadAutenticadaPort;
 import com.syborx.brevemente.cita.application.ports.out.PacienteConsentimientoPort;
+import com.syborx.brevemente.cita.application.ports.out.PasarelaPagosPort;
 import com.syborx.brevemente.cita.application.ports.out.SupervisionScopePort;
+import com.syborx.brevemente.cita.domain.exception.CitaBloqueadaPorNormativaException;
+import com.syborx.brevemente.cita.domain.exception.CitaEnPasadoException;
 import com.syborx.brevemente.cita.domain.exception.CitaNotFoundException;
 import com.syborx.brevemente.cita.domain.exception.FechaNoLaborableException;
 import com.syborx.brevemente.cita.domain.exception.PacienteAjenoAlTerapeutaException;
 import com.syborx.brevemente.cita.domain.exception.SinTerapeutaVinculadoException;
 import com.syborx.brevemente.cita.domain.exception.SolapamientoCitaException;
 import com.syborx.brevemente.cita.domain.exception.TransicionEstadoCitaInvalidaException;
+import com.syborx.brevemente.cita.domain.exception.MotivoCancelacionObligatorioException;
 import com.syborx.brevemente.cita.domain.model.Cita;
 import com.syborx.brevemente.cita.domain.model.CitaFiltro;
+import com.syborx.brevemente.auditoria.application.ports.out.AuditoriaExpedientePort;
+import com.syborx.brevemente.paciente.application.ports.out.TerapeutaConfigRepositoryPort;
+import com.syborx.brevemente.paciente.domain.model.TerapeutaConfig;
+import com.syborx.brevemente.pago.application.ports.out.PagoRepositoryPort;
+import com.syborx.brevemente.pago.domain.model.Pago;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,13 +48,18 @@ public class CitaApplicationService implements
         ListarCitasUseCase,
         AgendarCitaUseCase,
         ActualizarEstadoCitaUseCase,
-        ReprogramarCitaUseCase {
+        ReprogramarCitaUseCase,
+        ConfirmarPagoCitaUseCase {
 
     private final CitaRepositoryPort citaRepositoryPort;
     private final DiaNoLaborablePort diaNoLaborablePort;
     private final PacienteConsentimientoPort pacienteConsentimientoPort;
     private final IdentidadAutenticadaPort identidadAutenticadaPort;
     private final SupervisionScopePort supervisionScopePort;
+    private final PasarelaPagosPort pasarelaPagosPort;
+    private final PagoRepositoryPort pagoRepositoryPort;
+    private final TerapeutaConfigRepositoryPort terapeutaConfigRepositoryPort;
+    private final AuditoriaExpedientePort auditoriaExpedientePort;
 
     /**
      * Máquina de estados de la cita. Los estados terminales
@@ -53,6 +70,8 @@ public class CitaApplicationService implements
             "confirmada", Set.of("completada", "cancelada", "ausente", "no_presentado"),
             "solicita_reagendar", Set.of("confirmada", "cancelada")
     );
+
+    private static final ZoneId ZONA = ZoneId.of("America/Mexico_City");
 
     @Override
     @Transactional(readOnly = true)
@@ -127,6 +146,11 @@ public class CitaApplicationService implements
         OffsetDateTime inicio = cita.getFechaHoraInicio();
         int duracion = cita.getDuracionMinutos() != null ? cita.getDuracionMinutos() : 30;
 
+        // 0. No permitir citas en el pasado
+        if (inicio.isBefore(OffsetDateTime.now(ZONA))) {
+            throw new CitaEnPasadoException();
+        }
+
         // 1. Día no laborable
         validarDiaNoLaborable(inicio.toLocalDate(), terapeutaId);
 
@@ -167,9 +191,20 @@ public class CitaApplicationService implements
 
     @Override
     @Transactional
-    public Cita actualizarEstado(String id, String estado) {
+    public Cita actualizarEstado(String id, String estado, String motivo, String motivoDetalle) {
         Cita existente = citaRepositoryPort.findById(id)
                 .orElseThrow(() -> new CitaNotFoundException(id));
+
+        // Pertenencia: el paciente solo actúa sobre sus propias citas (anti-IDOR).
+        if (identidadAutenticadaPort.tieneRol("patient")) {
+            String pacienteId = identidadAutenticadaPort.pacienteId();
+            if (pacienteId == null || !pacienteId.equals(existente.getPacienteId())) {
+                throw new PacienteAjenoAlTerapeutaException(
+                        "El paciente autenticado no puede modificar citas ajenas.");
+            }
+        } else {
+            validarAlcanceStaff(existente);
+        }
 
         String actual = existente.getEstadoCita();
         if (actual != null && !TRANSICIONES_ESTADO.getOrDefault(actual, Set.of()).contains(estado)) {
@@ -177,8 +212,132 @@ public class CitaApplicationService implements
                     "No se puede cambiar la cita de estado '" + actual + "' a '" + estado + "'.");
         }
 
+        if ("cancelada".equals(estado)) {
+            validarMotivoCancelacion(motivo, motivoDetalle);
+            existente.setMotivoCancelacion(motivo);
+            existente.setMotivoCancelacionDetalle(motivoDetalle);
+        }
+
         existente.setEstadoCita(estado);
-        return citaRepositoryPort.save(existente);
+        Cita guardada = citaRepositoryPort.save(existente);
+
+        if ("cancelada".equals(estado)) {
+            auditoriaExpedientePort.registrarEnMismaTransaccion(
+                    guardada.getPacienteId(),
+                    identidadAutenticadaPort.sub(),
+                    "Cancelación de cita",
+                    "Motivo: " + motivo + (motivoDetalle != null && !motivoDetalle.isBlank()
+                            ? " — " + motivoDetalle : ""),
+                    "citas");
+        }
+
+        return guardada;
+    }
+
+    @Override
+    @Transactional
+    public Cita confirmarPago(String citaId) {
+        Cita cita = citaRepositoryPort.findById(citaId)
+                .orElseThrow(() -> new CitaNotFoundException(citaId));
+
+        if (identidadAutenticadaPort.tieneRol("patient")) {
+            String pacienteId = identidadAutenticadaPort.pacienteId();
+            if (pacienteId == null || !pacienteId.equals(cita.getPacienteId())) {
+                throw new PacienteAjenoAlTerapeutaException(
+                        "El paciente autenticado no puede pagar citas ajenas.");
+            }
+        } else {
+            validarAlcanceStaff(cita);
+        }
+
+        // Idempotencia por paymentStatus
+        if ("confirmada".equals(cita.getEstadoCita()) && "pagada".equals(cita.getPaymentStatus())) {
+            return cita;
+        }
+        if ("confirmada".equals(cita.getEstadoCita()) && "pendiente".equals(cita.getPaymentStatus())) {
+            throw new TransicionEstadoCitaInvalidaException(
+                    "La cita está confirmada con pago pendiente (estado ambiguo).");
+        }
+        if ("exenta".equals(cita.getPaymentStatus())) {
+            throw new TransicionEstadoCitaInvalidaException("La cita está exenta de pago.");
+        }
+        if (!"pendiente".equals(cita.getEstadoCita())) {
+            throw new TransicionEstadoCitaInvalidaException(
+                    "Solo se puede pagar una cita en estado pendiente.");
+        }
+        if (cita.isBloqueadaPorNormativa()) {
+            throw new CitaBloqueadaPorNormativaException();
+        }
+
+        BigDecimal monto = resolverMonto(cita);
+        String concepto = "Consulta " + cita.getTipoCita() + " - cita " + citaId;
+
+        PasarelaPagosPort.ResultadoCobro resultado = pasarelaPagosPort.cobrar(citaId, monto, concepto);
+        if (!resultado.exito()) {
+            throw new TransicionEstadoCitaInvalidaException("El pago no pudo procesarse.");
+        }
+
+        cita.setPaymentStatus("pagada");
+        cita.setEstadoCita("confirmada");
+        citaRepositoryPort.save(cita);
+
+        Pago pago = Pago.builder()
+                .id("pay-" + UUID.randomUUID().toString().substring(0, 8))
+                .pacienteId(cita.getPacienteId())
+                .citaId(citaId)
+                .concepto(concepto)
+                .monto(monto)
+                .fecha(LocalDate.now(ZONA))
+                .metodo("transferencia")
+                .estado("pagado")
+                .registradoPorId(identidadAutenticadaPort.sub())
+                .build();
+        pagoRepositoryPort.save(pago);
+
+        auditoriaExpedientePort.registrarEnMismaTransaccion(
+                cita.getPacienteId(),
+                identidadAutenticadaPort.sub(),
+                "Confirmación de pago de cita",
+                "Pago de la cita " + citaId + " por $" + monto + " MXN (referencia " + resultado.referencia() + ").",
+                "pagos");
+
+        return cita;
+    }
+
+    private void validarAlcanceStaff(Cita cita) {
+        Collection<String> alcance = resolverAlcanceTerapeutas();
+        if (alcance != null && (cita.getTerapeutaId() == null || !alcance.contains(cita.getTerapeutaId()))) {
+            throw new PacienteAjenoAlTerapeutaException(
+                    "No tiene alcance sobre el terapeuta de esta cita.");
+        }
+    }
+
+    private void validarMotivoCancelacion(String motivo, String motivoDetalle) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new MotivoCancelacionObligatorioException(
+                    "El motivo de cancelación es obligatorio.");
+        }
+        Set<String> motivos = Set.of("EMERGENCIA", "NO_PUEDE_ASISTIR", "CAMBIO_DE_PLANES", "MOTIVO_CLINICO", "OTRO");
+        if (!motivos.contains(motivo)) {
+            throw new MotivoCancelacionObligatorioException("Motivo de cancelación inválido: " + motivo);
+        }
+        if ("OTRO".equals(motivo) && (motivoDetalle == null || motivoDetalle.isBlank())) {
+            throw new MotivoCancelacionObligatorioException(
+                    "El detalle del motivo es obligatorio cuando el motivo es OTRO.");
+        }
+    }
+
+    private BigDecimal resolverMonto(Cita cita) {
+        TerapeutaConfig config = cita.getTerapeutaId() != null
+                ? terapeutaConfigRepositoryPort.findById(cita.getTerapeutaId()).orElse(null)
+                : null;
+        if (config == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal costo = "primera".equals(cita.getTipoCita())
+                ? config.costoPrimeraSesion()
+                : config.costoSeguimiento();
+        return costo != null ? costo : BigDecimal.ZERO;
     }
 
     @Override
