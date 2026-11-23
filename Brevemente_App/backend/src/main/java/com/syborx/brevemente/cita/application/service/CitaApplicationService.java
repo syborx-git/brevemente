@@ -265,7 +265,7 @@ public class CitaApplicationService implements
             throw new TransicionEstadoCitaInvalidaException(
                     "Solo se puede pagar una cita en estado pendiente.");
         }
-        if (cita.isBloqueadaPorNormativa()) {
+        if (pacienteConsentimientoPort.estaBloqueadoPorNormativa(cita.getPacienteId())) {
             throw new CitaBloqueadaPorNormativaException();
         }
 

@@ -149,8 +149,7 @@ export class CitaFilaComponent {
   puedePagar(): boolean {
     return this.canPay
       && this.cita.status === 'pendiente'
-      && this.cita.paymentStatus === 'pendiente'
-      && this.cita.bloqueadaPorNormativa !== true;
+      && this.cita.paymentStatus === 'pendiente';
   }
 
   puedeCancelar(): boolean {
