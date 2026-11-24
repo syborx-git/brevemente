@@ -191,7 +191,9 @@ public class CitaApplicationService implements
             cita.setConsultorio(null);
         }
 
-        return citaRepositoryPort.save(cita);
+        Cita guardada = citaRepositoryPort.save(cita);
+        crearPagoPendiente(guardada);
+        return guardada;
     }
 
     @Override
@@ -221,6 +223,7 @@ public class CitaApplicationService implements
             validarMotivoCancelacion(motivo, motivoDetalle);
             existente.setMotivoCancelacion(motivo);
             existente.setMotivoCancelacionDetalle(motivoDetalle);
+            procesarPagoAlCancelar(existente);
         }
 
         existente.setEstadoCita(estado);
@@ -237,6 +240,42 @@ public class CitaApplicationService implements
         }
 
         return guardada;
+    }
+
+    /**
+     * Al cancelar una cita: si el pago está pagado, se reembolsa (soft-state, no se borra);
+     * si está pendiente, se anula el pago provisional. La referencia queda en pago.notas.
+     */
+    private void procesarPagoAlCancelar(Cita cita) {
+        pagoRepositoryPort.findByCitaId(cita.getId()).ifPresent(pago -> {
+            if ("pagado".equals(pago.getEstado())) {
+                PasarelaPagosPort.ResultadoReembolso r = pasarelaPagosPort.reembolsar(
+                        cita.getId(), pago.getMonto(), pago.getConcepto());
+                if (!r.exito()) {
+                    throw new TransicionEstadoCitaInvalidaException(
+                            "No se pudo reembolsar el pago; cancelación abortada.");
+                }
+                pago.setEstado("reembolsado");
+                pago.setNotas("Reembolso por cancelación. Referencia: " + r.referencia());
+                pagoRepositoryPort.save(pago);
+                cita.setPaymentStatus("reembolsado");
+                auditoriaExpedientePort.registrarEnMismaTransaccion(
+                        cita.getPacienteId(),
+                        identidadAutenticadaPort.sub(),
+                        "Reembolso de cita",
+                        "Reembolso de $" + pago.getMonto() + " MXN por cancelación de cita " + cita.getId()
+                                + " (referencia " + r.referencia() + ").",
+                        "pagos");
+            } else if ("parcial".equals(pago.getEstado())) {
+                // Sin monto_capturado hoy: se reembolsa el monto íntegro (equivale a pagado).
+                pago.setEstado("reembolsado");
+                pagoRepositoryPort.save(pago);
+                cita.setPaymentStatus("reembolsado");
+            } else {
+                // pendiente (u otro) → no hubo cobro: anular el pago provisional.
+                pagoRepositoryPort.deleteById(pago.getId());
+            }
+        });
     }
 
     @Override
@@ -266,6 +305,7 @@ public class CitaApplicationService implements
         if ("exenta".equals(cita.getPaymentStatus())) {
             throw new TransicionEstadoCitaInvalidaException("La cita está exenta de pago.");
         }
+        // Una cita 'reembolsado' tiene estadoCita='cancelada'; el guard siguiente ya la rechaza (409).
         if (!"pendiente".equals(cita.getEstadoCita())) {
             throw new TransicionEstadoCitaInvalidaException(
                     "Solo se puede pagar una cita en estado pendiente.");
@@ -286,17 +326,18 @@ public class CitaApplicationService implements
         cita.setEstadoCita("confirmada");
         citaRepositoryPort.save(cita);
 
-        Pago pago = Pago.builder()
-                .id("pay-" + UUID.randomUUID().toString().substring(0, 8))
-                .pacienteId(cita.getPacienteId())
-                .citaId(citaId)
-                .concepto(concepto)
-                .monto(monto)
-                .fecha(LocalDate.now(ZONA))
-                .metodo("transferencia")
-                .estado("pagado")
-                .registradoPorId(identidadAutenticadaPort.sub())
-                .build();
+        Pago pago = pagoRepositoryPort.findByCitaId(citaId)
+                .orElseGet(() -> Pago.builder()
+                        .id("pay-" + UUID.randomUUID().toString().substring(0, 8))
+                        .pacienteId(cita.getPacienteId())
+                        .citaId(citaId)
+                        .concepto(concepto)
+                        .registradoPorId(identidadAutenticadaPort.sub())
+                        .build());
+        pago.setMonto(monto);
+        pago.setFecha(LocalDate.now(ZONA));
+        pago.setMetodo("transferencia");
+        pago.setEstado("pagado");
         pagoRepositoryPort.save(pago);
 
         auditoriaExpedientePort.registrarEnMismaTransaccion(
@@ -383,6 +424,24 @@ public class CitaApplicationService implements
                 ? config.costoPrimeraSesion()
                 : config.costoSeguimiento();
         return costo != null ? costo : BigDecimal.ZERO;
+    }
+
+    private void crearPagoPendiente(Cita cita) {
+        if ("exenta".equals(cita.getPaymentStatus())) {
+            return;
+        }
+        Pago pago = Pago.builder()
+                .id("pay-" + UUID.randomUUID().toString().substring(0, 8))
+                .pacienteId(cita.getPacienteId())
+                .citaId(cita.getId())
+                .concepto("Consulta " + cita.getTipoCita() + " - cita " + cita.getId())
+                .monto(resolverMonto(cita))
+                .fecha(LocalDate.now(ZONA))
+                .metodo("otro") // placeholder: el CHECK exige efectivo/transferencia/tarjeta/otro
+                .estado("pendiente")
+                .registradoPorId(identidadAutenticadaPort.sub())
+                .build();
+        pagoRepositoryPort.save(pago);
     }
 
     @Override

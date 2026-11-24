@@ -8,6 +8,8 @@ import java.util.Optional;
 public interface PagoRepositoryPort {
     List<Pago> findByPacienteId(String pacienteId);
 
+    Optional<Pago> findByCitaId(String citaId);
+
     Optional<Pago> findById(String id);
 
     Pago save(Pago pago);

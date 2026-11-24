@@ -20,7 +20,8 @@ const ASISTENCIA: Record<string, Badge> = {
 const PAGO: Record<string, Badge> = {
   pagada: { label: 'Pagada', cls: 'bg-green-100 text-green-800 border-green-200' },
   pendiente: { label: 'Pendiente de pago', cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  exenta: { label: 'Exenta', cls: 'bg-slate-100 text-slate-600 border-slate-200' }
+  exenta: { label: 'Exenta', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  reembolsado: { label: 'Reembolsado', cls: 'bg-violet-100 text-violet-800 border-violet-200' }
 };
 
 const TIPO: Record<string, string> = {
@@ -52,8 +53,8 @@ const TIPO: Record<string, string> = {
           <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase {{ p.cls }}">
             {{ p.label }}
           </span>
-        } @else {
-          <span class="text-slate-300 text-[10px] font-bold">Sin info de pago</span>
+        } @else if (cita.status !== 'cancelada') {
+          <span class="text-slate-600 text-[10px] font-bold">Sin info de pago</span>
         }
 
         <div class="ml-auto flex items-center gap-2">
@@ -135,6 +136,12 @@ export class CitaFilaComponent {
   }
 
   pago(): Badge | null {
+    if (this.cita.status === 'cancelada') {
+      const p = PAGO[this.cita.paymentStatus ?? ''];
+      return (p && (this.cita.paymentStatus === 'reembolsado' || this.cita.paymentStatus === 'exenta'))
+        ? p
+        : null;
+    }
     return this.cita.paymentStatus ? (PAGO[this.cita.paymentStatus] ?? null) : null;
   }
 

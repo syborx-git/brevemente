@@ -5,8 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SpringDataPagoRepository extends JpaRepository<PagoJpaEntity, String> {
     List<PagoJpaEntity> findByPacienteIdOrderByFechaDesc(String pacienteId);
+
+    Optional<PagoJpaEntity> findByCitaId(String citaId);
 }
