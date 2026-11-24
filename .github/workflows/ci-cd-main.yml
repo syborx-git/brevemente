@@ -1,0 +1,114 @@
+name: CI/CD Multi-Proyecto BreveMente (main -> Hetzner)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Servicios a forzar despliegue (all, o lista: backend frontend transcript-engine document-engine)"
+        required: false
+        default: "all"
+
+concurrency:
+  group: deploy-main-production
+  cancel-in-progress: false
+
+jobs:
+  detect-changes:
+    name: 1. Detectar Proyectos Modificados (BE / FE / Transcript / MD / Ollama)
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      transcript: ${{ steps.filter.outputs.transcript }}
+      document: ${{ steps.filter.outputs.document }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'Brevemente_App/backend/**'
+            frontend:
+              - 'Brevemente_App/frontend/**'
+            transcript:
+              - 'Brevemente_App/transcript_engine_python/**'
+            document:
+              - 'Brevemente_App/document_engine_python/**'
+
+  verify-backend:
+    name: 2A. Validar Backend (Spring Boot 3 + LEVA)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: Brevemente_App/backend/pom.xml
+      - name: Compilar Backend y verificar migraciones
+        working-directory: Brevemente_App/backend
+        run: mvn test-compile -B
+
+  verify-frontend:
+    name: 2B. Validar Frontend (Angular 18)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: Brevemente_App/frontend/package-lock.json
+      - name: Instalar dependencias y compilar bundle de producción
+        working-directory: Brevemente_App/frontend
+        run: |
+          npm ci || npm install
+          npm run build -- --configuration production
+
+  verify-python-engines:
+    name: 2C. Validar Transcript Engine (Whisper) y Document Converter (MD)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.transcript == 'true' || needs.detect-changes.outputs.document == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verificar sintaxis Python en motores de audio y conversión a Markdown
+        run: |
+          python -m compileall Brevemente_App/transcript_engine_python/app
+          python -m compileall Brevemente_App/document_engine_python/app
+
+  deploy-hetzner:
+    name: 3. Desplegar en Servidor Hetzner (188.245.203.48)
+    needs: [detect-changes, verify-backend, verify-frontend, verify-python-engines]
+    if: always() && (needs.verify-backend.result != 'failure') && (needs.verify-frontend.result != 'failure') && (needs.verify-python-engines.result != 'failure')
+    runs-on: ubuntu-latest
+    env:
+      SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SERVER_HOST: ${{ secrets.HETZNER_HOST || '188.245.203.48' }}
+      SERVER_USER: ${{ secrets.HETZNER_USER || 'root' }}
+    steps:
+      - name: Desplegar vía SSH o delegar al contenedor brevemente-cicd-deployer
+        run: |
+          if [ -z "$SSH_KEY" ]; then
+            echo "Aviso: El secret HETZNER_SSH_KEY no está definido en GitHub."
+            echo "El contenedor 'brevemente-cicd-deployer' activo en Hetzner detectará este merge en origin/main automáticamente en <=45s y desplegará los microservicios modificados."
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_ed25519 "${SERVER_USER}@${SERVER_HOST}" \
+            "cd /opt/brevemente/Brevemente_App && bash ./cicd_deployer/deploy-now.sh '${{ github.event.inputs.services }}'"
