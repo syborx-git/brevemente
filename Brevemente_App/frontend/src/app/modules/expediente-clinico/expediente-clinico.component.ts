@@ -11,6 +11,9 @@ import { LevaSessionService, LevaProposalResponse } from '../../core/services/le
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from './ports/expediente.repository';
 import { ExpedienteLocalStorageAdapter } from './adapters/expediente-localstorage.adapter';
 import { ExpedienteHttpAdapter } from './adapters/expediente-http.adapter';
+import { ConfiguracionRepository } from '../configuracion/ports/configuracion.repository';
+import { ConfiguracionLocalStorageAdapter } from '../configuracion/adapters/configuracion-localstorage.adapter';
+import { ConfiguracionHttpAdapter } from '../configuracion/adapters/configuracion-http.adapter';
 import {
   Antecedentes,
   AuditLog,
@@ -218,6 +221,15 @@ export type AudioRecordingUiState = 'IDLE' | 'GRABANDO' | 'ENVIANDO_AUDIO' | 'PR
           : new ExpedienteLocalStorageAdapter();
       },
       deps: [HttpClient]
+    },
+    {
+      provide: ConfiguracionRepository,
+      useFactory: (http: HttpClient) => {
+        return environment.features.configuracionBackend
+          ? new ConfiguracionHttpAdapter(http)
+          : new ConfiguracionLocalStorageAdapter();
+      },
+      deps: [HttpClient]
     }
   ],
   templateUrl: './expediente-clinico.component.html',
@@ -319,6 +331,10 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
   // Card de sesión unificada (SDD-MODO-REGISTRO-1): modo derivado de patient.registryMode.
 
+  // Honorarios configurados del terapeuta (prefill de pagos manuales)
+  private costoPrimeraSesion = 800;
+  private costoSeguimiento = 800;
+
   // Estado Modal Pagos
   showPaymentModal = false;
   isSubmittingPayment = false;
@@ -393,6 +409,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly expedienteRepo: ExpedienteRepository,
+    private readonly configuracionRepo: ConfiguracionRepository,
     public readonly roleService: RoleStateService,
     private readonly audioRecorder: AudioRecorderService,
     private readonly levaSessionService: LevaSessionService
@@ -442,6 +459,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   cargarDatos(): void {
+    this.cargarHonorarios();
     this.expedienteRepo.listarPacientes().subscribe(p => this.pacientes = p);
     this.expedienteRepo.obtenerPaciente(this.pacienteId).subscribe(p => {
       this.patient = p;
@@ -1677,10 +1695,23 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   // --- MÉTODOS DE PAGOS ---
+  private cargarHonorarios(): void {
+    const terapeutaId = this.roleService.terapeutaIds.length === 1 ? this.roleService.terapeutaIds[0] : undefined;
+    this.configuracionRepo.obtenerConfig(terapeutaId).subscribe({
+      next: (cfg) => {
+        this.costoPrimeraSesion = cfg.costoPrimeraSesion;
+        this.costoSeguimiento = cfg.costoSeguimiento;
+      },
+      error: () => { /* se conservan los montos por defecto */ }
+    });
+  }
+
   openPaymentModal(): void {
+    const esPrimeraSesion = this.sessions.length === 0;
+    const monto = esPrimeraSesion ? this.costoPrimeraSesion : this.costoSeguimiento;
     this.newPayment = {
       concept: `Sesión ${this.sessions.length + 1} - Psicoterapia TBE`,
-      amount: 800,
+      amount: monto,
       date: hoyLocal(),
       method: 'transferencia',
       status: 'pagado',

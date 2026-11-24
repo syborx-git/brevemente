@@ -15,6 +15,7 @@ export interface CitaPortal {
   status: string;
   paymentStatus: string | null;
   duration: number | null;
+  monto: number | null;
   bloqueadaPorNormativa: boolean | null;
   motivoCancelacion?: string;
 }

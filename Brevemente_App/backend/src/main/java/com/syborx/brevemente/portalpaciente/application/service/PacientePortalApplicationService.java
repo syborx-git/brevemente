@@ -3,6 +3,8 @@ package com.syborx.brevemente.portalpaciente.application.service;
 import com.syborx.brevemente.cita.application.ports.in.ListarCitasUseCase;
 import com.syborx.brevemente.cita.domain.model.Cita;
 import com.syborx.brevemente.cita.domain.model.CitaFiltro;
+import com.syborx.brevemente.paciente.application.ports.out.TerapeutaConfigRepositoryPort;
+import com.syborx.brevemente.paciente.domain.model.TerapeutaConfig;
 import com.syborx.brevemente.portalpaciente.application.ports.in.EscalarCrisisUseCase;
 import com.syborx.brevemente.portalpaciente.application.ports.in.ListarAlertasPortalUseCase;
 import com.syborx.brevemente.portalpaciente.application.ports.in.ListarCitasPortalUseCase;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +46,7 @@ public class PacientePortalApplicationService implements
     private final PortalPacienteRepositoryPort repositoryPort;
     private final IdentidadPortalPort identidadPortalPort;
     private final ListarCitasUseCase listarCitasUseCase;
+    private final TerapeutaConfigRepositoryPort terapeutaConfigRepositoryPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -57,8 +61,23 @@ public class PacientePortalApplicationService implements
     @Transactional(readOnly = true)
     public List<Cita> listarCitas() {
         String pacienteId = resolverPacienteId();
-        return listarCitasUseCase.listar(
+        List<Cita> citas = listarCitasUseCase.listar(
                 new CitaFiltro(null, pacienteId, null, null, null, null, null, null));
+        citas.forEach(cita -> cita.setMonto(resolverMonto(cita)));
+        return citas;
+    }
+
+    private BigDecimal resolverMonto(Cita cita) {
+        TerapeutaConfig config = cita.getTerapeutaId() != null
+                ? terapeutaConfigRepositoryPort.findById(cita.getTerapeutaId()).orElse(null)
+                : null;
+        if (config == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal costo = "primera".equals(cita.getTipoCita())
+                ? config.costoPrimeraSesion()
+                : config.costoSeguimiento();
+        return costo != null ? costo : BigDecimal.ZERO;
     }
 
     @Override

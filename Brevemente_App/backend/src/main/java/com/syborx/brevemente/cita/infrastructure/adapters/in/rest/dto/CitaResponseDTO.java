@@ -2,6 +2,8 @@ package com.syborx.brevemente.cita.infrastructure.adapters.in.rest.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
+
 @Schema(description = "Contrato de respuesta simétrico con la interfaz Appointment del frontend")
 public record CitaResponseDTO(
         @Schema(description = "Identificador de la cita", example = "cit-001")
@@ -50,5 +52,8 @@ public record CitaResponseDTO(
         String motivoCancelacion,
 
         @Schema(description = "Detalle del motivo de cancelación (si motivo=OTRO)", example = "Cambio de domicilio")
-        String motivoCancelacionDetalle
+        String motivoCancelacionDetalle,
+
+        @Schema(description = "Monto a pagar de la cita (según honorarios del terapeuta)", example = "1200.00")
+        BigDecimal monto
 ) {}

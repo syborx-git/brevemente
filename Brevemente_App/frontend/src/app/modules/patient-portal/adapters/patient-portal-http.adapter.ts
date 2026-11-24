@@ -19,6 +19,7 @@ interface CitaBackend {
   status: string;
   paymentStatus: string | null;
   duration: number | null;
+  monto?: number | null;
   bloqueadaPorNormativa: boolean | null;
   motivoCancelacion?: string | null;
 }
@@ -125,6 +126,7 @@ export class PatientPortalHttpAdapter implements PatientPortalRepository {
       status: c.status,
       paymentStatus: c.paymentStatus ?? null,
       duration: c.duration ?? null,
+      monto: c.monto ?? null,
       bloqueadaPorNormativa: c.bloqueadaPorNormativa ?? null,
       motivoCancelacion: c.motivoCancelacion ?? undefined
     };

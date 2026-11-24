@@ -17,4 +17,9 @@ public class PasarelaPagosMockAdapter implements PasarelaPagosPort {
     public ResultadoCobro cobrar(String citaId, BigDecimal monto, String concepto) {
         return new ResultadoCobro(true, "mock-" + UUID.randomUUID().toString().substring(0, 8));
     }
+
+    @Override
+    public ResultadoReembolso reembolsar(String citaId, BigDecimal monto, String concepto) {
+        return new ResultadoReembolso(true, "refund-" + UUID.randomUUID().toString().substring(0, 8));
+    }
 }

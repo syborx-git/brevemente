@@ -10,6 +10,11 @@ public interface PasarelaPagosPort {
 
     ResultadoCobro cobrar(String citaId, BigDecimal monto, String concepto);
 
+    ResultadoReembolso reembolsar(String citaId, BigDecimal monto, String concepto);
+
     record ResultadoCobro(boolean exito, String referencia) {
+    }
+
+    record ResultadoReembolso(boolean exito, String referencia) {
     }
 }

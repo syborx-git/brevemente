@@ -1685,7 +1685,7 @@
             <td class="p-3 text-slate-500">{{ pay.date }}</td>
             <td class="p-3 font-semibold text-clinical-dark">{{ pay.concept }}</td>
             <td class="p-3 text-right font-bold">${{ pay.amount.toLocaleString('es-MX') }}</td>
-            <td class="p-3 capitalize">{{ pay.method }}</td>
+            <td class="p-3 capitalize">{{ pay.status === 'pendiente' ? '—' : pay.method }}</td>
             <td class="p-3">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase"

@@ -34,7 +34,8 @@ const ASISTENCIA: Record<string, Badge> = {
 const PAGO: Record<string, Badge> = {
   pagada: { label: 'Pagada', cls: 'bg-green-100 text-green-800 border-green-200' },
   pendiente: { label: 'Pendiente de pago', cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  exenta: { label: 'Exenta', cls: 'bg-slate-100 text-slate-600 border-slate-200' }
+  exenta: { label: 'Exenta', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  reembolsado: { label: 'Reembolsado', cls: 'bg-violet-100 text-violet-800 border-violet-200' }
 };
 
 const TIPO: Record<string, string> = {
@@ -211,6 +212,29 @@ const TIPO: Record<string, string> = {
         </div>
       }
 
+      @if (payTarget(); as cita) {
+        <div class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
+          <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+            <h3 class="font-bold text-slate-800">Confirmar pago</h3>
+            <p class="text-xs text-slate-500 mt-1">Revisa los datos de tu cita antes de pagar.</p>
+            <div class="mt-4 space-y-2 text-xs text-slate-700">
+              <p><span class="font-semibold">Fecha:</span> {{ cita.date }} · {{ cita.time }}</p>
+              <p><span class="font-semibold">Tipo:</span> {{ cita.type }}</p>
+              <p><span class="font-semibold">Duración:</span> {{ cita.duration ?? '—' }} min</p>
+              <p class="text-base font-bold text-slate-900 mt-2">Total a pagar: {{ montoPagar(cita) }} MXN</p>
+            </div>
+            <div class="flex justify-end gap-2 mt-5">
+              <button (click)="cerrarPago()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
+              <button
+                (click)="confirmarPago()"
+                [disabled]="actionLoading()"
+                class="px-4 py-2 rounded-lg text-xs font-bold bg-clinical-accent hover:bg-clinical-accentHover text-white disabled:opacity-50"
+              >{{ actionLoading() ? 'Procesando…' : 'Confirmar pago' }}</button>
+            </div>
+          </div>
+        </div>
+      }
+
       <p class="text-center text-[10px] text-slate-400 px-4">
         Puedes pagar tus citas pendientes o cancelarlas desde aquí. Para reprogramar una cita, contacta al asistente o a tu terapeuta.
       </p>
@@ -233,6 +257,7 @@ export class PatientPortalComponent implements OnInit {
   readonly crisisEnviada = signal(false);
   readonly cargaError = signal(false);
   readonly cancelTarget = signal<CitaPortal | null>(null);
+  readonly payTarget = signal<CitaPortal | null>(null);
   readonly motivoCancelacion = signal('');
   readonly motivoDetalle = signal('');
   readonly actionLoading = signal(false);
@@ -278,11 +303,25 @@ export class PatientPortalComponent implements OnInit {
   }
 
   pagarCita(cita: CitaPortal): void {
-    if (this.actionLoading()) return;
+    this.payTarget.set(cita);
+  }
+
+  montoPagar(cita: CitaPortal): string {
+    return '$' + (cita.monto ?? 0).toLocaleString('es-MX');
+  }
+
+  cerrarPago(): void {
+    this.payTarget.set(null);
+  }
+
+  confirmarPago(): void {
+    const cita = this.payTarget();
+    if (!cita || this.actionLoading()) return;
     this.actionLoading.set(true);
     this.repo.pagarCita(cita.id).subscribe({
       next: (updated) => {
         this.reemplazarCita(updated);
+        this.payTarget.set(null);
         this.actionLoading.set(false);
       },
       error: () => this.actionLoading.set(false)

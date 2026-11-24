@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
@@ -35,4 +36,5 @@ public class Cita {
     private boolean bloqueadaPorNormativa;
     private String motivoCancelacion;
     private String motivoCancelacionDetalle;
+    private BigDecimal monto; // derivado (no persistido): monto a pagar según honorarios del terapeuta
 }

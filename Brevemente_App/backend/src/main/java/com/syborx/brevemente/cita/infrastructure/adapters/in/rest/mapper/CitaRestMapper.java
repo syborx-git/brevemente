@@ -46,7 +46,8 @@ public class CitaRestMapper {
                 domain.isBloqueadaPorNormativa(),
                 domain.getTipoSesion(),
                 domain.getMotivoCancelacion(),
-                domain.getMotivoCancelacionDetalle()
+                domain.getMotivoCancelacionDetalle(),
+                domain.getMonto()
         );
     }
 
