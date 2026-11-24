@@ -249,6 +249,7 @@ export interface Session {
   situation: string;
   audioDuration?: string;
   status: 'borrador' | 'validado';
+  citaId?: string;
   valoracionCambio?: VcEntry;
   valoracionGlobal?: VgEntry;
 }

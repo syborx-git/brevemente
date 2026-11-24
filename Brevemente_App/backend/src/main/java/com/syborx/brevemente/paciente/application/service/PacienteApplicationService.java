@@ -228,6 +228,7 @@ public class PacienteApplicationService implements
         if (cambios.getRiskLevel() != null) existente.setRiskLevel(cambios.getRiskLevel());
         if (cambios.getMotivoConsulta() != null) existente.setMotivoConsulta(cambios.getMotivoConsulta());
         if (cambios.getSessionFrequency() != null) existente.setSessionFrequency(cambios.getSessionFrequency());
+        if (cambios.getRegistryMode() != null) existente.setRegistryMode(cambios.getRegistryMode());
         if (cambios.getCapacidadConsentimiento() != null) existente.setCapacidadConsentimiento(cambios.getCapacidadConsentimiento());
         if (cambios.getRepresentante() != null) existente.setRepresentante(cambios.getRepresentante());
         if (cambios.getConsentimientoRepresentanteFirmado() != null) {

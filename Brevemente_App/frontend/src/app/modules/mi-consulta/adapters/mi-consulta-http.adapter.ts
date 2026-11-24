@@ -7,6 +7,7 @@ import {
   BorradorSesion,
   CitaHoy,
   MiConsultaRepository,
+  SesionIniciada,
   SolicitudPendiente
 } from '../ports/mi-consulta.repository';
 import { environment } from '../../../../environments/environment';
@@ -115,6 +116,10 @@ export class MiConsultaHttpAdapter implements MiConsultaRepository {
         map((sesiones) => sesiones.map((s) => this.toBorrador(s))),
         catchError(() => of([]))
       );
+  }
+
+  iniciarSesion(citaId: string): Observable<SesionIniciada> {
+    return this.http.post<SesionIniciada>(`${this.baseUrl}/citas/${citaId}/sesion`, null);
   }
 
   private toAccion(w: AccionDominanteWire): AccionDominante {

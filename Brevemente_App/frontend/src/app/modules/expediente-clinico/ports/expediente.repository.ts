@@ -19,7 +19,7 @@ import {
 export type PagoNuevo = Omit<Payment, 'id' | 'patientName' | 'registeredBy' | 'createdAt'>;
 export type ConstanciaNueva = Omit<PhysicalCertificateLog, 'id' | 'patientName' | 'status' | 'registeredBy' | 'registeredAt'>;
 export type BitacoraNueva = Omit<SupervisionLog, 'id' | 'patientName' | 'therapistName'>;
-export type SesionParcial = Partial<Pick<Session, 'phase' | 'protocol' | 'dxOp' | 'spr' | 'trastorno' | 'px' | 'oss' | 'add' | 'rss'>> & { significado?: string; status?: 'borrador' | 'validado' };
+export type SesionParcial = Partial<Pick<Session, 'phase' | 'protocol' | 'dxOp' | 'spr' | 'trastorno' | 'px' | 'f2' | 'oss' | 'add' | 'cumplimiento' | 'rss' | 'eff' | 'notes' | 'observationsNextSession' | 'situation' | 'valoracionCambio' | 'valoracionGlobal'>> & { significado?: string; status?: 'borrador' | 'validado' };
 
 export abstract class ExpedienteRepository {
   abstract listarPacientes(): Observable<Patient[]>;

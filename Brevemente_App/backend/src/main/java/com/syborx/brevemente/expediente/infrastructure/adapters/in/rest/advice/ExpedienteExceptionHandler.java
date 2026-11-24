@@ -4,6 +4,10 @@ import com.syborx.brevemente.expediente.domain.exception.ConsentimientoYaFirmado
 import com.syborx.brevemente.expediente.domain.exception.ExpedienteNotFoundException;
 import com.syborx.brevemente.expediente.domain.exception.SesionInvalidaException;
 import com.syborx.brevemente.expediente.domain.exception.SesionNotFoundException;
+import com.syborx.brevemente.expediente.domain.exception.SesionPorCitaExistenteException;
+import com.syborx.brevemente.cita.domain.exception.CitaNotFoundException;
+import com.syborx.brevemente.cita.domain.exception.PacienteAjenoAlTerapeutaException;
+import com.syborx.brevemente.cita.domain.exception.TransicionEstadoCitaInvalidaException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +38,26 @@ public class ExpedienteExceptionHandler {
     @ExceptionHandler(SesionNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleSesionNotFound(SesionNotFoundException ex) {
         return body(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(SesionPorCitaExistenteException.class)
+    public ResponseEntity<Map<String, Object>> handleSesionPorCita(SesionPorCitaExistenteException ex) {
+        return body(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(TransicionEstadoCitaInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleCitaTransicion(TransicionEstadoCitaInvalidaException ex) {
+        return body(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(CitaNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCitaNotFound(CitaNotFoundException ex) {
+        return body(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(PacienteAjenoAlTerapeutaException.class)
+    public ResponseEntity<Map<String, Object>> handleCitaSinAlcance(PacienteAjenoAlTerapeutaException ex) {
+        return body(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

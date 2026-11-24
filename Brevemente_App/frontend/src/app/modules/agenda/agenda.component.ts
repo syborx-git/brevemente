@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AgendaRepository } from './ports/agenda.repository';
 import { AgendaLocalStorageAdapter } from './adapters/agenda-localstorage.adapter';
@@ -104,7 +104,10 @@ export class AgendaComponent implements OnInit {
 
   readonly hours = HOURS;
 
-  constructor(private readonly agendaRepo: AgendaRepository) {}
+  constructor(
+    private readonly agendaRepo: AgendaRepository,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
     this.bannerNormativoOculto = sessionStorage.getItem('agenda.bannerNormativo.oculto') === '1';
@@ -273,6 +276,31 @@ export class AgendaComponent implements OnInit {
     return app.status === 'confirmada'
       || app.status === 'pendiente'
       || app.status === 'solicita_reagendar';
+  }
+
+  /** Solo se puede iniciar sesión en una cita confirmada con pago pagado o exento. */
+  puedeAtender(app: Appointment): boolean {
+    return app.status === 'confirmada'
+      && (app.paymentStatus === 'pagada' || app.paymentStatus === 'exenta');
+  }
+
+  iniciarSesionDesdeCita(app: Appointment): void {
+    this.mensajeErrorAgenda = '';
+    this.agendaRepo.iniciarSesion(app.id).subscribe({
+      next: (sesion) => {
+        this.router.navigate(['/expedientes', app.patientId], {
+          queryParams: { sesion: sesion.id, modo: 'grabacion' }
+        });
+      },
+      error: (err: any) => {
+        const msg = err?.error?.message || err?.message || '';
+        if (err?.status === 409 && msg.includes('Ya existe una sesión')) {
+          this.router.navigate(['/expedientes', app.patientId], { queryParams: { modo: 'grabacion' } });
+          return;
+        }
+        this.mensajeErrorAgenda = msg || 'No se pudo iniciar la sesión.';
+      }
+    });
   }
 
   // ── UI ──

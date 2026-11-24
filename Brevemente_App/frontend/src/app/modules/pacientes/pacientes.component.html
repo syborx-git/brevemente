@@ -298,6 +298,18 @@
           </div>
         </div>
 
+        <!-- Modo de Registro de Sesión -->
+        <section class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <h3 class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-2">Modo de Registro de Sesión</h3>
+          <div>
+            <label class="block font-medium text-slate-600 mb-0.5">Autorización de grabación e IA (LEVA)</label>
+            <select [(ngModel)]="newRegistryMode" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+              <option value="ia">Con IA (LEVA) — grabación de sesión autorizada</option>
+              <option value="manual">100% Manual — sin grabación de sesión</option>
+            </select>
+          </div>
+        </section>
+
         <!-- Sede y Terapeuta -->
         <section class="p-3 bg-slate-50 rounded-xl border border-slate-200">
           <h3 class="text-[10px] font-bold text-clinical-dark uppercase tracking-wider mb-2">Sede y Terapeuta</h3>

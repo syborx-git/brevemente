@@ -32,5 +32,6 @@ public record SesionResponseDTO(
         String audioDuration,
         @Schema(example = "borrador") String status,
         @Schema(description = "Valoración del Cambio de la sesión") VcEntry valoracionCambio,
-        @Schema(description = "Valoración Global de la sesión") VgEntry valoracionGlobal
+        @Schema(description = "Valoración Global de la sesión") VgEntry valoracionGlobal,
+        @Schema(example = "cit-001", description = "Cita de origen de la sesión (nullable)") String citaId
 ) {}

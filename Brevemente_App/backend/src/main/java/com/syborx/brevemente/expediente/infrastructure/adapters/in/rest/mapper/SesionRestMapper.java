@@ -39,7 +39,8 @@ public class SesionRestMapper {
                 s.getDuracionAudio(),
                 s.getStatus(),
                 s.getValoracionCambio(),
-                s.getValoracionGlobal()
+                s.getValoracionGlobal(),
+                s.getCitaId()
         );
     }
 
@@ -67,6 +68,7 @@ public class SesionRestMapper {
                 .duracionAudio(r.audioDuration())
                 .valoracionCambio(r.valoracionCambio())
                 .valoracionGlobal(r.valoracionGlobal())
+                .citaId(r.citaId())
                 .build();
     }
 
@@ -79,9 +81,18 @@ public class SesionRestMapper {
                 .spr(r.spr())
                 .trastorno(r.trastorno())
                 .px(r.px() != null ? r.px() : List.of())
+                .protocolo(r.protocol())
+                .f2(r.f2())
                 .oss(r.oss())
                 .adherencia(r.add())
+                .cumplimiento(r.cumplimiento())
                 .rss(r.rss())
+                .eff(r.eff())
+                .notas(r.notes())
+                .observacionesProximaSesion(r.observationsNextSession())
+                .situacion(r.situation())
+                .valoracionCambio(r.valoracionCambio())
+                .valoracionGlobal(r.valoracionGlobal())
                 .status(r.status())
                 .build();
     }
