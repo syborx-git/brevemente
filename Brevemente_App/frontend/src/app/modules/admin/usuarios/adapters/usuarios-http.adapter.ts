@@ -5,6 +5,7 @@ import {
   CambiarEstadoPayload,
   CrearUsuarioPayload,
   EditarUsuarioPayload,
+  PermisosPorRolBackend,
   ResetPasswordPayload,
   ResumenUsuarios,
   UsuarioAdminBackend,
@@ -28,6 +29,10 @@ export class UsuariosHttpAdapter extends UsuariosAdminRepository {
       .set('page', String(page))
       .set('size', String(size));
     return this.http.get<ResumenUsuarios>(this.apiUrl, { params });
+  }
+
+  listarPermisosPorRol(): Observable<PermisosPorRolBackend[]> {
+    return this.http.get<PermisosPorRolBackend[]>(`${this.apiUrl}/permisos-por-rol`);
   }
 
   crear(payload: CrearUsuarioPayload): Observable<UsuarioCreado> {

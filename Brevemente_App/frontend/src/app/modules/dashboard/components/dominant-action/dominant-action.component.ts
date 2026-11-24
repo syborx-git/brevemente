@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { AccionDominante } from '../../ports/dashboard.repository';
+import { Router, RouterLink } from '@angular/router';
+import { AccionDominante, DashboardRepository } from '../../ports/dashboard.repository';
 
 /**
  * Acción Operativa Dominante (SDD-005 §4.1/§4.2).
@@ -54,16 +54,21 @@ import { AccionDominante } from '../../ports/dashboard.repository';
               <span class="text-xs font-bold text-clinical-dark block">{{ accion.terapeutaNombre }}</span>
             </div>
             @if (!esAsistente) {
-              <a
-                [routerLink]="['/expedientes', accion.pacienteId]"
-                class="px-5 py-2.5 bg-[#75AFBC] hover:bg-[#6099a5] text-white rounded-lg font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
-              >
-                Preparar Sesión
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </a>
+              <div class="flex flex-col items-end gap-1.5">
+                <button
+                  (click)="prepararSesion()"
+                  class="px-5 py-2.5 bg-[#75AFBC] hover:bg-[#6099a5] text-white rounded-lg font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
+                >
+                  Preparar Sesión
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                  </svg>
+                </button>
+                @if (mensajeError) {
+                  <span class="text-[10px] text-red-600 font-semibold">{{ mensajeError }}</span>
+                }
+              </div>
             }
           </div>
         </div>
@@ -85,11 +90,38 @@ export class DominantActionComponent {
   @Input() accion: AccionDominante | null = null;
   @Input() esAsistente = false;
 
+  mensajeError: string | null = null;
+
+  constructor(
+    private readonly repo: DashboardRepository,
+    private readonly router: Router
+  ) {}
+
   get meridiano(): string {
     if (!this.accion) {
       return '';
     }
     const hours = parseInt(this.accion.hora.split(':')[0], 10);
     return hours >= 12 ? 'PM' : 'AM';
+  }
+
+  prepararSesion(): void {
+    if (!this.accion || !this.accion.citaId) return;
+    this.mensajeError = null;
+    this.repo.iniciarSesion(this.accion.citaId).subscribe({
+      next: (sesion) => {
+        this.router.navigate(['/expedientes', this.accion!.pacienteId], {
+          queryParams: { sesion: sesion.id, modo: 'grabacion' }
+        });
+      },
+      error: (err: any) => {
+        const msg = err?.error?.message || err?.message || '';
+        if (err?.status === 409 && msg.includes('Ya existe una sesión')) {
+          this.router.navigate(['/expedientes', this.accion!.pacienteId], { queryParams: { modo: 'grabacion' } });
+          return;
+        }
+        this.mensajeError = msg || 'No se pudo iniciar la sesión.';
+      }
+    });
   }
 }

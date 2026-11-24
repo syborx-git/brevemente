@@ -15,6 +15,9 @@ export interface CitaPortal {
   status: string;
   paymentStatus: string | null;
   duration: number | null;
+  monto: number | null;
+  bloqueadaPorNormativa: boolean | null;
+  motivoCancelacion?: string;
 }
 
 export interface SesionPortal {
@@ -51,4 +54,6 @@ export abstract class PatientPortalRepository {
   abstract escalarCrisis(mensaje: string): Observable<AlertaPortal>;
   abstract listarAlertas(): Observable<AlertaPortal[]>;
   abstract obtenerContraReferencia(): Observable<ContraReferenciaPortal | null>;
+  abstract pagarCita(id: string): Observable<CitaPortal>;
+  abstract cancelarCita(id: string, motivo: string, motivoDetalle?: string): Observable<CitaPortal>;
 }

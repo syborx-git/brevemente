@@ -1,4 +1,4 @@
-import { Component, Input, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CitaPortal, SesionPortal } from './ports/patient-portal.repository';
 
@@ -20,7 +20,8 @@ const ASISTENCIA: Record<string, Badge> = {
 const PAGO: Record<string, Badge> = {
   pagada: { label: 'Pagada', cls: 'bg-green-100 text-green-800 border-green-200' },
   pendiente: { label: 'Pendiente de pago', cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  exenta: { label: 'Exenta', cls: 'bg-slate-100 text-slate-600 border-slate-200' }
+  exenta: { label: 'Exenta', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  reembolsado: { label: 'Reembolsado', cls: 'bg-violet-100 text-violet-800 border-violet-200' }
 };
 
 const TIPO: Record<string, string> = {
@@ -52,8 +53,8 @@ const TIPO: Record<string, string> = {
           <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase {{ p.cls }}">
             {{ p.label }}
           </span>
-        } @else {
-          <span class="text-slate-300 text-[10px] font-bold">Sin info de pago</span>
+        } @else if (cita.status !== 'cancelada') {
+          <span class="text-slate-600 text-[10px] font-bold">Sin info de pago</span>
         }
 
         <div class="ml-auto flex items-center gap-2">
@@ -62,6 +63,20 @@ const TIPO: Record<string, string> = {
               {{ totalPrescripciones }} {{ totalPrescripciones > 1 ? 'prescripciones' : 'prescripción' }}
             </span>
             <span class="text-slate-400 text-xs">{{ expanded() ? '▲' : '▼' }}</span>
+          }
+          @if (puedePagar()) {
+            <button
+              type="button"
+              (click)="$event.stopPropagation(); pagar.emit()"
+              class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px]"
+            >Pagar</button>
+          }
+          @if (puedeCancelar()) {
+            <button
+              type="button"
+              (click)="$event.stopPropagation(); cancelar.emit()"
+              class="px-3 py-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 rounded-lg font-bold text-[11px]"
+            >Cancelar</button>
           }
         </div>
       </div>
@@ -100,6 +115,11 @@ const TIPO: Record<string, string> = {
 export class CitaFilaComponent {
   @Input() cita!: CitaPortal;
   @Input() prescripciones: SesionPortal[] = [];
+  @Input() canPay = true;
+  @Input() canCancel = true;
+
+  @Output() pagar = new EventEmitter<void>();
+  @Output() cancelar = new EventEmitter<void>();
 
   readonly expanded = signal(false);
 
@@ -116,6 +136,12 @@ export class CitaFilaComponent {
   }
 
   pago(): Badge | null {
+    if (this.cita.status === 'cancelada') {
+      const p = PAGO[this.cita.paymentStatus ?? ''];
+      return (p && (this.cita.paymentStatus === 'reembolsado' || this.cita.paymentStatus === 'exenta'))
+        ? p
+        : null;
+    }
     return this.cita.paymentStatus ? (PAGO[this.cita.paymentStatus] ?? null) : null;
   }
 
@@ -125,6 +151,16 @@ export class CitaFilaComponent {
 
   hasPrescripciones(): boolean {
     return this.totalPrescripciones > 0;
+  }
+
+  puedePagar(): boolean {
+    return this.canPay
+      && this.cita.status === 'pendiente'
+      && this.cita.paymentStatus === 'pendiente';
+  }
+
+  puedeCancelar(): boolean {
+    return this.canCancel && ['pendiente', 'confirmada', 'solicita_reagendar'].includes(this.cita.status);
   }
 
   toggle(): void {

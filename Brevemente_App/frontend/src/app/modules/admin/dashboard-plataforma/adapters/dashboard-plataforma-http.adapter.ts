@@ -10,6 +10,7 @@ import {
   IndicadorClinicoBackend,
   KpisPlataformaBackend,
   SaludModuloBackend,
+  TerapeutaBackend,
   UsuarioRecienteBackend
 } from '../ports/dashboard-plataforma.repository';
 
@@ -23,6 +24,10 @@ export class DashboardPlataformaHttpAdapter extends DashboardPlataformaRepositor
 
   obtenerResumen(): Observable<{ kpis: KpisPlataformaBackend }> {
     return this.http.get<{ kpis: KpisPlataformaBackend }>(`${this.apiUrl}/resumen`);
+  }
+
+  obtenerTerapeutas(): Observable<TerapeutaBackend[]> {
+    return this.http.get<TerapeutaBackend[]>(`${this.apiUrl}/terapeutas`);
   }
 
   obtenerIndicadores(): Observable<IndicadorClinicoBackend[]> {

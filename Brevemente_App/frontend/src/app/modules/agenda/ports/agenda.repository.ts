@@ -8,12 +8,22 @@ export interface CitaReprogramarPayload {
   terapeutaId?: string;
 }
 
+export interface SesionIniciada {
+  id: string;
+  patientId: string;
+  number: number;
+  date: string | null;
+  status: string;
+  citaId: string | null;
+}
+
 export abstract class AgendaRepository {
   // Contrato original (componente y mock lo consumen tal cual).
   abstract listarCitas(): Observable<Appointment[]>;
   abstract agendarCita(cita: Omit<Appointment, 'id'>): Observable<Appointment>;
   abstract obtenerPacientes(): Observable<Patient[]>;
-  abstract actualizarEstadoCita(id: string, status: Appointment['status']): Observable<Appointment>;
+  abstract actualizarEstadoCita(id: string, status: Appointment['status'], motivo?: string, motivoDetalle?: string): Observable<Appointment>;
+  abstract iniciarSesion(citaId: string): Observable<SesionIniciada>;
 
   // Métodos extendidos (concretos por defecto; el mock no los implementa).
   reprogramarCita(id: string, cita: CitaReprogramarPayload): Observable<Appointment> {

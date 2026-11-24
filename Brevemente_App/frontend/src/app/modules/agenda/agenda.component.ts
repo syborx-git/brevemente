@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AgendaRepository } from './ports/agenda.repository';
 import { AgendaLocalStorageAdapter } from './adapters/agenda-localstorage.adapter';
@@ -36,6 +36,26 @@ const STATUS_COLOR: Record<string, string> = {
   solicita_reagendar: 'bg-amber-100 text-amber-800'
 };
 
+function hoyLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function horaActualLocal(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function proximaMediaHora(): string {
+  const d = new Date();
+  const totalMin = d.getHours() * 60 + d.getMinutes();
+  const redondeado = Math.ceil(totalMin / 30) * 30;
+  const siguiente = redondeado === totalMin ? redondeado + 30 : redondeado;
+  const h = Math.floor(siguiente / 60) % 24;
+  const m = siguiente % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 @Component({
   selector: 'app-agenda',
   standalone: true,
@@ -60,7 +80,7 @@ export class AgendaComponent implements OnInit {
   diasNoLaborables: DiaNoLaborable[] = [];
 
   viewLevel: ViewLevel = 'semana';
-  anchorDate = '2026-10-07';
+  anchorDate = hoyLocal();
   blockHolidays = true;
 
   showNewModal = false;
@@ -69,10 +89,14 @@ export class AgendaComponent implements OnInit {
   showCancelConfirm = false;
   citaACancelar: Appointment | null = null;
   notificarPorWhatsApp = true;
+  motivoCancelacion = '';
+  motivoCancelacionDetalle = '';
+  bannerNormativoOculto = false;
+  mensajeErrorAgenda = '';
 
   selectedPatientId = '';
-  newDate = '2026-10-07';
-  newTime = '10:00';
+  newDate = hoyLocal();
+  newTime = proximaMediaHora();
   newType: 'primera' | 'seguimiento' | 'cierre' = 'seguimiento';
   newDuration: 30 | 45 | 60 = 30;
   newModalidad: 'PRESENCIAL' | 'ONLINE' = 'PRESENCIAL';
@@ -80,10 +104,31 @@ export class AgendaComponent implements OnInit {
 
   readonly hours = HOURS;
 
-  constructor(private readonly agendaRepo: AgendaRepository) {}
+  constructor(
+    private readonly agendaRepo: AgendaRepository,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
+    this.bannerNormativoOculto = sessionStorage.getItem('agenda.bannerNormativo.oculto') === '1';
     this.cargarDatos();
+  }
+
+  get hayMenoresSinConsentimiento(): boolean {
+    return this.pacientes.some(
+      (p) =>
+        p.capacidadConsentimiento?.estado === 'REPRESENTADO_POR_EDAD' &&
+        p.consentimientoRepresentanteFirmado !== true
+    );
+  }
+
+  get mostrarBannerNormativo(): boolean {
+    return !this.bannerNormativoOculto && this.hayMenoresSinConsentimiento;
+  }
+
+  ocultarBannerNormativo(): void {
+    this.bannerNormativoOculto = true;
+    sessionStorage.setItem('agenda.bannerNormativo.oculto', '1');
   }
 
   cargarDatos(): void {
@@ -174,8 +219,12 @@ export class AgendaComponent implements OnInit {
     else if (this.viewLevel === 'mes') this.anchorDate = this.addMonths(this.anchorDate, 1);
     else if (this.viewLevel === 'anio') this.anchorDate = this.addYears(this.anchorDate, 1);
   }
+  get hoy(): string {
+    return hoyLocal();
+  }
+
   goToday(): void {
-    this.anchorDate = new Date().toISOString().split('T')[0];
+    this.anchorDate = hoyLocal();
     this.viewLevel = 'dia';
   }
   setView(level: ViewLevel): void { this.viewLevel = level; }
@@ -229,6 +278,31 @@ export class AgendaComponent implements OnInit {
       || app.status === 'solicita_reagendar';
   }
 
+  /** Solo se puede iniciar sesión en una cita confirmada con pago pagado o exento. */
+  puedeAtender(app: Appointment): boolean {
+    return app.status === 'confirmada'
+      && (app.paymentStatus === 'pagada' || app.paymentStatus === 'exenta');
+  }
+
+  iniciarSesionDesdeCita(app: Appointment): void {
+    this.mensajeErrorAgenda = '';
+    this.agendaRepo.iniciarSesion(app.id).subscribe({
+      next: (sesion) => {
+        this.router.navigate(['/expedientes', app.patientId], {
+          queryParams: { sesion: sesion.id, modo: 'grabacion' }
+        });
+      },
+      error: (err: any) => {
+        const msg = err?.error?.message || err?.message || '';
+        if (err?.status === 409 && msg.includes('Ya existe una sesión')) {
+          this.router.navigate(['/expedientes', app.patientId], { queryParams: { modo: 'grabacion' } });
+          return;
+        }
+        this.mensajeErrorAgenda = msg || 'No se pudo iniciar la sesión.';
+      }
+    });
+  }
+
   // ── UI ──
   statusLabel(status: string): string { return STATUS_LABEL[status] ?? status; }
   statusColor(status: string): string { return STATUS_COLOR[status] ?? 'bg-slate-100 text-slate-600'; }
@@ -240,7 +314,12 @@ export class AgendaComponent implements OnInit {
     return 'border-l-4 border-l-[#75AFBC] border border-slate-200';
   }
 
-  openNewModal(): void { this.showNewModal = true; }
+  openNewModal(): void {
+    this.newDate = hoyLocal();
+    this.newTime = proximaMediaHora();
+    this.mensajeErrorAgenda = '';
+    this.showNewModal = true;
+  }
   closeNewModal(): void { this.showNewModal = false; }
   selectApp(app: Appointment): void { this.selectedApp = app; }
   closeDrawer(): void { this.selectedApp = null; }
@@ -248,6 +327,8 @@ export class AgendaComponent implements OnInit {
   abrirConfirmacionCancelar(app: Appointment): void {
     this.citaACancelar = app;
     this.notificarPorWhatsApp = true;
+    this.motivoCancelacion = '';
+    this.motivoCancelacionDetalle = '';
     this.showCancelConfirm = true;
   }
 
@@ -269,7 +350,9 @@ export class AgendaComponent implements OnInit {
       this.abrirWhatsAppCancelacion(cita);
     }
 
-    this.agendaRepo.actualizarEstadoCita(cita.id, 'cancelada').subscribe(() => {
+    this.agendaRepo.actualizarEstadoCita(
+      cita.id, 'cancelada', this.motivoCancelacion, this.motivoCancelacionDetalle || undefined
+    ).subscribe(() => {
       this.cargarDatos();
       if (this.selectedApp && this.selectedApp.id === cita.id) {
         this.selectedApp = { ...this.selectedApp, status: 'cancelada' };
@@ -289,14 +372,25 @@ export class AgendaComponent implements OnInit {
     const p = this.selectedPatient;
     if (!p) return;
 
+    const hoy = hoyLocal();
+    if (this.newDate < hoy) {
+      this.mensajeErrorAgenda = 'No puedes agendar una cita en una fecha anterior a hoy.';
+      return;
+    }
+    if (this.newDate === hoy && this.newTime <= horaActualLocal()) {
+      this.mensajeErrorAgenda = 'No puedes agendar una cita en una hora que ya pasó.';
+      return;
+    }
+
     const nueva: Omit<Appointment, 'id'> = {
       patientId: p.id,
       patientName: p.name,
       time: this.newTime,
       date: this.newDate,
       type: this.newType,
-      status: this.isPatientBlocked(p.id) ? 'pendiente' : 'confirmada',
+      status: 'pendiente',
       paymentStatus: 'pendiente',
+      bloqueadaPorNormativa: this.isPatientBlocked(p.id),
       duration: this.newDuration,
       modality: this.newModalidad,
       office: this.newModalidad === 'ONLINE' ? undefined : this.newConsultorio

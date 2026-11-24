@@ -8,6 +8,7 @@ import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.Desg
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.IndicadorClinicoDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.ResumenPlataformaDTO;
 import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.SaludPlataformaDTO;
+import com.syborx.brevemente.plataforma.infrastructure.adapters.in.rest.dto.TerapeutaPlataformaDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,6 +32,11 @@ public class AdminDashboardRestController {
     @GetMapping("/resumen")
     public ResumenPlataformaDTO resumen() {
         return plataformaDashboardUseCase.obtenerResumen();
+    }
+
+    @GetMapping("/terapeutas")
+    public List<TerapeutaPlataformaDTO> terapeutas() {
+        return plataformaDashboardUseCase.listarTerapeutas();
     }
 
     @GetMapping("/indicadores-clinicos")

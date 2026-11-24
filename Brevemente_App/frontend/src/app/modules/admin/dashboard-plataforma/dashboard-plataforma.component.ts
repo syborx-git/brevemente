@@ -101,20 +101,7 @@ export class DashboardPlataformaComponent implements OnInit {
     { nombre: 'Dra. Isabel Cárdenas', detalle: 'Supervisora clínica', fecha: 'hace 2 días' }
   ];
 
-  terapeutas: Terapeuta[] = [
-    { id: 'ter-001', nombre: 'Dra. Sofía Ramírez Lozano', especialidad: 'Psiquiatría', estado: 'activo' },
-    { id: 'ter-002', nombre: 'Mtro. Alejandro Mendoza Garza', especialidad: 'Psicología clínica', estado: 'activo' },
-    { id: 'ter-003', nombre: 'Dra. Isabel Cárdenas', especialidad: 'Supervisión clínica', estado: 'activo' },
-    { id: 'ter-004', nombre: 'Dr. Luis Herrera', especialidad: 'Psicología clínica', estado: 'activo' },
-    { id: 'ter-005', nombre: 'Dra. Mariana Ríos', especialidad: 'Psiquiatría infantil', estado: 'activo' },
-    { id: 'ter-006', nombre: 'Mtro. Diego Fuentes', especialidad: 'Psicología clínica', estado: 'activo' },
-    { id: 'ter-007', nombre: 'Dra. Valeria Salas', especialidad: 'Psicoterapia', estado: 'activo' },
-    { id: 'ter-008', nombre: 'Mtro. Ricardo Téllez', especialidad: 'Neuropsicología', estado: 'activo' },
-    { id: 'ter-009', nombre: 'Dra. Andrea Molina', especialidad: 'Psicología clínica', estado: 'activo' },
-    { id: 'ter-010', nombre: 'Mtro. Jorge Cantú', especialidad: 'Psicoterapia', estado: 'activo' },
-    { id: 'ter-011', nombre: 'Dra. Renata Ibarra', especialidad: 'Psiquiatría', estado: 'activo' },
-    { id: 'ter-012', nombre: 'Mtro. Emiliano Roldán', especialidad: 'Psicología clínica', estado: 'activo' }
-  ];
+  terapeutas: Terapeuta[] = [];
 
   alertas: AlertaAdministrativa[] = [
     { id: 'al-1', tipo: 'suscripcion', titulo: 'Mtro. Alejandro Mendoza — suscripción vencida', descripcion: 'No ha cubierto la cuota mensual de la plataforma.', severidad: 'alta', fecha: 'hoy' },
@@ -272,6 +259,17 @@ export class DashboardPlataformaComponent implements OnInit {
   abrirTerapeutas(): void {
     this.triggerElement = document.activeElement as HTMLElement;
     this.terapeutasAbierto = true;
+    this.repo.obtenerTerapeutas().subscribe({
+      next: (list) => {
+        this.terapeutas = list.map((t) => ({
+          id: t.id,
+          nombre: t.nombre,
+          especialidad: t.especialidad,
+          estado: t.estado === 'activo' ? 'activo' : 'inactivo'
+        }));
+      },
+      error: () => {}
+    });
   }
 
   cerrarTerapeutas(): void {

@@ -38,6 +38,12 @@ public class PagoPersistenceAdapter implements PagoRepositoryPort {
     }
 
     @Override
+    public Optional<Pago> findByCitaId(String citaId) {
+        return pagoRepository.findByCitaId(citaId)
+                .map(e -> mapper.toDomain(e, pacienteNombre(e.getPacienteId()), usuarioNombre(e.getRegistradoPorId())));
+    }
+
+    @Override
     public Pago save(Pago pago) {
         PagoJpaEntity saved = pagoRepository.save(mapper.toJpaEntity(pago));
         return mapper.toDomain(saved, pacienteNombre(saved.getPacienteId()), usuarioNombre(saved.getRegistradoPorId()));

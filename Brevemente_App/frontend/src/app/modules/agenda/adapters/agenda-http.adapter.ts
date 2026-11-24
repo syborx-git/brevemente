@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AgendaRepository, CitaReprogramarPayload } from '../ports/agenda.repository';
+import { AgendaRepository, CitaReprogramarPayload, SesionIniciada } from '../ports/agenda.repository';
 import { Appointment, Patient, DiaNoLaborable } from '../../../core/types/clinical.types';
 import { environment } from '../../../../environments/environment';
 
@@ -40,8 +40,12 @@ export class AgendaHttpAdapter implements AgendaRepository {
     return this.http.get<Patient[]>(`${environment.apiBaseUrl}/pacientes`);
   }
 
-  actualizarEstadoCita(id: string, status: Appointment['status']): Observable<Appointment> {
-    return this.http.patch<Appointment>(`${this.apiUrl}/${id}/estado`, { status });
+  actualizarEstadoCita(id: string, status: Appointment['status'], motivo?: string, motivoDetalle?: string): Observable<Appointment> {
+    return this.http.patch<Appointment>(`${this.apiUrl}/${id}/estado`, { status, motivo, motivoDetalle });
+  }
+
+  iniciarSesion(citaId: string): Observable<SesionIniciada> {
+    return this.http.post<SesionIniciada>(`${this.apiUrl}/${citaId}/sesion`, null);
   }
 
   listarDiasNoLaborables(): Observable<DiaNoLaborable[]> {

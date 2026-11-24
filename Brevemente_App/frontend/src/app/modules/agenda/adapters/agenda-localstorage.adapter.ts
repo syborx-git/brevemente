@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { AgendaRepository } from '../ports/agenda.repository';
+import { AgendaRepository, SesionIniciada } from '../ports/agenda.repository';
 import { Appointment, Patient } from '../../../core/types/clinical.types';
+import { hoyLocal } from '../../../core/utils/fecha';
 import { mockAppointments, mockPatients } from '../../../core/data/mockData';
 
 @Injectable({
@@ -43,14 +44,30 @@ export class AgendaLocalStorageAdapter extends AgendaRepository {
     return of(raw ? JSON.parse(raw) : mockPatients);
   }
 
-  actualizarEstadoCita(id: string, status: Appointment['status']): Observable<Appointment> {
+  actualizarEstadoCita(id: string, status: Appointment['status'], motivo?: string, motivoDetalle?: string): Observable<Appointment> {
     const items = this.getAppointments();
     const index = items.findIndex(a => a.id === id);
     if (index !== -1) {
       items[index].status = status;
+      if (status === 'cancelada') {
+        items[index].motivoCancelacion = motivo;
+      }
       localStorage.setItem(this.appointmentsKey, JSON.stringify(items));
       return of(items[index]);
     }
     throw new Error('Cita no encontrada');
+  }
+
+  iniciarSesion(citaId: string): Observable<SesionIniciada> {
+    const cita = this.getAppointments().find(a => a.id === citaId);
+    const creada: SesionIniciada = {
+      id: `ses-${Date.now().toString(36)}`,
+      patientId: cita?.patientId ?? '',
+      number: 1,
+      date: hoyLocal(),
+      status: 'borrador',
+      citaId
+    };
+    return of(creada);
   }
 }

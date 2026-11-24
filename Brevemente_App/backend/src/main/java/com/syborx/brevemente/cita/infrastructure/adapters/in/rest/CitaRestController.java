@@ -2,6 +2,8 @@ package com.syborx.brevemente.cita.infrastructure.adapters.in.rest;
 
 import com.syborx.brevemente.cita.application.ports.in.ActualizarEstadoCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.in.AgendarCitaUseCase;
+import com.syborx.brevemente.cita.application.ports.in.ConfirmarPagoCitaUseCase;
+import com.syborx.brevemente.cita.application.ports.in.IniciarSesionDesdeCitaUseCase;
 import com.syborx.brevemente.cita.application.ports.in.ListarCitasUseCase;
 import com.syborx.brevemente.cita.application.ports.in.ReprogramarCitaUseCase;
 import com.syborx.brevemente.cita.domain.model.CitaFiltro;
@@ -9,6 +11,7 @@ import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.dto.CitaCreate
 import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.dto.CitaEstadoRequest;
 import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.dto.CitaReprogramarRequest;
 import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.dto.CitaResponseDTO;
+import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.dto.SesionIniciadaResponseDTO;
 import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.mapper.CitaRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,7 +42,9 @@ public class CitaRestController {
     private final ListarCitasUseCase listarCitasUseCase;
     private final AgendarCitaUseCase agendarCitaUseCase;
     private final ActualizarEstadoCitaUseCase actualizarEstadoCitaUseCase;
+    private final ConfirmarPagoCitaUseCase confirmarPagoCitaUseCase;
     private final ReprogramarCitaUseCase reprogramarCitaUseCase;
+    private final IniciarSesionDesdeCitaUseCase iniciarSesionDesdeCitaUseCase;
     private final CitaRestMapper citaRestMapper;
 
     @GetMapping
@@ -75,8 +80,25 @@ public class CitaRestController {
     public ResponseEntity<CitaResponseDTO> actualizarEstado(
             @PathVariable String id, @Valid @RequestBody CitaEstadoRequest request) {
         CitaResponseDTO response = citaRestMapper.toResponse(
-                actualizarEstadoCitaUseCase.actualizarEstado(id, request.status()));
+                actualizarEstadoCitaUseCase.actualizarEstado(
+                        id, request.status(), request.motivo(), request.motivoDetalle()));
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/pago")
+    @PreAuthorize("hasAnyAuthority('MIS_CITAS_PAGAR','AGENDA_GESTIONAR')")
+    @Operation(summary = "Confirmar el pago de una cita (pasarela mock)")
+    public ResponseEntity<CitaResponseDTO> confirmarPago(@PathVariable String id) {
+        CitaResponseDTO response = citaRestMapper.toResponse(confirmarPagoCitaUseCase.confirmarPago(id));
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/sesion")
+    @PreAuthorize("hasAuthority('AGENDA_GESTIONAR') and hasAuthority('EXPEDIENTE_ESCRIBIR')")
+    @Operation(summary = "Iniciar una sesión clínica desde una cita confirmada")
+    public ResponseEntity<SesionIniciadaResponseDTO> iniciarSesion(@PathVariable String id) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(SesionIniciadaResponseDTO.from(iniciarSesionDesdeCitaUseCase.iniciarSesion(id)));
     }
 
     @PatchMapping("/{id}")

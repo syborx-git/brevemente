@@ -9,6 +9,7 @@ import { PacienteHttpAdapter } from './adapters/paciente-http.adapter';
 import { Patient, ParentescoRepresentante } from '../../core/types/clinical.types';
 import { formatEstadoConsentimientoLabel } from '../../core/utils/consentimiento.utils';
 import { evaluateCurpDateMismatch, parseCurpBirthDate } from '../../core/utils/curp.utils';
+import { hoyLocal } from '../../core/utils/fecha';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { DashboardRepository, SedeDTO, TerapeutaDTO } from '../dashboard/ports/dashboard.repository';
 import { DashboardHttpAdapter } from '../dashboard/adapters/dashboard-http.adapter';
@@ -69,6 +70,7 @@ export class PacientesComponent implements OnInit {
   newEscolaridad = '';
   newOcupacion = '';
   newReligion = '';
+  newRegistryMode: 'ia' | 'manual' = 'manual';
   // Domicilio
   newCalle = '';
   newColonia = '';
@@ -191,6 +193,7 @@ export class PacientesComponent implements OnInit {
     this.newEscolaridad = '';
     this.newOcupacion = '';
     this.newReligion = '';
+    this.newRegistryMode = 'manual';
     this.newCalle = '';
     this.newColonia = '';
     this.newCp = '';
@@ -272,10 +275,10 @@ export class PacientesComponent implements OnInit {
       email: this.newEmail || '',
       birthDate: this.newFechaNacimiento,
       curp,
-      registrationDate: new Date().toISOString().split('T')[0],
+      registrationDate: hoyLocal(),
       status: 'activo',
       riskLevel: 'bajo',
-      registryMode: 'manual',
+      registryMode: this.newRegistryMode,
       motif: this.newMotif || 'Motivo no especificado',
       therapistId: this.newTherapistId || '',
       therapistName: this.terapeutaNombreSeleccionado(),
@@ -284,7 +287,7 @@ export class PacientesComponent implements OnInit {
       capacidadConsentimiento: {
         estado: isUnder18 ? 'REPRESENTADO_POR_EDAD' : 'AUTONOMO',
         determinadoPor: null,
-        fechaDeterminacion: new Date().toISOString().split('T')[0],
+        fechaDeterminacion: hoyLocal(),
         fechaRevision: null,
         motivo: isUnder18 ? 'Menor de 18 años calculado automáticamente' : null
       },

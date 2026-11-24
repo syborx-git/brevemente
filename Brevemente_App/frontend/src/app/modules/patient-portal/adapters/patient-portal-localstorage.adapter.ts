@@ -46,4 +46,18 @@ export class PatientPortalLocalStorageAdapter implements PatientPortalRepository
   obtenerContraReferencia(): Observable<ContraReferenciaPortal | null> {
     return of(null);
   }
+
+  pagarCita(id: string): Observable<CitaPortal> {
+    return of({
+      id, date: '', time: '', type: 'seguimiento', status: 'confirmada',
+      paymentStatus: 'pagada', duration: null, monto: null, bloqueadaPorNormativa: false
+    });
+  }
+
+  cancelarCita(id: string, motivo: string, motivoDetalle?: string): Observable<CitaPortal> {
+    return of({
+      id, date: '', time: '', type: 'seguimiento', status: 'cancelada',
+      paymentStatus: null, duration: null, monto: null, bloqueadaPorNormativa: false, motivoCancelacion: motivo
+    });
+  }
 }

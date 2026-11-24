@@ -82,6 +82,15 @@ export interface AccionDominante {
   grabacionLeva: boolean;
 }
 
+export interface SesionIniciada {
+  id: string;
+  patientId: string;
+  number: number;
+  date: string | null;
+  status: string;
+  citaId: string | null;
+}
+
 export abstract class DashboardRepository {
   // Métodos existentes (ahora aceptan DashboardFiltros).
   abstract obtenerStats(filtros?: DashboardFiltros): Observable<DashboardStats>;
@@ -99,4 +108,5 @@ export abstract class DashboardRepository {
 
   // Acción dominante (SDD-005 §3.1/§3.2), alimenta el componente `dominant-action`.
   abstract obtenerAccionDominante(filtros?: DashboardFiltros): Observable<AccionDominante | null>;
+  abstract iniciarSesion(citaId: string): Observable<SesionIniciada>;
 }

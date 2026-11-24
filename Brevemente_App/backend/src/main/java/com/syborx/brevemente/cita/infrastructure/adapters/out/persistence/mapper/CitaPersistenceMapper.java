@@ -27,6 +27,8 @@ public class CitaPersistenceMapper {
                 .consultorio(entity.getConsultorio())
                 .paymentStatus(entity.getPaymentStatus())
                 .bloqueadaPorNormativa(Boolean.TRUE.equals(entity.getBloqueadaPorNormativa()))
+                .motivoCancelacion(entity.getMotivoCancelacion())
+                .motivoCancelacionDetalle(entity.getMotivoCancelacionDetalle())
                 .build();
     }
 
@@ -49,6 +51,8 @@ public class CitaPersistenceMapper {
                 .paymentStatus(domain.getPaymentStatus() != null ? domain.getPaymentStatus() : "pendiente")
                 .consultorio(domain.getConsultorio())
                 .bloqueadaPorNormativa(domain.isBloqueadaPorNormativa())
+                .motivoCancelacion(domain.getMotivoCancelacion())
+                .motivoCancelacionDetalle(domain.getMotivoCancelacionDetalle())
                 .build();
     }
 }

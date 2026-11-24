@@ -1,6 +1,7 @@
 package com.syborx.brevemente.expediente.application.service;
 
 import com.syborx.brevemente.auditoria.application.ports.out.AuditoriaExpedientePort;
+import com.syborx.brevemente.expediente.application.ports.out.CitaEstadoPort;
 import com.syborx.brevemente.expediente.application.ports.out.ExpedienteRepositoryPort;
 import com.syborx.brevemente.expediente.application.ports.out.SesionRepositoryPort;
 import com.syborx.brevemente.expediente.domain.exception.ExpedienteNotFoundException;
@@ -34,11 +35,14 @@ class SesionApplicationServiceTest {
     @Mock
     private SesionRepositoryPort sesionRepositoryPort;
 
+    @Mock
+    private CitaEstadoPort citaEstadoPort;
+
     private SesionApplicationService service;
 
     @BeforeEach
     void setUp() {
-        service = new SesionApplicationService(auditoriaExpedientePort, expedienteRepositoryPort, sesionRepositoryPort);
+        service = new SesionApplicationService(auditoriaExpedientePort, expedienteRepositoryPort, sesionRepositoryPort, citaEstadoPort);
     }
 
     private Expediente expediente() {

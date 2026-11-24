@@ -12,6 +12,8 @@ export type Permission =
   | 'AGENDA_LEER'
   | 'MIS_CITAS_LEER'
   | 'MIS_SESIONES_LEER'
+  | 'MIS_CITAS_PAGAR'
+  | 'MIS_CITAS_CANCELAR'
   | 'SUPERVISION_LEER'
   | 'SUPERVISION_EVALUAR'
   | 'SUPERVISION_REGISTRAR'
@@ -137,6 +139,7 @@ export interface Appointment {
   modality?: 'PRESENCIAL' | 'ONLINE';
   office?: 'A' | 'B';
   bloqueadaPorNormativa?: boolean;
+  motivoCancelacion?: string;
 }
 
 export interface DiaNoLaborable {
@@ -246,6 +249,7 @@ export interface Session {
   situation: string;
   audioDuration?: string;
   status: 'borrador' | 'validado';
+  citaId?: string;
   valoracionCambio?: VcEntry;
   valoracionGlobal?: VgEntry;
 }

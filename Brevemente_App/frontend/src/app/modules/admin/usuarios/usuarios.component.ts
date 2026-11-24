@@ -67,28 +67,9 @@ export class UsuariosComponent implements OnInit {
     { clave: 'inactivo', etiqueta: 'Inactivo' }
   ];
 
-  readonly permisosPorRol: Record<RolPlataforma, string[]> = {
-    admin_platform: ['ADMIN_DASHBOARD_LEER', 'ADMIN_USUARIOS', 'ADMIN_SEDES', 'ADMIN_AUDITORIA'],
-    admin_clinical: ['DASHBOARD_LEER', 'EXPEDIENTES_LEER', 'AGENDA_GESTIONAR'],
-    supervisor: ['SUPERVISION_LEER', 'DASHBOARD_LEER'],
-    therapist: ['MI_CONSULTA_LEER', 'MI_CONSULTA_EDITAR', 'EXPEDIENTES_LEER'],
-    assistant: ['AGENDA_GESTIONAR', 'LEVA_ASISTENTE'],
-    patient: ['PORTAL_PACIENTE'],
-    student: ['OBSERVADOR']
-  };
+  permisosPorRol: Record<string, string[]> = {};
 
-  usuarios: UsuarioAdmin[] = [
-    { id: 'u-1', nombre: 'Administrador Plataforma', email: 'admin@brevemente.org', rol: 'admin_platform', estado: 'activo', ultimaActividad: 'hoy · 08:10' },
-    { id: 'u-2', nombre: 'Dra. Sofía Ramírez Lozano', email: 'sofia.ramirez@brevemente.org', rol: 'therapist', estado: 'activo', cedula: '1234567', especialidad: 'Psiquiatría', ultimaActividad: 'hoy · 09:12' },
-    { id: 'u-3', nombre: 'Mtro. Alejandro Mendoza Garza', email: 'alejandro.mendoza@brevemente.org', rol: 'therapist', estado: 'suspendido', cedula: '2345678', especialidad: 'Psicología clínica', ultimaActividad: 'hace 3 días' },
-    { id: 'u-4', nombre: 'Lic. Carmen Ortega', email: 'carmen.ortega@brevemente.org', rol: 'assistant', estado: 'activo', ultimaActividad: 'ayer · 17:45' },
-    { id: 'u-5', nombre: 'Dra. Isabel Cárdenas', email: 'isabel.cardenas@brevemente.org', rol: 'supervisor', estado: 'activo', ultimaActividad: 'hoy · 07:30' },
-    { id: 'u-6', nombre: 'Dr. Luis Herrera', email: 'luis.herrera@brevemente.org', rol: 'therapist', estado: 'inactivo', cedula: '3456789', especialidad: 'Psicología clínica', ultimaActividad: 'hace 2 meses' },
-    { id: 'u-7', nombre: 'Mtro. Diego Fuentes', email: 'diego.fuentes@brevemente.org', rol: 'therapist', estado: 'activo', cedula: '4567890', especialidad: 'Psicología clínica', ultimaActividad: 'ayer · 12:20' },
-    { id: 'u-8', nombre: 'Lic. Regina Salazar', email: 'regina.salazar@brevemente.org', rol: 'admin_clinical', estado: 'activo', ultimaActividad: 'hoy · 06:55' },
-    { id: 'u-9', nombre: 'Mtra. Paola Delgado', email: 'paola.delgado@brevemente.org', rol: 'assistant', estado: 'activo', ultimaActividad: 'ayer · 10:05' },
-    { id: 'u-10', nombre: 'Est. Iván Navarro', email: 'ivan.navarro@brevemente.org', rol: 'student', estado: 'activo', ultimaActividad: 'hace 5 días' }
-  ];
+  usuarios: UsuarioAdmin[] = [];
 
   busqueda = '';
   filtroRol: RolPlataforma | 'todos' = 'todos';
@@ -233,6 +214,22 @@ export class UsuariosComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarUsuarios();
+    this.cargarPermisos();
+  }
+
+  private cargarPermisos(): void {
+    this.repo.listarPermisosPorRol().subscribe({
+      next: (list) => {
+        const mapa: Record<string, string[]> = {};
+        list.forEach((r) => { mapa[r.rol] = r.permisos; });
+        this.permisosPorRol = mapa;
+      },
+      error: () => {}
+    });
+  }
+
+  formatearPermiso(p: string): string {
+    return p.replace(/_/g, ' ');
   }
 
   private cargarUsuarios(): void {
@@ -283,6 +280,12 @@ export class UsuariosComponent implements OnInit {
     const email = this.formulario.email.trim();
     if (!nombre || !email) {
       this.mensajeError = 'Nombre y correo son obligatorios.';
+      return;
+    }
+
+    const cedula = this.formulario.cedula.trim();
+    if (this.esTerapeuta() && cedula.length > 8) {
+      this.mensajeError = 'La cédula profesional no puede tener más de 8 caracteres.';
       return;
     }
 

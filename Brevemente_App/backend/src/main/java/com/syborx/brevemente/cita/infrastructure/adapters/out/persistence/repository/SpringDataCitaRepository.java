@@ -19,7 +19,8 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
                    c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
-                   c.bloqueada_por_normativa, c.created_at, c.updated_at
+                   c.bloqueada_por_normativa, c.motivo_cancelacion, c.motivo_cancelacion_detalle,
+                   c.created_at, c.updated_at
             FROM citas c
             WHERE (:terapeutaId IS NULL OR c.terapeuta_id = :terapeutaId)
               AND (:pacienteId IS NULL OR c.paciente_id = :pacienteId)
@@ -44,7 +45,8 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
                    c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
-                   c.bloqueada_por_normativa, c.created_at, c.updated_at
+                   c.bloqueada_por_normativa, c.motivo_cancelacion, c.motivo_cancelacion_detalle,
+                   c.created_at, c.updated_at
             FROM citas c
             WHERE c.terapeuta_id IN (:terapeutaIds)
               AND (:pacienteId IS NULL OR c.paciente_id = :pacienteId)
@@ -70,6 +72,7 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             WHERE (c.terapeuta_id = :terapeutaId OR c.paciente_id = :pacienteId)
               AND c.fecha_hora_inicio < :fin
               AND c.fecha_hora_fin > :inicio
+              AND c.estado_cita IN ('pendiente', 'confirmada', 'solicita_reagendar')
               AND (:excluirId IS NULL OR c.id <> :excluirId)
             """, nativeQuery = true)
     long countOverlap(
@@ -192,7 +195,8 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
                    c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
-                   c.bloqueada_por_normativa, c.created_at, c.updated_at
+                   c.bloqueada_por_normativa, c.motivo_cancelacion, c.motivo_cancelacion_detalle,
+                   c.created_at, c.updated_at
             FROM citas c
             JOIN pacientes p ON p.id = c.paciente_id
             WHERE c.fecha_hora_inicio >= :inicio
@@ -214,7 +218,8 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
                    c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
-                   c.bloqueada_por_normativa, c.created_at, c.updated_at
+                   c.bloqueada_por_normativa, c.motivo_cancelacion, c.motivo_cancelacion_detalle,
+                   c.created_at, c.updated_at
             FROM citas c
             JOIN pacientes p ON p.id = c.paciente_id
             WHERE c.fecha_hora_inicio >= :inicio
@@ -238,7 +243,8 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
                    c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
-                   c.bloqueada_por_normativa, c.created_at, c.updated_at
+                   c.bloqueada_por_normativa, c.motivo_cancelacion, c.motivo_cancelacion_detalle,
+                   c.created_at, c.updated_at
             FROM citas c
             JOIN pacientes p ON p.id = c.paciente_id
             WHERE c.fecha_hora_inicio >= :inicio
@@ -261,7 +267,8 @@ public interface SpringDataCitaRepository extends JpaRepository<CitaJpaEntity, S
             SELECT c.id, c.paciente_id, c.terapeuta_id, c.expediente_id,
                    c.fecha_hora_inicio, c.fecha_hora_fin, c.tipo_cita, c.tipo_sesion, c.modalidad,
                    c.estado_cita, c.duracion_minutos, c.payment_status, c.consultorio,
-                   c.bloqueada_por_normativa, c.created_at, c.updated_at
+                   c.bloqueada_por_normativa, c.motivo_cancelacion, c.motivo_cancelacion_detalle,
+                   c.created_at, c.updated_at
             FROM citas c
             JOIN pacientes p ON p.id = c.paciente_id
             WHERE c.fecha_hora_inicio >= :inicio

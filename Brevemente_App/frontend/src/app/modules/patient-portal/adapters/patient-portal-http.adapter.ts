@@ -19,6 +19,9 @@ interface CitaBackend {
   status: string;
   paymentStatus: string | null;
   duration: number | null;
+  monto?: number | null;
+  bloqueadaPorNormativa: boolean | null;
+  motivoCancelacion?: string | null;
 }
 
 interface SesionBackend {
@@ -62,10 +65,26 @@ export class PatientPortalHttpAdapter implements PatientPortalRepository {
   }
 
   listarCitas(): Observable<CitaPortal[]> {
-    return this.http.get<CitaBackend[]>(this.citasUrl).pipe(
+    return this.http.get<CitaBackend[]>(`${this.baseUrl}/citas`).pipe(
       map((citas) => citas.map((c) => this.toCita(c))),
       catchError(() => throwError(() => new Error('No se pudieron cargar tus citas.')))
     );
+  }
+
+  pagarCita(id: string): Observable<CitaPortal> {
+    return this.http.post<CitaBackend>(`${this.citasUrl}/${id}/pago`, {}).pipe(
+      map((c) => this.toCita(c)),
+      catchError(() => throwError(() => new Error('No se pudo procesar el pago.')))
+    );
+  }
+
+  cancelarCita(id: string, motivo: string, motivoDetalle?: string): Observable<CitaPortal> {
+    return this.http
+      .patch<CitaBackend>(`${this.baseUrl}/citas/${id}/cancelar`, { motivo, motivoDetalle })
+      .pipe(
+        map((c) => this.toCita(c)),
+        catchError(() => throwError(() => new Error('No se pudo cancelar la cita.')))
+      );
   }
 
   listarSesiones(): Observable<SesionPortal[]> {
@@ -106,7 +125,10 @@ export class PatientPortalHttpAdapter implements PatientPortalRepository {
       type: c.type,
       status: c.status,
       paymentStatus: c.paymentStatus ?? null,
-      duration: c.duration ?? null
+      duration: c.duration ?? null,
+      monto: c.monto ?? null,
+      bloqueadaPorNormativa: c.bloqueadaPorNormativa ?? null,
+      motivoCancelacion: c.motivoCancelacion ?? undefined
     };
   }
 

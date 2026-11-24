@@ -1,5 +1,6 @@
 package com.syborx.brevemente.portalpaciente.infrastructure.adapters.in.rest;
 
+import com.syborx.brevemente.cita.application.ports.in.ActualizarEstadoCitaUseCase;
 import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.dto.CitaResponseDTO;
 import com.syborx.brevemente.cita.infrastructure.adapters.in.rest.mapper.CitaRestMapper;
 import com.syborx.brevemente.portalpaciente.application.ports.in.EscalarCrisisUseCase;
@@ -10,6 +11,7 @@ import com.syborx.brevemente.portalpaciente.application.ports.in.ObtenerContraRe
 import com.syborx.brevemente.portalpaciente.application.ports.in.ObtenerPerfilPortalUseCase;
 import com.syborx.brevemente.portalpaciente.domain.model.ContraReferencia;
 import com.syborx.brevemente.portalpaciente.infrastructure.adapters.in.rest.dto.AlertaPacienteResponseDTO;
+import com.syborx.brevemente.portalpaciente.infrastructure.adapters.in.rest.dto.CancelarCitaPortalRequest;
 import com.syborx.brevemente.portalpaciente.infrastructure.adapters.in.rest.dto.ContraReferenciaResponseDTO;
 import com.syborx.brevemente.portalpaciente.infrastructure.adapters.in.rest.dto.EscalarCrisisRequest;
 import com.syborx.brevemente.portalpaciente.infrastructure.adapters.in.rest.dto.PortalPerfilResponseDTO;
@@ -23,6 +25,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,6 +49,7 @@ public class PacientePortalRestController {
     private final ObtenerContraReferenciaPortalUseCase obtenerContraReferenciaPortalUseCase;
     private final PortalPacienteRestMapper portalMapper;
     private final CitaRestMapper citaRestMapper;
+    private final ActualizarEstadoCitaUseCase actualizarEstadoCitaUseCase;
 
     @GetMapping("/perfil")
     @PreAuthorize("hasAuthority('MIS_CITAS_LEER')")
@@ -101,5 +106,17 @@ public class PacientePortalRestController {
             @Valid @RequestBody EscalarCrisisRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(portalMapper.toAlertaResponse(escalarCrisisUseCase.escalar(request.mensaje())));
+    }
+
+    @PatchMapping("/citas/{id}/cancelar")
+    @PreAuthorize("hasAuthority('MIS_CITAS_CANCELAR')")
+    @Operation(summary = "Cancelar una cita propia del paciente con motivo")
+    public ResponseEntity<CitaResponseDTO> cancelarCita(
+            @PathVariable String id,
+            @Valid @RequestBody CancelarCitaPortalRequest request) {
+        CitaResponseDTO response = citaRestMapper.toResponse(
+                actualizarEstadoCitaUseCase.actualizarEstado(
+                        id, "cancelada", request.motivo(), request.motivoDetalle()));
+        return ResponseEntity.ok(response);
     }
 }
