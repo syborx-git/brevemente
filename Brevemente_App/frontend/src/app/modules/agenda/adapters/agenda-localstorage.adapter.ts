@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { AgendaRepository, SesionIniciada } from '../ports/agenda.repository';
 import { Appointment, Patient } from '../../../core/types/clinical.types';
+import { hoyLocal } from '../../../core/utils/fecha';
 import { mockAppointments, mockPatients } from '../../../core/data/mockData';
 
 @Injectable({
@@ -63,7 +64,7 @@ export class AgendaLocalStorageAdapter extends AgendaRepository {
       id: `ses-${Date.now().toString(36)}`,
       patientId: cita?.patientId ?? '',
       number: 1,
-      date: new Date().toISOString().split('T')[0],
+      date: hoyLocal(),
       status: 'borrador',
       citaId
     };

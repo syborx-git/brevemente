@@ -9,6 +9,7 @@ import {
   SesionIniciada,
   SolicitudPendiente
 } from '../ports/mi-consulta.repository';
+import { hoyLocal } from '../../../core/utils/fecha';
 
 const ACCION_DEMO: AccionDominante = {
   citaId: 'cit-demo-1',
@@ -105,7 +106,7 @@ export class MiConsultaLocalStorageAdapter implements MiConsultaRepository {
       id: `ses-${Date.now().toString(36)}`,
       patientId: cita?.pacienteId ?? 'patient-1',
       number: 1,
-      date: new Date().toISOString().split('T')[0],
+      date: hoyLocal(),
       status: 'borrador',
       citaId
     });

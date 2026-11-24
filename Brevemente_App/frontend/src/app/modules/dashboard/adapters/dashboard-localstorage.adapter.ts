@@ -12,6 +12,7 @@ import {
   UrgentAlert
 } from '../ports/dashboard.repository';
 import { Appointment, PacienteResumen, Patient } from '../../../core/types/clinical.types';
+import { hoyLocal } from '../../../core/utils/fecha';
 import { mockAppointments, mockPatients } from '../../../core/data/mockData';
 import {
   SerieMes,
@@ -310,7 +311,7 @@ export class DashboardLocalStorageAdapter implements DashboardRepository {
       id: `ses-${Date.now().toString(36)}`,
       patientId: cita?.patientId ?? '',
       number: 1,
-      date: new Date().toISOString().split('T')[0],
+      date: hoyLocal(),
       status: 'borrador',
       citaId
     });

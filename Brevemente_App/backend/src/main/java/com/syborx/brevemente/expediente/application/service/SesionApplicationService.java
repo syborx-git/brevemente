@@ -110,9 +110,18 @@ public class SesionApplicationService implements ListarSesionesUseCase, AgregarS
         if (datosParciales.getSpr() != null) target.setSpr(datosParciales.getSpr());
         if (datosParciales.getTrastorno() != null) target.setTrastorno(datosParciales.getTrastorno());
         if (datosParciales.getPx() != null) target.setPx(datosParciales.getPx());
+        if (datosParciales.getProtocolo() != null) target.setProtocolo(datosParciales.getProtocolo());
+        if (datosParciales.getF2() != null) target.setF2(datosParciales.getF2());
         if (datosParciales.getOss() != null) target.setOss(datosParciales.getOss());
         if (datosParciales.getAdherencia() != null) target.setAdherencia(datosParciales.getAdherencia());
+        if (datosParciales.getCumplimiento() != null) target.setCumplimiento(datosParciales.getCumplimiento());
         if (datosParciales.getRss() != null) target.setRss(datosParciales.getRss());
+        if (datosParciales.getEff() != null) target.setEff(datosParciales.getEff());
+        if (datosParciales.getNotas() != null) target.setNotas(datosParciales.getNotas());
+        if (datosParciales.getObservacionesProximaSesion() != null) target.setObservacionesProximaSesion(datosParciales.getObservacionesProximaSesion());
+        if (datosParciales.getSituacion() != null) target.setSituacion(datosParciales.getSituacion());
+        if (datosParciales.getValoracionCambio() != null) target.setValoracionCambio(datosParciales.getValoracionCambio());
+        if (datosParciales.getValoracionGlobal() != null) target.setValoracionGlobal(datosParciales.getValoracionGlobal());
         if (datosParciales.getStatus() != null) target.setStatus(datosParciales.getStatus());
 
         Sesion saved = sesionRepositoryPort.save(target);

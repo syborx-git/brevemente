@@ -6,6 +6,7 @@ import { SupervisionRepository } from './ports/supervision.repository';
 import { SupervisionLocalStorageAdapter } from './adapters/supervision-localstorage.adapter';
 import { SupervisionHttpAdapter } from './adapters/supervision-http.adapter';
 import { SupervisionLog } from '../../core/types/clinical.types';
+import { hoyLocal } from '../../core/utils/fecha';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
 
@@ -61,7 +62,7 @@ export class SupervisionComponent implements OnInit {
 
   guardarLog(): void {
     const nuevo: Omit<SupervisionLog, 'id'> = {
-      date: new Date().toISOString().split('T')[0],
+      date: hoyLocal(),
       supervisorName: this.newSupervisor,
       supervisorLicense: 'CED-SUP-45129',
       patientId: 'patient-1',

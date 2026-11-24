@@ -18,6 +18,7 @@ import {
   TratamientoPrevio
 } from '../../../core/types/clinical.types';
 import { mockClinicalRecords, mockPatients, mockSessions } from '../../../core/data/mockData';
+import { hoyLocal } from '../../../core/utils/fecha';
 
 @Injectable({
   providedIn: 'root'
@@ -156,7 +157,7 @@ export class ExpedienteLocalStorageAdapter implements ExpedienteRepository {
       patientName: '',
       concept: 'Concepto Demo',
       amount: 800,
-      date: new Date().toISOString().split('T')[0],
+      date: hoyLocal(),
       method: 'transferencia',
       status: estado,
       registeredBy: 'Terapeuta Demo',

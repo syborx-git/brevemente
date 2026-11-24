@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { Subscription } from 'rxjs';
+import { hoyLocal } from '../../core/utils/fecha';
 import { AudioRecorderService } from '../../core/services/audio-recorder.service';
 import { LevaSessionService, LevaProposalResponse } from '../../core/services/leva-session.service';
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from './ports/expediente.repository';
@@ -316,22 +317,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   catalogoFases = ['Definición del problema', 'Desbloqueo', 'Consolidación', 'Cierre'];
   catalogoSpr = ['SPR Fóbico', 'SPR Obsesivo-Compulsivo', 'SPR Paranoide', 'SPR Depresivo', 'SPR Dismórfico', 'SPR Hipocondríaco'];
 
-  // Modal Nueva Sesión
-  showSessionModal = false;
-  newSessionProtocol = 'Trastornos Fóbicos y de Pánico (Protocolo Nardone)';
-  newSessionPrescripcion = '';
-  newSessionNotes = '';
-
-  // Captura VC / VG en Nueva Sesión
-  newVcPercepcion = 'Mejoría significativa';
-  newVcPensamientos = 'Mejoría leve';
-  newVcSensaciones = 'Mejoría significativa';
-  newVcReacciones = 'Mejoría significativa';
-  newVcSintomas = 'Mejoría significativa';
-  newVcCrisis = 'Mejoría significativa';
-  newVgYo = false;
-  newVgDemas = false;
-  newVgMundo = false;
+  // Card de sesión unificada (SDD-MODO-REGISTRO-1): modo derivado de patient.registryMode.
 
   // Estado Modal Pagos
   showPaymentModal = false;
@@ -339,7 +325,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   newPayment = {
     concept: '',
     amount: 800,
-    date: new Date().toISOString().split('T')[0],
+    date: hoyLocal(),
     method: 'transferencia' as PaymentMethod,
     status: 'pagado' as PaymentStatus,
     notes: ''
@@ -351,7 +337,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   selectedConstancia: PhysicalCertificateLog | null = null;
   newConstancia = {
     physicalFolio: '',
-    issueDate: new Date().toISOString().split('T')[0],
+    issueDate: hoyLocal(),
     type: 'psicoterapeutica' as PhysicalCertificateType,
     issuerName: '',
     issuerLicense: 'CED-8849302-MX',
@@ -369,7 +355,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   showBitacoraModal = false;
   isSubmittingBitacora = false;
   newBitacora = {
-    date: new Date().toISOString().split('T')[0],
+    date: hoyLocal(),
     supervisorName: 'Dra. Isabel Cárdenas',
     supervisorLicense: 'CED-9988221-MX',
     sessionNumber: 1,
@@ -605,6 +591,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   // --- Edición inline de sesión (#102, #103, #104) ---
   iniciarEdicion(campo: 'fase' | 'significado' | 'dxOp' | 'spr'): void {
     if (!this.roleService.hasPermission('EXPEDIENTE_ESCRIBIR')) return;
+    if (!this.sesionEditable) return;
     this.editingField = campo;
   }
 
@@ -615,6 +602,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
   guardarEdicion(): void {
     if (!this.selectedSession || !this.editingField) return;
+    if (!this.sesionEditable) return;
     const parcial: SesionParcial = {};
     switch (this.editingField) {
       case 'fase': parcial.phase = this.selectedSession.phase; break;
@@ -672,14 +660,71 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     return { etiqueta: m.etiqueta, color: m.color };
   }
 
-  setEstadoVc(campo: 'percepcion' | 'pensamientos' | 'sensaciones' | 'reacciones' | 'sintomas' | 'crisis', estado: VcEstado): void {
+  // --- Card de sesión unificada: modo y edición completa (SDD-MODO-REGISTRO-1) ---
+  get modoRegistro(): 'LEVA' | 'MANUAL' {
+    return this.patient?.registryMode === 'ia' ? 'LEVA' : 'MANUAL';
+  }
+
+  get sesionEditable(): boolean {
+    return !!this.selectedSession && this.selectedSession.status !== 'validado';
+  }
+
+  get vcSesion(): VcEntry {
+    return this.selectedSession?.valoracionCambio ?? {
+      sessionNum: this.selectedSession?.number ?? 1, percepcion: 'Sin cambios', pensamientos: 'Sin cambios',
+      sensaciones: 'Sin cambios', reacciones: 'Sin cambios', sintomas: 'Sin cambios', crisis: 'Sin cambios'
+    };
+  }
+
+  get vgSesion(): VgEntry {
+    return this.selectedSession?.valoracionGlobal ?? { sessionNum: this.selectedSession?.number ?? 1, yo: false, demas: false, mundo: false };
+  }
+
+  get pxTexto(): string {
+    return this.selectedSession?.px?.join('\n') ?? '';
+  }
+
+  set pxTexto(v: string) {
+    if (this.selectedSession) {
+      this.selectedSession.px = v.split('\n').map(x => x.trim()).filter(x => x.length > 0);
+    }
+  }
+
+  ensureVcSesion(): VcEntry {
+    const n = this.selectedSession?.number ?? 1;
+    if (!this.selectedSession!.valoracionCambio) {
+      this.selectedSession!.valoracionCambio = {
+        sessionNum: n, percepcion: 'Sin cambios', pensamientos: 'Sin cambios',
+        sensaciones: 'Sin cambios', reacciones: 'Sin cambios', sintomas: 'Sin cambios', crisis: 'Sin cambios'
+      };
+    }
+    return this.selectedSession!.valoracionCambio;
+  }
+
+  ensureVgSesion(): VgEntry {
+    const n = this.selectedSession?.number ?? 1;
+    if (!this.selectedSession!.valoracionGlobal) {
+      this.selectedSession!.valoracionGlobal = { sessionNum: n, yo: false, demas: false, mundo: false };
+    }
+    return this.selectedSession!.valoracionGlobal;
+  }
+
+  setEstadoVcSesion(campo: 'percepcion' | 'pensamientos' | 'sensaciones' | 'reacciones' | 'sintomas' | 'crisis', estado: VcEstado): void {
+    if (!this.selectedSession) return;
     const texto = VC_ESTADO_A_TEXTO[estado];
-    if (campo === 'percepcion') this.newVcPercepcion = texto;
-    else if (campo === 'pensamientos') this.newVcPensamientos = texto;
-    else if (campo === 'sensaciones') this.newVcSensaciones = texto;
-    else if (campo === 'reacciones') this.newVcReacciones = texto;
-    else if (campo === 'sintomas') this.newVcSintomas = texto;
-    else this.newVcCrisis = texto;
+    const vc = this.ensureVcSesion();
+    if (campo === 'percepcion') vc.percepcion = texto;
+    else if (campo === 'pensamientos') vc.pensamientos = texto;
+    else if (campo === 'sensaciones') vc.sensaciones = texto;
+    else if (campo === 'reacciones') vc.reacciones = texto;
+    else if (campo === 'sintomas') vc.sintomas = texto;
+    else vc.crisis = texto;
+  }
+
+  setVgSesion(campo: 'yo' | 'demas' | 'mundo', valor: boolean): void {
+    if (!this.selectedSession) return;
+    const vg = this.ensureVgSesion();
+    vg[campo] = valor;
   }
 
   @HostListener('document:keydown.escape')
@@ -688,7 +733,6 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     if (this.showConstanciaModal) { this.closeConstanciaModal(); return; }
     if (this.showBitacoraModal) { this.closeBitacoraModal(); return; }
     if (this.selectedConstancia) { this.cerrarDetalleConstancia(); return; }
-    if (this.showSessionModal) { this.closeSessionModal(); return; }
     if (this.showExamenModal) { this.cerrarExamen(); return; }
     if (this.showResultadosModal) { this.cerrarResultados(); }
   }
@@ -912,11 +956,11 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       if (sp.diagnosticoOperativo) this.selectedSession.dxOp = sp.diagnosticoOperativo;
       if (sp.sistemaPerceptivoReactivo) this.selectedSession.spr = sp.sistemaPerceptivoReactivo;
       if (sp.prescripcionesEstrategicas?.length) this.selectedSession.px = [...sp.prescripcionesEstrategicas];
-      if (sp.notaEvolucionSoap) this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + sp.notaEvolucionSoap;
+      if (sp.notaEvolucionSoap) this.selectedSession.notes = (this.selectedSession.notes ? this.selectedSession.notes + '\n\n' : '') + sp.notaEvolucionSoap;
     } else {
       const nuevaSesion: Omit<Session, 'id' | 'patientId' | 'status'> = {
         number: this.sessions.length + 1,
-        date: new Date().toISOString().split('T')[0],
+        date: hoyLocal(),
         phase: 'Fase 1: Diagnóstico e Intervención',
         protocol: (sp.protocoloCodigo || sp.protocoloReferencia) ?? 'TBE',
         dxOp: sp.diagnosticoOperativo || 'Diagnóstico preliminar TBE',
@@ -925,10 +969,10 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         f1: 'Intervención de primera sesión',
         f2: 'Reestructuración estratégica',
         oss: 'Sesión clínica analizada con LEVA Copilot',
-        add: sp.notaEvolucionSoap || '',
+        add: 'Alta adherencia reportada',
         rss: 'En observación',
         eff: 'Inicio de tratamiento estratégico',
-        notes: 'Sesión generada a partir de propuesta LEVA',
+        notes: sp.notaEvolucionSoap || 'Sesión generada a partir de propuesta LEVA',
         observationsNextSession: 'Evaluar cumplimiento de prescripción.',
         situation: ''
       };
@@ -975,7 +1019,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       }
       if (approvedData.notaEvolucionSoap) {
         const headerFirma = `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n`;
-        this.selectedSession.add = (this.selectedSession.add ? this.selectedSession.add + '\n\n' : '') + headerFirma + approvedData.notaEvolucionSoap;
+        this.selectedSession.notes = (this.selectedSession.notes ? this.selectedSession.notes + '\n\n' : '') + headerFirma + approvedData.notaEvolucionSoap;
       }
 
       if (approvedData.puntoClaveProtocolo && !this.selectedSession.f2) {
@@ -987,7 +1031,8 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         dxOp: this.selectedSession.dxOp,
         spr: this.selectedSession.spr,
         px: this.selectedSession.px,
-        add: this.selectedSession.add,
+        f2: this.selectedSession.f2,
+        notes: this.selectedSession.notes,
         status: 'validado'
       }).subscribe({
         next: () => this.cargarDatos(),
@@ -996,7 +1041,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     } else {
       const nuevaSesion: Omit<Session, 'id' | 'patientId' | 'status'> = {
         number: this.sessions.length + 1,
-        date: new Date().toISOString().split('T')[0],
+        date: hoyLocal(),
         phase: 'Fase 1: Diagnóstico e Intervención',
         protocol: (approvedData.protocoloCodigo || approvedData.protocoloReferencia) ?? 'TBE',
         dxOp: approvedData.diagnosticoOperativo || 'Diagnóstico preliminar TBE',
@@ -1005,10 +1050,10 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         f1: 'Intervención de primera sesión',
         f2: approvedData.puntoClaveProtocolo || 'Reestructuración estratégica',
         oss: 'Sesión clínica analizada y sellada con LEVA Copilot',
-        add: (approvedData.notaEvolucionSoap ? `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n` + approvedData.notaEvolucionSoap : ''),
+        add: 'Alta adherencia reportada',
         rss: 'En observación',
         eff: 'Inicio de tratamiento estratégico',
-        notes: 'Sesión oficial sellada por terapeuta',
+        notes: (approvedData.notaEvolucionSoap ? `[NOTA OFICIAL SELLADA - ${approvedProposal.reviewedById || 'Terapeuta'} - ${new Date().toLocaleDateString('es-MX')}]\n` + approvedData.notaEvolucionSoap : 'Sesión oficial sellada por terapeuta'),
         observationsNextSession: 'Evaluar cumplimiento de prescripción.',
         situation: ''
       };
@@ -1051,14 +1096,34 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     return Math.max(a, b);
   }
 
-  openSessionModal(): void {
-    this.showSessionModal = true;
-    this.newSessionPrescripcion = '';
-    this.newSessionNotes = '';
-  }
-
-  closeSessionModal(): void {
-    this.showSessionModal = false;
+  nuevaSesionEnBlanco(): void {
+    const nextNum = this.sessions.length > 0 ? Math.max(...this.sessions.map(x => x.number)) + 1 : 1;
+    const draft: Omit<Session, 'id' | 'patientId' | 'status'> = {
+      number: nextNum,
+      date: hoyLocal(),
+      phase: 'Intervención Estratégica',
+      protocol: this.record?.trastornoEstrategico || 'TBE',
+      dxOp: this.record?.dxOpInicial || '',
+      px: [],
+      f1: '',
+      f2: '',
+      oss: '',
+      add: '',
+      rss: '',
+      eff: '',
+      notes: '',
+      observationsNextSession: '',
+      situation: ''
+    };
+    this.expedienteRepo.agregarSesion(this.pacienteId, draft).subscribe({
+      next: (s) => {
+        this.selectedSession = s;
+        this.sessions = [s, ...this.sessions];
+        this.activeTab = 'tbe';
+        this.tbeSubTab = 'sesiones';
+      },
+      error: () => alert('No se pudo crear la nueva sesión.')
+    });
   }
 
   guardarDx(): void {
@@ -1123,6 +1188,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       escolaridad: this.patient.escolaridad,
       ocupacion: this.patient.ocupacion,
       religion: this.patient.religion,
+      registryMode: this.patient.registryMode,
       domicilio: this.patient.domicilio,
       contactoEmergencia: this.patient.contactoEmergencia
     }).subscribe(p => { if (p) this.patient = p; });
@@ -1378,7 +1444,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     const examenMental: ExamenMental = JSON.parse(JSON.stringify(this.examenDraft));
     this.expedienteRepo.actualizarExpediente(this.pacienteId, {
       examenMental,
-      fechaExamenMental: new Date().toISOString().split('T')[0]
+      fechaExamenMental: hoyLocal()
     }).subscribe({
       next: r => {
         if (r) this.record = r;
@@ -1577,59 +1643,36 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
       });
   }
 
-  guardarSesion(): void {
-    // El backend devuelve sesiones en orden ascendente; el siguiente número
-    // debe derivarse del MÁXIMO (no de sessions[0]).
-    const nextNum = this.sessions.length > 0
-      ? Math.max(...this.sessions.map(s => s.number)) + 1
-      : 1;
-    const vc: VcEntry = {
-      sessionNum: nextNum,
-      percepcion: this.newVcPercepcion,
-      pensamientos: this.newVcPensamientos,
-      sensaciones: this.newVcSensaciones,
-      reacciones: this.newVcReacciones,
-      sintomas: this.newVcSintomas,
-      crisis: this.newVcCrisis
+  guardarSesionEditada(): void {
+    if (!this.selectedSession) return;
+    const s = this.selectedSession;
+    const parcial: SesionParcial = {
+      phase: s.phase,
+      significado: s.significado,
+      dxOp: s.dxOp,
+      spr: s.spr,
+      protocol: s.protocol,
+      px: s.px,
+      f2: s.f2,
+      oss: s.oss,
+      add: s.add,
+      cumplimiento: s.cumplimiento,
+      rss: s.rss,
+      eff: s.eff,
+      notes: s.notes,
+      observationsNextSession: s.observationsNextSession,
+      situation: s.situation,
+      valoracionCambio: s.valoracionCambio,
+      valoracionGlobal: s.valoracionGlobal,
+      status: s.status
     };
-    const vg: VgEntry = {
-      sessionNum: nextNum,
-      yo: this.newVgYo,
-      demas: this.newVgDemas,
-      mundo: this.newVgMundo
-    };
-
-    const nueva: Omit<Session, 'id' | 'patientId' | 'status'> = {
-      number: nextNum,
-      date: new Date().toISOString().split('T')[0],
-      phase: 'Intervención Estratégica',
-      protocol: this.newSessionProtocol,
-      dxOp: this.record?.dxOpInicial || 'Fobia de Rendimiento',
-      px: [this.newSessionPrescripcion || 'Prescripción de confrontación paradójica'],
-      f1: 'Foco en la extinción del control',
-      f2: 'Reestructuración analógica',
-      oss: this.newSessionNotes || 'Sesión enfocada en la adherencia a la prescripción previa.',
-      add: 'Alta adherencia reportada',
-      rss: 'Disminución de la angustia anticipatoria',
-      eff: 'Desarticulación gradual de la evitación',
-      notes: this.newSessionNotes,
-      observationsNextSession: 'Revisar bitácora de la peor fantasía.',
-      situation: 'En proceso',
-      valoracionCambio: vc,
-      valoracionGlobal: vg
-    };
-
-    this.expedienteRepo.agregarSesion(this.pacienteId, nueva).subscribe({
-      next: () => {
-        this.cargarDatos();
-        this.closeSessionModal();
-        this.activeTab = 'tbe';
-        this.tbeSubTab = 'sesiones';
+    this.expedienteRepo.actualizarSesion(s.id, parcial).subscribe({
+      next: (sesion) => {
+        this.selectedSession = { ...s, ...sesion };
+        const i = this.sessions.findIndex(x => x.id === sesion.id);
+        if (i >= 0) this.sessions[i] = sesion;
       },
-      error: (err) => {
-        console.error(err);
-        alert('Error al registrar la nueva sesión');
-      }
+      error: () => alert('No se pudo guardar la sesión.')
     });
   }
 
@@ -1638,7 +1681,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     this.newPayment = {
       concept: `Sesión ${this.sessions.length + 1} - Psicoterapia TBE`,
       amount: 800,
-      date: new Date().toISOString().split('T')[0],
+      date: hoyLocal(),
       method: 'transferencia',
       status: 'pagado',
       notes: ''
@@ -1728,7 +1771,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     const randomFolio = `CONST-2026-${Math.floor(Math.random() * 900 + 100)}-FIS`;
     this.newConstancia = {
       physicalFolio: randomFolio,
-      issueDate: new Date().toISOString().split('T')[0],
+      issueDate: hoyLocal(),
       type: 'psicoterapeutica',
       issuerName: this.patient?.therapistName || 'Dr. Carlos Mendoza',
       issuerLicense: 'CED-8849302-MX',
@@ -1826,7 +1869,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   // --- MÉTODOS DE BITÁCORAS DE SUPERVISIÓN ---
   openBitacoraModal(): void {
     this.newBitacora = {
-      date: new Date().toISOString().split('T')[0],
+      date: hoyLocal(),
       supervisorName: 'Dra. Isabel Cárdenas',
       supervisorLicense: 'CED-9988221-MX',
       sessionNumber: this.sessions.length > 0 ? this.sessions.length : 1,

@@ -25,6 +25,9 @@ public record PacientePatchRequest(
         @Schema(description = "Frecuencia de sesiones", example = "mensual")
         String sessionFrequency,
 
+        @Schema(description = "Modo de registro de sesión (IA/LEVA o manual)", allowableValues = {"ia", "manual"}, example = "ia")
+        String registryMode,
+
         @Schema(description = "Actualización de capacidad de consentimiento")
         CapacidadConsentimientoDTO capacidadConsentimiento,
 

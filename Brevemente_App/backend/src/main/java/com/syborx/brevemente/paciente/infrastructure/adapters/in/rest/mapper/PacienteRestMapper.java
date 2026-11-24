@@ -190,6 +190,7 @@ public class PacienteRestMapper {
                 .riskLevel(patch.riskLevel())
                 .motivoConsulta(patch.motif())
                 .sessionFrequency(patch.sessionFrequency())
+                .registryMode(patch.registryMode())
                 .rfc(patch.rfc())
                 .sexo(patch.sexo())
                 .lugarNacimiento(patch.lugarNacimiento())
