@@ -405,6 +405,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   audioObjectUrl: string | null = null;
   audioSource: 'local' | 'server' | null = null;
   storedAudioAvailable = false;
+  resolvedAudioSessionId: string | null = null;
   private audioSubs: Subscription[] = [];
 
   constructor(
@@ -509,6 +510,8 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         } else if (s.length > 0) {
           this.selectedSession = s[0];
           this.cargarPropuestaDeSesion(s[0].id);
+        } else if (this.pacienteId) {
+          this.cargarPropuestaDeSesion(`${this.pacienteId}-s1`);
         }
       }
       if (this.queryModoGrabacion) {
@@ -895,7 +898,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
   /** Reprocesa en el servidor el audio ya guardado (sin volver a grabar). */
   retranscribeStoredAudio(): void {
-    const sessionId = this.currentSessionId;
+    const sessionId = this.resolvedAudioSessionId || this.currentSessionId;
     this.recordingState = 'PROCESANDO_IA';
     this.recordingErrorMessage = null;
     this.currentProposal = null;
@@ -919,7 +922,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   checkAnalysisResult(): void {
     this.recordingState = 'PROCESANDO_IA';
     this.recordingErrorMessage = null;
-    this.pollAnalysis(this.currentSessionId);
+    this.pollAnalysis(this.resolvedAudioSessionId || this.currentSessionId);
   }
 
   private pollAnalysis(sessionId: string): void {
@@ -970,19 +973,43 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     }
   }
 
+  private get legacySessionId(): string | null {
+    if (!this.pacienteId) return null;
+    const num = this.selectedSession?.number ?? 1;
+    return `${this.pacienteId}-s${num}`;
+  }
+
   /** Carga el audio persistido en el servidor para la sesión seleccionada (si existe). */
-  cargarAudioDeSesion(sessionId: string): void {
+  cargarAudioDeSesion(sessionId: string, triedLegacy = false): void {
     this.storedAudioAvailable = false;
     this.levaSessionService.getTaskStatus(sessionId).subscribe({
       next: (task) => {
-        this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+        const hasAudio = (task.audioSizeBytes ?? 0) > 0;
+        if (!hasAudio) {
+          const legacy = this.legacySessionId;
+          if (!triedLegacy && legacy && legacy !== sessionId) {
+            this.cargarAudioDeSesion(legacy, true);
+            return;
+          }
+        }
+        this.storedAudioAvailable = hasAudio;
+        this.resolvedAudioSessionId = hasAudio ? sessionId : null;
         if (!this.storedAudioAvailable || this.pendingAudioBlob) return;
         this.levaSessionService.getStoredAudio(sessionId).subscribe({
           next: (blob) => this.setAudioPlayback(blob, 'server'),
           error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
         });
       },
-      error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
+      error: () => {
+        const legacy = this.legacySessionId;
+        if (!triedLegacy && legacy && legacy !== sessionId) {
+          this.cargarAudioDeSesion(legacy, true);
+          return;
+        }
+        this.storedAudioAvailable = false;
+        this.resolvedAudioSessionId = null;
+        this.revokeAudioUrl();
+      }
     });
   }
 
@@ -1149,6 +1176,14 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         this.currentProposal = proposal;
       },
       error: () => {
+        const legacy = this.legacySessionId;
+        if (legacy && legacy !== sessionId) {
+          this.levaSessionService.getProposal(legacy).subscribe({
+            next: (proposal) => { this.currentProposal = proposal; },
+            error: () => { this.currentProposal = null; }
+          });
+          return;
+        }
         this.currentProposal = null;
       }
     });
