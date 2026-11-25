@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { hoyLocal } from '../../core/utils/fecha';
 import { AudioRecorderService, AudioCaptureMode } from '../../core/services/audio-recorder.service';
 import { LevaSessionService, LevaProposalResponse } from '../../core/services/leva-session.service';
@@ -776,6 +776,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     this.audioSource = null;
 
     try {
+      await this.ensureActiveSessionId();
       this.recordingState = 'GRABANDO';
       await this.audioRecorder.startRecording(this.audioCaptureMode);
     } catch (err: any) {
@@ -817,15 +818,59 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   private get currentSessionId(): string {
-    return this.selectedSession?.id ?? '';
+    return this.selectedSession?.id || this.querySesionId || (this.pacienteId ? `ses-${this.pacienteId}` : 'ses-general');
+  }
+
+  /**
+   * Garantiza que exista una sesión activa en el expediente antes de grabar o subir audio.
+   * Si el expediente aún no tiene ninguna sesión creada, crea automáticamente la Sesión #1.
+   */
+  private async ensureActiveSessionId(): Promise<string> {
+    if (this.selectedSession?.id) {
+      return this.selectedSession.id;
+    }
+    if (this.sessions.length > 0 && this.sessions[0]?.id) {
+      this.selectedSession = this.sessions[0];
+      return this.selectedSession.id;
+    }
+    if (this.pacienteId) {
+      try {
+        const draft: Omit<Session, 'id' | 'patientId' | 'status'> = {
+          number: 1,
+          date: hoyLocal(),
+          phase: 'Definición del problema',
+          protocol: this.record?.trastornoEstrategico || 'TBE',
+          dxOp: this.record?.dxOpInicial || '',
+          px: [],
+          f1: '',
+          f2: '',
+          oss: '',
+          add: '',
+          rss: '',
+          eff: '',
+          notes: '',
+          observationsNextSession: '',
+          situation: ''
+        };
+        const created = await firstValueFrom(this.expedienteRepo.agregarSesion(this.pacienteId, draft));
+        if (created?.id) {
+          this.selectedSession = created;
+          this.sessions = [created, ...this.sessions];
+          return created.id;
+        }
+      } catch {
+        // Si falla la creación automática, usar fallback determinista con el ID del paciente
+      }
+    }
+    return this.currentSessionId;
   }
 
   /** Sube el audio retenido (también usado para "Reintentar envío"). */
-  uploadPendingAudio(): void {
+  async uploadPendingAudio(): Promise<void> {
     if (!this.pendingAudioBlob) return;
-    const sessionId = this.currentSessionId;
     this.recordingState = 'ENVIANDO_AUDIO';
     this.recordingErrorMessage = null;
+    const sessionId = await this.ensureActiveSessionId();
 
     this.levaSessionService.uploadSessionAudio(sessionId, this.pendingAudioBlob, 'sesion_clinica.webm', 'es')
       .subscribe({
