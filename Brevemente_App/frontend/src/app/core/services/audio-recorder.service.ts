@@ -1,6 +1,8 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
+export type AudioCaptureMode = 'mic_only' | 'videocall_dual';
+
 export interface AudioRecordingResult {
   blob: Blob;
   mimeType: string;
@@ -13,7 +15,10 @@ export interface AudioRecordingResult {
 export class AudioRecorderService implements OnDestroy {
   private mediaRecorder: MediaRecorder | null = null;
   private mediaStream: MediaStream | null = null;
+  private micStream: MediaStream | null = null;
+  private displayStream: MediaStream | null = null;
   private audioChunks: Blob[] = [];
+  private activeCaptureMode: AudioCaptureMode = 'mic_only';
 
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -54,6 +59,10 @@ export class AudioRecorderService implements OnDestroy {
     return this.audioLevelSubject.value;
   }
 
+  public get captureMode(): AudioCaptureMode {
+    return this.activeCaptureMode;
+  }
+
   /**
    * Determina el formato de audio óptimo soportado por el navegador
    */
@@ -79,10 +88,12 @@ export class AudioRecorderService implements OnDestroy {
   }
 
   /**
-   * Solicita acceso al micrófono e inicia la grabación de audio
+   * Solicita acceso al micrófono (y opcionalmente al audio de la pestaña/sistema en Meet/Zoom)
+   * e inicia la grabación combinada de ambos parlantes.
    */
-  public async startRecording(): Promise<void> {
+  public async startRecording(mode: AudioCaptureMode = 'mic_only'): Promise<void> {
     this.errorSubject.next(null);
+    this.activeCaptureMode = mode;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       const err = 'La API de captura de medios (getUserMedia) no está soportada en este navegador.';
@@ -91,13 +102,65 @@ export class AudioRecorderService implements OnDestroy {
     }
 
     try {
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+      // 1. Capturar siempre el micrófono del terapeuta
+      this.micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
         }
       });
+
+      if (mode === 'videocall_dual') {
+        if (!navigator.mediaDevices.getDisplayMedia) {
+          throw new Error('Tu navegador no soporta compartir audio de pestaña/sistema (getDisplayMedia).');
+        }
+
+        // 2. Solicitar la pestaña o ventana de Google Meet / Zoom con audio incluido
+        this.displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          } as any,
+          systemAudio: 'include'
+        } as any);
+
+        const remoteAudioTracks = this.displayStream.getAudioTracks();
+        if (!remoteAudioTracks || remoteAudioTracks.length === 0) {
+          throw new Error(
+            'No se compartió el audio de la videollamada. Al elegir la pestaña de Google Meet o ventana de Zoom, ' +
+            'asegúrate de activar el interruptor "Compartir también el audio de la pestaña / sistema".'
+          );
+        }
+
+        // 3. Mezclar Micrófono (Terapeuta) + Pestaña Meet/Zoom (Paciente) con Web Audio API
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        this.audioContext = new AudioCtx();
+        if (this.audioContext.state === 'suspended') {
+          await this.audioContext.resume();
+        }
+
+        const destination = this.audioContext.createMediaStreamDestination();
+
+        const micSource = this.audioContext.createMediaStreamSource(this.micStream);
+        const micGain = this.audioContext.createGain();
+        micGain.gain.value = 1.0;
+        micSource.connect(micGain);
+        micGain.connect(destination);
+
+        const remoteAudioOnlyStream = new MediaStream(remoteAudioTracks);
+        const remoteSource = this.audioContext.createMediaStreamSource(remoteAudioOnlyStream);
+        const remoteGain = this.audioContext.createGain();
+        remoteGain.gain.value = 1.0;
+        remoteSource.connect(remoteGain);
+        remoteGain.connect(destination);
+
+        this.mediaStream = destination.stream;
+      } else {
+        this.mediaStream = this.micStream;
+      }
 
       this.activeMimeType = this.getSupportedMimeType();
       const options: MediaRecorderOptions = {};
@@ -235,7 +298,9 @@ export class AudioRecorderService implements OnDestroy {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
 
-      this.audioContext = new AudioCtx();
+      if (!this.audioContext || this.audioContext.state === 'closed') {
+        this.audioContext = new AudioCtx();
+      }
       const source = this.audioContext.createMediaStreamSource(stream);
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 64;
@@ -295,6 +360,16 @@ export class AudioRecorderService implements OnDestroy {
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach(track => track.stop());
       this.mediaStream = null;
+    }
+
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(track => track.stop());
+      this.micStream = null;
+    }
+
+    if (this.displayStream) {
+      this.displayStream.getTracks().forEach(track => track.stop());
+      this.displayStream = null;
     }
 
     this.mediaRecorder = null;

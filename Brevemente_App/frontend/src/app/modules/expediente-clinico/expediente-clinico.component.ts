@@ -6,7 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { Subscription } from 'rxjs';
 import { hoyLocal } from '../../core/utils/fecha';
-import { AudioRecorderService } from '../../core/services/audio-recorder.service';
+import { AudioRecorderService, AudioCaptureMode } from '../../core/services/audio-recorder.service';
 import { LevaSessionService, LevaProposalResponse } from '../../core/services/leva-session.service';
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from './ports/expediente.repository';
 import { ExpedienteLocalStorageAdapter } from './adapters/expediente-localstorage.adapter';
@@ -391,6 +391,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
   // Real Audio Recording & LEVA Copilot State
   recordingState: AudioRecordingUiState = 'IDLE';
+  audioCaptureMode: AudioCaptureMode = 'mic_only';
   isRecording = false;
   isPaused = false;
   recordingSeconds = 0;
@@ -762,7 +763,10 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   // Real Audio Recording with MediaRecorder API & LEVA Copilot
-  async startRealRecording(): Promise<void> {
+  async startRealRecording(mode?: AudioCaptureMode): Promise<void> {
+    if (mode) {
+      this.audioCaptureMode = mode;
+    }
     this.recordingErrorMessage = null;
     this.transcriptText = '';
     this.levaAdvice = '';
@@ -773,7 +777,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
     try {
       this.recordingState = 'GRABANDO';
-      await this.audioRecorder.startRecording();
+      await this.audioRecorder.startRecording(this.audioCaptureMode);
     } catch (err: any) {
       this.recordingErrorMessage = err.message || 'No se pudo iniciar la captura de audio.';
       this.recordingState = 'ERROR';
