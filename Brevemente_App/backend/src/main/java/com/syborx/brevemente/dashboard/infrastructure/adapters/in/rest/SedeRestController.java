@@ -23,7 +23,7 @@ public class SedeRestController {
     private final DashboardRestMapper dashboardRestMapper;
 
     @GetMapping("/{sedeId}")
-    @PreAuthorize("hasAuthority('EXPEDIENTE_LEER')")
+    @PreAuthorize("hasAnyAuthority('EXPEDIENTE_LEER','SEDES_LEER')")
     @Operation(summary = "Obtener una sede por su identificador")
     public ResponseEntity<SedeDTO> obtener(@PathVariable String sedeId) {
         return obtenerSedeUseCase.obtenerSede(sedeId)

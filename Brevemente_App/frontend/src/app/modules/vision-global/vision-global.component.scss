@@ -1,0 +1,87 @@
+.vision-global {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.vision-global__header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.vision-global__header p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+}
+
+.vision-global__error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.vision-global__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.kpi__valor {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.kpi__etiqueta {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.vision-global__panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.vision-global__panel h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabla th,
+.tabla td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tabla th {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.tabla__vacio {
+  color: #94a3b8;
+  text-align: center;
+}

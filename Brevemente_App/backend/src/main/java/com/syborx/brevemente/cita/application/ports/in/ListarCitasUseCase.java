@@ -7,4 +7,7 @@ import java.util.List;
 
 public interface ListarCitasUseCase {
     List<Cita> listar(CitaFiltro filtro);
+
+    /** Listado global (sin alcance por terapeuta) para el módulo "Visión Global". */
+    List<Cita> listarGlobales(CitaFiltro filtro);
 }

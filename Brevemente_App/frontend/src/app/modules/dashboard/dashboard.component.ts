@@ -19,9 +19,9 @@ import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
 import { DashboardTherapistViewComponent } from './views/dashboard-therapist-view/dashboard-therapist-view.component';
 import { DashboardPatientViewComponent } from './views/dashboard-patient-view/dashboard-patient-view.component';
-import { DashboardStudentViewComponent } from './views/dashboard-student-view/dashboard-student-view.component';
+import { ClinicalLockComponent } from '../../core/components/clinical-lock/clinical-lock.component';
 
-type DashboardVista = 'patient' | 'student' | 'therapist';
+type DashboardVista = 'patient' | 'therapist';
 
 /**
  * Contenedor del dashboard (SDD-005 §4.2). Orquesta por rol (`roleService.roles`):
@@ -36,7 +36,7 @@ type DashboardVista = 'patient' | 'student' | 'therapist';
     CommonModule,
     DashboardTherapistViewComponent,
     DashboardPatientViewComponent,
-    DashboardStudentViewComponent
+    ClinicalLockComponent
   ],
   providers: [
     {
@@ -90,9 +90,6 @@ export class DashboardComponent implements OnInit {
   get vista(): DashboardVista {
     if (this.roleService.hasRole('patient')) {
       return 'patient';
-    }
-    if (this.roleService.hasRole('student')) {
-      return 'student';
     }
     return 'therapist';
   }

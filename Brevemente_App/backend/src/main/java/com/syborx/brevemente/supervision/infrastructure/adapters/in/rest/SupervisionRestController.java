@@ -116,8 +116,6 @@ public class SupervisionRestController {
         if (principal == null || principal.authorities() == null) return false;
         return principal.authorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals("SUPERVISION_EVALUAR")
-                        || a.equals("ROLE_ADMIN_PLATFORM")
-                        || a.equals("ROLE_ADMIN_CLINICAL"));
+                .anyMatch(a -> a.equals("SUPERVISION_EVALUAR"));
     }
 }

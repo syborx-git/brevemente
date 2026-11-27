@@ -43,8 +43,7 @@ public class SecurityContextIdentidadAdapter implements IdentidadAutenticadaPort
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(a -> a.equals("AGENDA_LEER")
-                        || a.equals("AGENDA_GESTIONAR")
-                        || a.equals("ROLE_ADMIN_PLATFORM"));
+                        || a.equals("AGENDA_GESTIONAR"));
     }
 
     @Override

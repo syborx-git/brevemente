@@ -52,9 +52,18 @@ export class ConfiguracionComponent implements OnInit {
   historial: CambioConfiguracion[] = [];
   cargandoHistorial = false;
 
+  // Onboarding de identidad clínica (D-13/D-14): admin sin perfil de terapeuta.
+  identidadCedula = '';
+  identidadEspecialidad = '';
+  identidadPassword = '';
+  registrandoIdentidad = false;
+  identidadRegistrada = false;
+  identidadError = '';
+
   constructor(
     private readonly consultaRepo: ConfiguracionRepository,
-    private readonly roleState: RoleStateService
+    private readonly roleState: RoleStateService,
+    private readonly http: HttpClient
   ) {}
 
   private get terapeutaId(): string | undefined {
@@ -63,6 +72,42 @@ export class ConfiguracionComponent implements OnInit {
 
   get sedesDisponibles(): TerapeutaSede[] {
     return this.sedesCatalog.filter((s) => !this.config.sedes.some((cs) => cs.id === s.id));
+  }
+
+  /** Muestra el formulario de identidad clínica solo al admin sin vínculo de terapeuta. */
+  get mostrarRegistroIdentidad(): boolean {
+    return this.roleState.esAdmin() && !this.roleState.esTerapeuta() && this.roleState.terapeutaIds.length === 0;
+  }
+
+  registrarIdentidad(): void {
+    const cedula = this.identidadCedula.trim();
+    if (!cedula || !this.identidadPassword) {
+      this.identidadError = 'La cédula profesional y la contraseña son obligatorias.';
+      return;
+    }
+    if (!/^\d{6,8}$/.test(cedula)) {
+      this.identidadError = 'La cédula profesional debe ser numérica, de 6 a 8 dígitos.';
+      return;
+    }
+    this.registrandoIdentidad = true;
+    this.identidadError = '';
+    this.http
+      .post('/api/v1/usuario/identidad-terapeuta', {
+        cedulaProfesional: this.identidadCedula.trim(),
+        especialidad: this.identidadEspecialidad.trim(),
+        passwordConfirmacion: this.identidadPassword
+      })
+      .subscribe({
+        next: () => {
+          this.registrandoIdentidad = false;
+          this.identidadRegistrada = true;
+        },
+        error: (err: any) => {
+          this.registrandoIdentidad = false;
+          this.identidadError =
+            err?.error?.detail || err?.error?.message || 'No se pudo registrar la identidad. Verifica tu contraseña.';
+        }
+      });
   }
 
   ngOnInit(): void {

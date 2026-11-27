@@ -1,0 +1,33 @@
+<div *ngIf="visible" class="fixed inset-0 z-[60] flex items-center justify-center p-6">
+  <!-- Fondo difuminado que cubre el contenido del módulo -->
+  <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+
+  <!-- Tarjeta de aviso -->
+  <div class="relative bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+    <div class="w-12 h-12 mx-auto rounded-full bg-amber-100 flex items-center justify-center mb-4">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="w-6 h-6 text-amber-600"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+    </div>
+
+    <h2 class="text-lg font-bold text-clinical-dark">Complete su información clínica</h2>
+    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+      Para ver este módulo, primero debes completar tu perfil de terapeuta en la configuración.
+    </p>
+
+    <a
+      routerLink="/configuracion"
+      class="mt-5 inline-block px-5 py-2.5 bg-clinical-dark text-white rounded-xl text-xs font-bold hover:opacity-90 transition-all">
+      Ir a Configuración
+    </a>
+  </div>
+</div>

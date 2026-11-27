@@ -10,6 +10,7 @@ import com.syborx.brevemente.cita.application.ports.out.RegistroSesionPort;
 import com.syborx.brevemente.cita.application.ports.out.SupervisionScopePort;
 import com.syborx.brevemente.cita.domain.exception.TransicionEstadoCitaInvalidaException;
 import com.syborx.brevemente.cita.domain.model.Cita;
+import com.syborx.brevemente.cita.domain.model.CitaFiltro;
 import com.syborx.brevemente.paciente.application.ports.out.TerapeutaConfigRepositoryPort;
 import com.syborx.brevemente.pago.application.ports.out.PagoRepositoryPort;
 import com.syborx.brevemente.pago.domain.model.Pago;
@@ -21,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -199,5 +201,18 @@ class CitaApplicationServiceTest {
         verify(pagoRepositoryPort, never()).save(any());
         verify(pagoRepositoryPort, never()).deleteById(anyString());
         verify(citaRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("listarGlobales delega al repositorio sin aplicar alcance de terapeuta")
+    void listarGlobalesSinAlcance() {
+        CitaFiltro filtro = new CitaFiltro("ter-X", null, null, null, "confirmada", null, null, null);
+        Cita cita = citaBase("confirmada", "pendiente");
+        when(citaRepositoryPort.findAll(filtro)).thenReturn(List.of(cita));
+
+        List<Cita> resultado = service.listarGlobales(filtro);
+
+        assertEquals(List.of(cita), resultado);
+        verify(citaRepositoryPort).findAll(filtro);
     }
 }

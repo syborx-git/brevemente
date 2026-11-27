@@ -23,12 +23,10 @@ interface TokenResponseBackend {
 
 const VALID_ROLES: Role[] = [
   'admin_platform',
-  'admin_clinical',
   'therapist',
   'assistant',
   'supervisor',
-  'patient',
-  'student'
+  'patient'
 ];
 
 // PBAC: permisos admitidos en el contrato del frontend (deben incluir PAGOS_*, CONSTANCIAS_*, SUPERVISION_REGISTRAR).

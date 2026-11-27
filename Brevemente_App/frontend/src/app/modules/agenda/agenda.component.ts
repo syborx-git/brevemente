@@ -8,6 +8,7 @@ import { AgendaLocalStorageAdapter } from './adapters/agenda-localstorage.adapte
 import { AgendaHttpAdapter } from './adapters/agenda-http.adapter';
 import { Appointment, Patient, DiaNoLaborable } from '../../core/types/clinical.types';
 import { environment } from '../../../environments/environment';
+import { ClinicalLockComponent } from '../../core/components/clinical-lock/clinical-lock.component';
 
 type ViewLevel = 'dia' | 'semana' | 'mes' | 'anio';
 
@@ -59,7 +60,7 @@ function proximaMediaHora(): string {
 @Component({
   selector: 'app-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ClinicalLockComponent],
   providers: [
     {
       provide: AgendaRepository,

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
+import { ClinicalLockComponent } from '../../core/components/clinical-lock/clinical-lock.component';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { hoyLocal } from '../../core/utils/fecha';
 import { AudioRecorderService, AudioCaptureMode } from '../../core/services/audio-recorder.service';
@@ -211,7 +212,7 @@ export type AudioRecordingUiState = 'IDLE' | 'GRABANDO' | 'ENVIANDO_AUDIO' | 'PR
 @Component({
   selector: 'app-expediente-clinico',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus, VcSemaphoreComponent, LevaProposalReviewComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CdkTrapFocus, VcSemaphoreComponent, LevaProposalReviewComponent, ClinicalLockComponent],
   providers: [
     {
       provide: ExpedienteRepository,

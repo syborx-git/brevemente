@@ -6,23 +6,19 @@ import { Role } from '../../types/clinical.types';
 import { LoginRepository } from '../../../modules/login/ports/login.repository';
 
 const ROLE_LABELS: Record<Role, string> = {
-  admin_platform: 'Administrador Plataforma',
-  admin_clinical: 'Administrador Clínico',
+  admin_platform: 'Administrador',
   therapist: 'Terapeuta',
   assistant: 'Asistente',
   supervisor: 'Supervisor Clínico',
-  patient: 'Paciente',
-  student: 'Alumno'
+  patient: 'Paciente'
 };
 
 const ROLE_COLORS: Record<Role, string> = {
   admin_platform: 'bg-indigo-100 text-indigo-800',
-  admin_clinical: 'bg-emerald-100 text-emerald-800',
   therapist: 'bg-blue-100 text-blue-800',
   assistant: 'bg-orange-100 text-orange-800',
   supervisor: 'bg-purple-100 text-purple-800',
-  patient: 'bg-slate-100 text-slate-800',
-  student: 'bg-teal-100 text-teal-800'
+  patient: 'bg-slate-100 text-slate-800'
 };
 
 @Component({

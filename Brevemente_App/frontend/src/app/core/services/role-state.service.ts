@@ -120,7 +120,7 @@ export class RoleStateService {
   }
 
   esAdmin(): boolean {
-    return this.hasRole('admin_platform') || this.hasRole('admin_clinical');
+    return this.hasRole('admin_platform');
   }
 
   esAsistenteOperativo(): boolean {

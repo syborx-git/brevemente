@@ -33,26 +33,28 @@ class DashboardScopeResolverTest {
     }
 
     @Test
-    @DisplayName("GLOBAL por admin_platform")
-    void globalPorAdminPlatform() {
+    @DisplayName("admin_platform puro → SCOPED vacío y sin alertas clínicas")
+    void adminPlatformPuroScopedSinAlertas() {
         lenient().when(identidadAutenticadaPort.tieneRol("admin_platform")).thenReturn(true);
 
         AlcanceDashboard alcance = resolver.resolver();
 
-        assertEquals(TipoAlcance.GLOBAL, alcance.tipo());
+        assertEquals(TipoAlcance.SCOPED, alcance.tipo());
         assertTrue(alcance.terapeutaIds().isEmpty());
-        assertTrue(alcance.puedeVerAlertasClinicas());
+        assertFalse(alcance.puedeVerAlertasClinicas());
     }
 
     @Test
-    @DisplayName("GLOBAL por admin_clinical")
-    void globalPorAdminClinical() {
-        lenient().when(identidadAutenticadaPort.tieneRol("admin_clinical")).thenReturn(true);
+    @DisplayName("admin_platform + therapist → SCOPED con sus vínculos y alertas clínicas")
+    void adminPlatformConTerapeutaScoped() {
+        lenient().when(identidadAutenticadaPort.tieneRol("admin_platform")).thenReturn(true);
+        lenient().when(identidadAutenticadaPort.tieneRol("therapist")).thenReturn(true);
+        when(identidadAutenticadaPort.terapeutaIds()).thenReturn(List.of("ter-009"));
 
         AlcanceDashboard alcance = resolver.resolver();
 
-        assertEquals(TipoAlcance.GLOBAL, alcance.tipo());
-        assertTrue(alcance.terapeutaIds().isEmpty());
+        assertEquals(TipoAlcance.SCOPED, alcance.tipo());
+        assertEquals(List.of("ter-009"), alcance.terapeutaIds());
         assertTrue(alcance.puedeVerAlertasClinicas());
     }
 

@@ -80,27 +80,27 @@ export const routes: Routes = [
       },
       {
         path: 'biblioteca',
-        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student')],
+        canActivate: [hasAnyRoleGuard('admin_platform', 'therapist', 'supervisor')],
         loadComponent: () => import('./modules/biblioteca-clinica/biblioteca-clinica.component').then(m => m.BibliotecaClinicaComponent)
       },
       {
         path: 'campus',
-        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student')],
+        canActivate: [hasAnyRoleGuard('admin_platform', 'therapist', 'supervisor')],
         loadComponent: () => import('./modules/campus/campus.component').then(m => m.CampusComponent)
       },
       {
         path: 'desempeno',
-        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical', 'therapist', 'supervisor', 'student')],
+        canActivate: [hasAnyRoleGuard('admin_platform', 'therapist', 'supervisor')],
         loadComponent: () => import('./modules/desempeno/desempeno.component').then(m => m.DesempenoComponent)
       },
       {
         path: 'configuracion',
-        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical', 'therapist', 'assistant', 'supervisor')],
+        canActivate: [hasAnyRoleGuard('admin_platform', 'therapist', 'assistant', 'supervisor')],
         loadComponent: () => import('./modules/configuracion/configuracion.component').then(m => m.ConfiguracionComponent)
       },
       {
         path: 'auditoria',
-        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical', 'supervisor')],
+        canActivate: [hasAnyRoleGuard('admin_platform', 'supervisor')],
         loadComponent: () => import('./modules/auditoria-seguridad/auditoria-seguridad.component').then(m => m.AuditoriaSeguridadComponent)
       },
       {
@@ -120,12 +120,32 @@ export const routes: Routes = [
       },
       {
         path: 'admin/educar-leva',
-        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical')],
+        canActivate: [hasAnyRoleGuard('admin_platform')],
         loadComponent: () => import('./modules/educar-leva/educar-leva.component').then(m => m.EducarLevaComponent)
       },
       {
+        path: 'admin/dashboard',
+        canActivate: [adminPlatformGuard],
+        loadComponent: () => import('./modules/admin/dashboard-plataforma/dashboard-plataforma.component').then(m => m.DashboardPlataformaComponent)
+      },
+      {
+        path: 'admin/usuarios',
+        canActivate: [adminPlatformGuard],
+        loadComponent: () => import('./modules/admin/usuarios/usuarios.component').then(m => m.UsuariosComponent)
+      },
+      {
+        path: 'admin/sedes',
+        canActivate: [adminPlatformGuard],
+        loadComponent: () => import('./modules/admin/sedes/sedes.component').then(m => m.SedesComponent)
+      },
+      {
+        path: 'admin/vision-global',
+        canActivate: [adminPlatformGuard],
+        loadComponent: () => import('./modules/vision-global/vision-global.component').then(m => m.VisionGlobalComponent)
+      },
+      {
         path: 'mi-consulta',
-        canActivate: [hasAnyRoleGuard('admin_platform', 'admin_clinical', 'therapist', 'supervisor')],
+        canActivate: [hasAnyRoleGuard('admin_platform', 'therapist', 'supervisor')],
         loadComponent: () => import('./modules/mi-consulta/mi-consulta.component').then(m => m.MiConsultaComponent)
       },
       {
@@ -134,12 +154,6 @@ export const routes: Routes = [
         loadComponent: () => import('./modules/patient-portal/patient-portal.component').then(m => m.PatientPortalComponent)
       }
     ]
-  },
-  // Zona de administración de plataforma (shell propio, separado del clínico).
-  {
-    path: 'admin',
-    canActivate: [authGuard, adminPlatformGuard],
-    loadChildren: () => import('./modules/admin/admin.routes').then(m => m.ADMIN_ROUTES)
   },
   {
     path: '**',
