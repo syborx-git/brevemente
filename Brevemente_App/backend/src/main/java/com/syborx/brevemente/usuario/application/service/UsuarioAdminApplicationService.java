@@ -17,6 +17,7 @@ import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.EstadoU
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PasswordTemporalResponse;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PermisosPorRolDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResumenUsuariosDTO;
+import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.RegistroIdentidadTerapeutaRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResetPasswordRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioAdminDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioCreadoDTO;
@@ -28,12 +29,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class UsuarioAdminApplicationService implements UsuarioAdminUseCase {
 
     private static final Set<String> ROLES_VALIDOS = Set.of(
-            "admin_platform", "admin_clinical", "supervisor", "therapist", "assistant", "student");
+            "admin_platform", "supervisor", "therapist", "assistant");
+
+    private static final Pattern CEDULA_PATTERN = Pattern.compile("^\\d{6,8}$");
 
     private final UsuarioAdminRepositoryPort repositoryPort;
     private final GenerarPasswordTemporalUseCase generarPasswordTemporalUseCase;
@@ -159,6 +163,41 @@ public class UsuarioAdminApplicationService implements UsuarioAdminUseCase {
     }
 
     @Override
+    @Transactional
+    public UsuarioAdminDTO registrarIdentidadTerapeuta(String usuarioId, RegistroIdentidadTerapeutaRequest request, String actorId) {
+        if (usuarioId == null || usuarioId.isBlank()) {
+            throw new UsuarioNoEncontradoException("Usuario no autenticado");
+        }
+        validarFormatoCedula(request.cedulaProfesional());
+        verificarPasswordActualUseCase.verificar(actorId, request.passwordConfirmacion());
+        if (repositoryPort.existeCedula(request.cedulaProfesional())) {
+            throw new UsuarioConflictException("La cédula profesional ya está registrada");
+        }
+        repositoryPort.crearVinculoTerapeuta(usuarioId, request.cedulaProfesional(), request.especialidad());
+        repositoryPort.asignarRol(usuarioId, "therapist");
+        revocarSesionesUsuarioUseCase.revocar(usuarioId, "REGISTRO_TERAPEUTA", actorId, null);
+        auditoriaGestionPort.registrar(actorId, "REGISTRO_IDENTIDAD_TERAPEUTA", "USUARIO", usuarioId, Map.of());
+        return obtener(usuarioId);
+    }
+
+    @Override
+    @Transactional
+    public UsuarioAdminDTO darBajaPerfilTerapeuta(String usuarioId, String actorId) {
+        if (usuarioId == null || usuarioId.isBlank()) {
+            throw new UsuarioNoEncontradoException("Usuario no autenticado");
+        }
+        UsuarioAdminDTO actual = obtener(usuarioId);
+        if (actual.roles().contains("therapist") && !actual.roles().contains("admin_platform")) {
+            throw new UsuarioConflictException("No puedes dar de baja tu perfil de terapeuta: es tu único rol");
+        }
+        repositoryPort.quitarRol(usuarioId, "therapist");
+        repositoryPort.sincronizarTerapeutaActivo(usuarioId, false);
+        revocarSesionesUsuarioUseCase.revocar(usuarioId, "BAJA_TERAPEUTA", actorId, null);
+        auditoriaGestionPort.registrar(actorId, "BAJA_IDENTIDAD_TERAPEUTA", "USUARIO", usuarioId, Map.of());
+        return obtener(usuarioId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<String> obtenerAsignaciones(String id) {
         return obtener(id).terapeutaIds();
@@ -200,11 +239,18 @@ public class UsuarioAdminApplicationService implements UsuarioAdminUseCase {
     }
 
     private void validarCedula(List<String> roles, String cedula) {
-        if (roles.contains("therapist") && (cedula == null || cedula.isBlank())) {
+        if (!roles.contains("therapist")) {
+            return;
+        }
+        if (cedula == null || cedula.isBlank()) {
             throw new IllegalArgumentException("La cédula profesional es requerida para terapeutas");
         }
-        if (roles.contains("therapist") && cedula != null && cedula.trim().length() > 8) {
-            throw new IllegalArgumentException("La cédula profesional no puede tener más de 8 caracteres");
+        validarFormatoCedula(cedula);
+    }
+
+    private void validarFormatoCedula(String cedula) {
+        if (cedula == null || !CEDULA_PATTERN.matcher(cedula.trim()).matches()) {
+            throw new IllegalArgumentException("La cédula profesional debe ser numérica, de 6 a 8 dígitos");
         }
     }
 }

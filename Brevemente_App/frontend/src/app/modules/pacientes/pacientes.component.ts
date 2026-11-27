@@ -11,6 +11,7 @@ import { formatEstadoConsentimientoLabel } from '../../core/utils/consentimiento
 import { evaluateCurpDateMismatch, parseCurpBirthDate } from '../../core/utils/curp.utils';
 import { hoyLocal } from '../../core/utils/fecha';
 import { RoleStateService } from '../../core/services/role-state.service';
+import { ClinicalLockComponent } from '../../core/components/clinical-lock/clinical-lock.component';
 import { DashboardRepository, SedeDTO, TerapeutaDTO } from '../dashboard/ports/dashboard.repository';
 import { DashboardHttpAdapter } from '../dashboard/adapters/dashboard-http.adapter';
 import { DashboardLocalStorageAdapter } from '../dashboard/adapters/dashboard-localstorage.adapter';
@@ -19,7 +20,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-pacientes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ClinicalLockComponent],
   providers: [
     {
       provide: PacienteRepository,

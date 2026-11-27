@@ -29,9 +29,6 @@ public class AuditoriaConfiguracionApplicationService implements ListarAuditoria
     }
 
     private boolean tieneAcceso(String terapeutaId) {
-        if (identidad.tieneRol("admin_platform") || identidad.tieneRol("admin_clinical")) {
-            return true;
-        }
         // El terapeuta ve su propio historial.
         if (identidad.terapeutaIds().contains(terapeutaId)) {
             return true;

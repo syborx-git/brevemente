@@ -7,12 +7,10 @@ import { UsuariosHttpAdapter } from './adapters/usuarios-http.adapter';
 
 type RolPlataforma =
   | 'admin_platform'
-  | 'admin_clinical'
   | 'supervisor'
   | 'therapist'
   | 'assistant'
-  | 'patient'
-  | 'student';
+  | 'patient';
 
 type EstadoUsuario = 'activo' | 'suspendido' | 'inactivo';
 
@@ -52,13 +50,11 @@ interface EstadoOpcion {
 export class UsuariosComponent implements OnInit {
   private readonly repo = inject(UsuariosAdminRepository);
   readonly roles: RolOpcion[] = [
-    { clave: 'admin_platform', etiqueta: 'Admin Plataforma' },
-    { clave: 'admin_clinical', etiqueta: 'Admin Clínico' },
+    { clave: 'admin_platform', etiqueta: 'Administrador' },
     { clave: 'supervisor', etiqueta: 'Supervisor' },
     { clave: 'therapist', etiqueta: 'Terapeuta' },
     { clave: 'assistant', etiqueta: 'Asistente' },
-    { clave: 'patient', etiqueta: 'Paciente' },
-    { clave: 'student', etiqueta: 'Estudiante' }
+    { clave: 'patient', etiqueta: 'Paciente' }
   ];
 
   readonly estados: EstadoOpcion[] = [
@@ -66,6 +62,11 @@ export class UsuariosComponent implements OnInit {
     { clave: 'suspendido', etiqueta: 'Suspendido' },
     { clave: 'inactivo', etiqueta: 'Inactivo' }
   ];
+
+  /** Roles permitidos en el alta/edición: el backend rechaza 'patient' (los pacientes se crean desde Pacientes). */
+  get rolesAlta(): RolOpcion[] {
+    return this.roles.filter((r) => r.clave !== 'patient');
+  }
 
   permisosPorRol: Record<string, string[]> = {};
 
@@ -284,8 +285,8 @@ export class UsuariosComponent implements OnInit {
     }
 
     const cedula = this.formulario.cedula.trim();
-    if (this.esTerapeuta() && cedula.length > 8) {
-      this.mensajeError = 'La cédula profesional no puede tener más de 8 caracteres.';
+    if (this.esTerapeuta() && !/^\d{6,8}$/.test(cedula)) {
+      this.mensajeError = 'La cédula profesional debe ser numérica, de 6 a 8 dígitos.';
       return;
     }
 

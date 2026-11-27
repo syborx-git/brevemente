@@ -49,20 +49,19 @@ public class PacienteApplicationService implements
         return pacienteRepositoryPort.findAll(terapeutaIds);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Paciente> listarGlobales() {
+        return pacienteRepositoryPort.findAll();
+    }
+
     /**
-     * Resuelve el alcance del directorio de pacientes:
-     * - Admin (plataforma/clínico): global ({@code null}).
+     * Resuelve el alcance del directorio de pacientes (D-13):
      * - Terapeuta/asistente: sus propios vínculos de terapeuta.
      * - Supervisor: los terapeutas que supervisa.
-     * Un alcance vacío devuelve lista vacía (sin pacientes visibles).
+     * El alcance global se sirve desde el módulo "Visión Global".
      */
     private Collection<String> resolverAlcanceTerapeutas() {
-        boolean admin = identidadTerapeutaPort.tieneRol("admin_platform")
-                || identidadTerapeutaPort.tieneRol("admin_clinical");
-        if (admin) {
-            return null;
-        }
-
         Set<String> ids = new LinkedHashSet<>();
         if (identidadTerapeutaPort.tieneRol("therapist") || identidadTerapeutaPort.tieneRol("assistant")) {
             ids.addAll(identidadTerapeutaPort.terapeutaIds());

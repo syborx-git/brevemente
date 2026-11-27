@@ -25,7 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/leva/cases")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN_PLATFORM','ADMIN_CLINICAL')")
+@PreAuthorize("hasRole('ADMIN_PLATFORM')")
 @Tag(name = "LEVA - Casos Fuente de Aprendizaje", description = "Selección y retiro de casos clínicos que alimentan la memoria de LEVA")
 public class LevaCaseSourceController {
 

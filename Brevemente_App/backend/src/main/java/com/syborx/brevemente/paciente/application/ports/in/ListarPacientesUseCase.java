@@ -5,4 +5,7 @@ import java.util.List;
 
 public interface ListarPacientesUseCase {
     List<Paciente> listarTodos();
+
+    /** Listado global (sin alcance por terapeuta) para el módulo "Visión Global". */
+    List<Paciente> listarGlobales();
 }

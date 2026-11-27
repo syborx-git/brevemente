@@ -225,19 +225,14 @@ public class ExpedienteRestController {
      * de sus supervisados o de la plataforma (admin).
      */
     private void validarAccesoPaciente(String pacienteId, UsuarioAutenticado principal) {
-        boolean admin = tieneRol(principal, "ROLE_ADMIN_PLATFORM") || tieneRol(principal, "ROLE_ADMIN_CLINICAL");
+        // D-13: sin bypass por rol admin; el alcance se resuelve por terapeutaIds.
         boolean puede = pacienteAccesoPort.puedeAcceder(
                 pacienteId,
                 principal != null ? principal.sub() : null,
                 principal != null ? principal.terapeutaIds() : List.of(),
-                admin);
+                false);
         if (!puede) {
             throw new ExpedienteNotFoundException(pacienteId);
         }
-    }
-
-    private boolean tieneRol(UsuarioAutenticado principal, String authority) {
-        return principal != null && principal.authorities() != null
-                && principal.authorities().stream().anyMatch(a -> authority.equals(a.getAuthority()));
     }
 }

@@ -239,13 +239,11 @@ export class DashboardPlataformaComponent implements OnInit {
 
   private rolLabel(rol: string): string {
     const labels: Record<string, string> = {
-      admin_platform: 'Admin Plataforma',
-      admin_clinical: 'Admin Clínico',
+      admin_platform: 'Administrador',
       supervisor: 'Supervisor',
       therapist: 'Terapeuta',
       assistant: 'Asistente',
-      patient: 'Paciente',
-      student: 'Estudiante'
+      patient: 'Paciente'
     };
     return labels[rol] ?? rol;
   }

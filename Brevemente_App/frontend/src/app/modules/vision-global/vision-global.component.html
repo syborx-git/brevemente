@@ -1,0 +1,245 @@
+<div class="space-y-6 select-none">
+  <!-- Header band -->
+  <div class="bg-clinical-dark text-white rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+    <div>
+      <h1 class="text-xl font-bold tracking-tight">Visión Global</h1>
+      <p class="text-xs text-slate-300 mt-1">
+        Directorio, agenda y expedientes de toda la plataforma, sin restricción de alcance por terapeuta.
+      </p>
+    </div>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase w-fit">
+      Datos globales
+    </span>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error" class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-4">
+    {{ error }}
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-px">
+    <button
+      type="button"
+      (click)="tab = 'pacientes'"
+      [class.border-clinical-accent]="tab === 'pacientes'"
+      [class.text-clinical-dark]="tab === 'pacientes'"
+      [class.font-bold]="tab === 'pacientes'"
+      class="px-4 py-2 text-xs border-b-2 border-transparent text-slate-500 hover:text-clinical-dark transition-colors">
+      Pacientes ({{ pacientes.length }})
+    </button>
+    <button
+      type="button"
+      (click)="tab = 'citas'"
+      [class.border-clinical-accent]="tab === 'citas'"
+      [class.text-clinical-dark]="tab === 'citas'"
+      [class.font-bold]="tab === 'citas'"
+      class="px-4 py-2 text-xs border-b-2 border-transparent text-slate-500 hover:text-clinical-dark transition-colors">
+      Citas ({{ citas.length }})
+    </button>
+    <button
+      type="button"
+      (click)="tab = 'expedientes'"
+      [class.border-clinical-accent]="tab === 'expedientes'"
+      [class.text-clinical-dark]="tab === 'expedientes'"
+      [class.font-bold]="tab === 'expedientes'"
+      class="px-4 py-2 text-xs border-b-2 border-transparent text-slate-500 hover:text-clinical-dark transition-colors">
+      Expedientes ({{ pacientes.length }})
+    </button>
+  </div>
+
+  <!-- ===================== PACIENTES ===================== -->
+  <section *ngIf="tab === 'pacientes'" class="space-y-4">
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[220px]">
+        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Buscar</label>
+        <input
+          type="text"
+          [(ngModel)]="buscarPaciente"
+          placeholder="Nombre, CURP o terapeuta…"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent" />
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Estado</label>
+        <select
+          [(ngModel)]="filtroEstado"
+          class="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent bg-white">
+          <option value="todos">Todos</option>
+          <option value="activo">Activo</option>
+          <option value="completado">Completado</option>
+          <option value="archivado">Archivado</option>
+          <option value="pendiente">Pendiente</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Riesgo</label>
+        <select
+          [(ngModel)]="filtroRiesgo"
+          class="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent bg-white">
+          <option value="todos">Todos</option>
+          <option value="bajo">Bajo</option>
+          <option value="medio">Medio</option>
+          <option value="alto">Alto</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="bg-slate-50 text-slate-500 text-left uppercase tracking-wider text-[10px]">
+            <th class="px-4 py-3">Paciente</th>
+            <th class="px-4 py-3">CURP</th>
+            <th class="px-4 py-3">Estado</th>
+            <th class="px-4 py-3">Riesgo</th>
+            <th class="px-4 py-3">Terapeuta</th>
+            <th class="px-4 py-3 text-right">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of pacientesFiltrados" class="border-t border-slate-100 hover:bg-slate-50">
+            <td class="px-4 py-3 font-semibold text-slate-700">{{ p.name }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ p.curp || '—' }}</td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">{{ p.status || '—' }}</span>
+            </td>
+            <td class="px-4 py-3">
+              <span
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                [class.bg-emerald-100]="p.riskLevel === 'bajo'"
+                [class.text-emerald-700]="p.riskLevel === 'bajo'"
+                [class.bg-amber-100]="p.riskLevel === 'medio'"
+                [class.text-amber-700]="p.riskLevel === 'medio'"
+                [class.bg-red-100]="p.riskLevel === 'alto'"
+                [class.text-red-700]="p.riskLevel === 'alto'">
+                {{ p.riskLevel || '—' }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-slate-500">{{ p.therapistName || '—' }}</td>
+            <td class="px-4 py-3 text-right">
+              <a
+                [routerLink]="['/expedientes', p.id]"
+                class="text-clinical-accent font-semibold hover:underline">Ver expediente</a>
+            </td>
+          </tr>
+          <tr *ngIf="pacientesFiltrados.length === 0">
+            <td colspan="6" class="px-4 py-8 text-center text-slate-400">Sin resultados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== CITAS ===================== -->
+  <section *ngIf="tab === 'citas'" class="space-y-4">
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[220px]">
+        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Buscar</label>
+        <input
+          type="text"
+          [(ngModel)]="buscarCita"
+          placeholder="Paciente o ID de cita…"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent" />
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Estado</label>
+        <select
+          [(ngModel)]="filtroEstadoCita"
+          class="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent bg-white">
+          <option value="todos">Todos</option>
+          <option value="confirmada">Confirmada</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="completada">Completada</option>
+          <option value="cancelada">Cancelada</option>
+          <option value="ausente">Ausente</option>
+          <option value="no_presentado">No presentado</option>
+          <option value="solicita_reagendar">Solicita reagendar</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Desde</label>
+        <input
+          type="date"
+          [(ngModel)]="filtroDesde"
+          class="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent" />
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Hasta</label>
+        <input
+          type="date"
+          [(ngModel)]="filtroHasta"
+          class="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent" />
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="bg-slate-50 text-slate-500 text-left uppercase tracking-wider text-[10px]">
+            <th class="px-4 py-3">Fecha</th>
+            <th class="px-4 py-3">Hora</th>
+            <th class="px-4 py-3">Paciente</th>
+            <th class="px-4 py-3">Estado</th>
+            <th class="px-4 py-3">Modalidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of citasFiltradas" class="border-t border-slate-100 hover:bg-slate-50">
+            <td class="px-4 py-3 font-semibold text-slate-700">{{ c.date || '—' }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ c.time || '—' }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ c.patientName || '—' }}</td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">{{ c.status || '—' }}</span>
+            </td>
+            <td class="px-4 py-3 text-slate-500">{{ c.modality || '—' }}</td>
+          </tr>
+          <tr *ngIf="citasFiltradas.length === 0">
+            <td colspan="5" class="px-4 py-8 text-center text-slate-400">Sin citas.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== EXPEDIENTES ===================== -->
+  <section *ngIf="tab === 'expedientes'" class="space-y-4">
+    <div class="flex-1 min-w-[220px] max-w-sm">
+      <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Buscar paciente</label>
+      <input
+        type="text"
+        [(ngModel)]="buscarPaciente"
+        placeholder="Nombre, CURP o terapeuta…"
+        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-clinical-accent" />
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="bg-slate-50 text-slate-500 text-left uppercase tracking-wider text-[10px]">
+            <th class="px-4 py-3">Expediente</th>
+            <th class="px-4 py-3">CURP</th>
+            <th class="px-4 py-3">Estado</th>
+            <th class="px-4 py-3">Riesgo</th>
+            <th class="px-4 py-3 text-right">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of expedientesFiltrados" class="border-t border-slate-100 hover:bg-slate-50">
+            <td class="px-4 py-3 font-semibold text-slate-700">{{ p.name }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ p.curp || '—' }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ p.status || '—' }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ p.riskLevel || '—' }}</td>
+            <td class="px-4 py-3 text-right">
+              <a
+                [routerLink]="['/expedientes', p.id]"
+                class="text-clinical-accent font-semibold hover:underline">Abrir expediente</a>
+            </td>
+          </tr>
+          <tr *ngIf="expedientesFiltrados.length === 0">
+            <td colspan="5" class="px-4 py-8 text-center text-slate-400">Sin expedientes.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

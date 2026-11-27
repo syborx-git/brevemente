@@ -180,6 +180,44 @@ public class UsuarioAdminPersistenceAdapter implements UsuarioAdminRepositoryPor
     }
 
     @Override
+    public void asignarRol(String usuarioId, String rolCodigo) {
+        jdbcTemplate.update("""
+                INSERT INTO usuario_roles (usuario_id, rol_id)
+                SELECT ?, id FROM roles WHERE codigo = ?
+                ON CONFLICT (usuario_id, rol_id) DO NOTHING
+                """, usuarioId, rolCodigo);
+    }
+
+    @Override
+    public void quitarRol(String usuarioId, String rolCodigo) {
+        jdbcTemplate.update("""
+                DELETE FROM usuario_roles
+                WHERE usuario_id = ? AND rol_id = (SELECT id FROM roles WHERE codigo = ?)
+                """, usuarioId, rolCodigo);
+    }
+
+    @Override
+    public void crearVinculoTerapeuta(String usuarioId, String cedulaProfesional, String especialidad) {
+        String esp = especialidad != null && !especialidad.isBlank()
+                ? especialidad : "Terapia Breve Estratégica";
+
+        int updated = jdbcTemplate.update("""
+                UPDATE terapeutas SET cedula_profesional = ?, especialidad = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE usuario_id = ?
+                """, cedulaProfesional, esp, usuarioId);
+
+        if (updated == 0) {
+            // Copia nombre/apellidos/email desde la cuenta de usuario (NOT NULL en terapeutas).
+            jdbcTemplate.update("""
+                    INSERT INTO terapeutas (id, nombre, apellidos, email, cedula_profesional, especialidad, activo, usuario_id, created_at, updated_at)
+                    SELECT ?, u.nombre, u.apellidos, u.email, ?, ?, TRUE, u.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    FROM usuarios u
+                    WHERE u.id = ?
+                    """, UUID.randomUUID().toString(), cedulaProfesional, esp, usuarioId);
+        }
+    }
+
+    @Override
     public long contarAdminsActivos() {
         Long n = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM usuarios u

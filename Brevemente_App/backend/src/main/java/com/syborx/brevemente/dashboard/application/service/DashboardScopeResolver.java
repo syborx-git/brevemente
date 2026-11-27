@@ -26,16 +26,8 @@ public class DashboardScopeResolver {
     private final SupervisionAsignacionRepositoryPort supervisionAsignacionRepositoryPort;
 
     public AlcanceDashboard resolver() {
-        boolean admin = identidadAutenticadaPort.tieneRol("admin_platform")
-                || identidadAutenticadaPort.tieneRol("admin_clinical");
         boolean puedeVerAlertasClinicas = identidadAutenticadaPort.tieneRol("therapist")
-                || identidadAutenticadaPort.tieneRol("supervisor")
-                || identidadAutenticadaPort.tieneRol("admin_platform")
-                || identidadAutenticadaPort.tieneRol("admin_clinical");
-
-        if (admin) {
-            return new AlcanceDashboard(TipoAlcance.GLOBAL, List.of(), puedeVerAlertasClinicas);
-        }
+                || identidadAutenticadaPort.tieneRol("supervisor");
 
         Set<String> ids = new LinkedHashSet<>();
         if (identidadAutenticadaPort.tieneRol("therapist") || identidadAutenticadaPort.tieneRol("assistant")) {

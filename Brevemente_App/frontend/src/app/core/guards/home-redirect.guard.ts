@@ -20,6 +20,9 @@ export const homeRedirectGuard: CanActivateFn = () => {
     return router.createUrlTree(['/mi-historial']);
   }
   if (roleService.hasRole('admin_platform')) {
+    if (roleService.hasRole('therapist')) {
+      return router.createUrlTree(['/dashboard']);
+    }
     return router.createUrlTree(['/admin/dashboard']);
   }
   return router.createUrlTree(['/dashboard']);

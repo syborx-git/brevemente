@@ -115,19 +115,19 @@ public class CitaApplicationService implements
         return citaRepositoryPort.findAll(efectivo);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Cita> listarGlobales(CitaFiltro filtro) {
+        return citaRepositoryPort.findAll(filtro);
+    }
+
     /**
-     * Resuelve el alcance de terapeutas del personal clínico:
-     * - Admin (plataforma/clínico): {@code null} (global).
+     * Resuelve el alcance de terapeutas del personal clínico (D-13):
      * - Terapeuta/asistente: sus propios vínculos.
      * - Supervisor: los terapeutas supervisados.
+     * El alcance global se sirve desde el módulo "Visión Global".
      */
     private Collection<String> resolverAlcanceTerapeutas() {
-        boolean admin = identidadAutenticadaPort.tieneRol("admin_platform")
-                || identidadAutenticadaPort.tieneRol("admin_clinical");
-        if (admin) {
-            return null;
-        }
-
         Set<String> ids = new LinkedHashSet<>();
         if (identidadAutenticadaPort.tieneRol("therapist") || identidadAutenticadaPort.tieneRol("assistant")) {
             ids.addAll(identidadAutenticadaPort.terapeutaIds());

@@ -14,13 +14,14 @@ import { MiConsultaHttpAdapter } from './adapters/mi-consulta-http.adapter';
 import { MiConsultaLocalStorageAdapter } from './adapters/mi-consulta-localstorage.adapter';
 import { RoleStateService } from '../../core/services/role-state.service';
 import { environment } from '../../../environments/environment';
+import { ClinicalLockComponent } from '../../core/components/clinical-lock/clinical-lock.component';
 
 type EstadoSesion = 'por_iniciar' | 'en_curso' | 'finalizada' | 'nota_pendiente';
 
 @Component({
   selector: 'app-mi-consulta',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ClinicalLockComponent],
   providers: [
     {
       provide: MiConsultaRepository,
@@ -33,6 +34,8 @@ type EstadoSesion = 'por_iniciar' | 'en_curso' | 'finalizada' | 'nota_pendiente'
   ],
   template: `
     <div class="max-w-6xl mx-auto space-y-6 text-xs font-semibold leading-normal select-none">
+      <app-clinical-lock></app-clinical-lock>
+
       <!-- Cabecera -->
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -249,7 +252,6 @@ export class MiConsultaComponent implements OnInit {
 
   get titulo(): string {
     if (this.roleState.hasRole('supervisor')) return 'Mi Supervisión';
-    if (this.roleState.hasRole('admin_clinical')) return 'Mi Operación';
     if (this.roleState.hasRole('admin_platform')) return 'Operación Clínica';
     return 'Mi Consulta';
   }

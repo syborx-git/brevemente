@@ -111,15 +111,7 @@ public class TerapeutaConfigApplicationService
      * </ul>
      */
     private String resolverTerapeutaId(String terapeutaIdExplicito, boolean escritura) {
-        boolean admin = identidad.tieneRol("admin_platform") || identidad.tieneRol("admin_clinical");
         List<String> vinculados = identidad.terapeutaIds();
-
-        if (admin) {
-            if (vinculados.size() == 1 && esBlanco(terapeutaIdExplicito)) {
-                return vinculados.get(0);
-            }
-            return exigirExplicito(terapeutaIdExplicito);
-        }
 
         List<String> supervisados = escritura
                 ? List.of()

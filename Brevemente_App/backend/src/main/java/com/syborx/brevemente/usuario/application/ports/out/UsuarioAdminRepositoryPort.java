@@ -33,5 +33,11 @@ public interface UsuarioAdminRepositoryPort {
 
     void reemplazarAsignaciones(String usuarioId, List<String> terapeutaIds);
 
+    void asignarRol(String usuarioId, String rolCodigo);
+
+    void quitarRol(String usuarioId, String rolCodigo);
+
+    void crearVinculoTerapeuta(String usuarioId, String cedulaProfesional, String especialidad);
+
     long contarAdminsActivos();
 }

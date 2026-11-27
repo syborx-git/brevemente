@@ -1,4 +1,4 @@
-export type Role = 'admin_platform' | 'admin_clinical' | 'therapist' | 'assistant' | 'supervisor' | 'patient' | 'student';
+export type Role = 'admin_platform' | 'therapist' | 'assistant' | 'supervisor' | 'patient';
 
 export type Permission =
   | 'PACIENTES_LEER'

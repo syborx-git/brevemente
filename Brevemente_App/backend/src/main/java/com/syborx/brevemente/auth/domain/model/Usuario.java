@@ -23,7 +23,7 @@ public class Usuario {
     private final String email;
     /** Hash BCrypt de la contraseña. */
     private final String passwordHash;
-    /** Códigos de rol (multi-rol): therapist, supervisor, admin_clinical, ... */
+    /** Códigos de rol (multi-rol): therapist, supervisor, admin_platform, ... */
     private final Set<String> roles;
     /** Permisos efectivos: unión de los permisos de todos sus roles (PACIENTES_LEER, ...). */
     private final Set<String> permissions;

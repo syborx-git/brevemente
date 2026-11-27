@@ -6,6 +6,7 @@ import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.CrearUs
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.EditarUsuarioRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PasswordTemporalResponse;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.PermisosPorRolDTO;
+import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.RegistroIdentidadTerapeutaRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResumenUsuariosDTO;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.ResetPasswordRequest;
 import com.syborx.brevemente.usuario.infrastructure.adapters.in.rest.dto.UsuarioAdminDTO;
@@ -33,4 +34,8 @@ public interface UsuarioAdminUseCase {
     UsuarioAdminDTO asignarTerapeutas(String id, AsignacionesRequest request, String actorId);
 
     PasswordTemporalResponse resetPassword(String id, ResetPasswordRequest request, String actorId);
+
+    UsuarioAdminDTO registrarIdentidadTerapeuta(String usuarioId, RegistroIdentidadTerapeutaRequest request, String actorId);
+
+    UsuarioAdminDTO darBajaPerfilTerapeuta(String usuarioId, String actorId);
 }
