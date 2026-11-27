@@ -137,7 +137,7 @@ services:
       - session_audio_storage:/app/storage/sessions/audio
     restart: unless-stopped
 
-  # 6. Frontend Angular 18 (Nginx Reverse Proxy & Single Page App)
+  # 7. Frontend Angular 18 (Nginx Reverse Proxy & Single Page App)
   frontend:
     build:
       context: ./frontend
@@ -147,6 +147,23 @@ services:
       - "80:80"
     depends_on:
       - backend
+    restart: unless-stopped
+
+  # 8. Motor CI/CD GitOps Auto-Deployer (Vigila merges en GitHub main y despliega BE/FE/Transcript/Document/Ollama)
+  cicd-deployer:
+    build:
+      context: ./cicd_deployer
+      dockerfile: Dockerfile
+    container_name: brevemente-cicd-deployer
+    environment:
+      - REPO_DIR=/opt/brevemente
+      - COMPOSE_DIR=/opt/brevemente/Brevemente_App
+      - COMPOSE_PROJECT_NAME=brevemente-platform
+      - TARGET_BRANCH=main
+      - POLL_INTERVAL_SECONDS=${CICD_POLL_INTERVAL_SECONDS:-45}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/brevemente:/opt/brevemente
     restart: unless-stopped
 
 volumes:

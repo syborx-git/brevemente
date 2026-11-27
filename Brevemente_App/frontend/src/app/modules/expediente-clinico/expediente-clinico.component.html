@@ -1086,14 +1086,29 @@
 
             <!-- Botones de Acción según Estado -->
             <div class="flex items-center gap-2 flex-wrap">
-              <!-- Estado IDLE -->
-              <button *ngIf="recordingState === 'IDLE'" (click)="startRealRecording()"
-                class="px-4 py-2 rounded-xl font-bold text-xs bg-clinical-teal hover:bg-clinical-tealHover text-white transition-all flex items-center gap-2 cursor-pointer shadow-xs">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                <span>Iniciar Grabación de Sesión</span>
-              </button>
+              <!-- Estado IDLE: Selector Presencial vs Videollamada Meet/Zoom + Botón Iniciar -->
+              <ng-container *ngIf="recordingState === 'IDLE'">
+                <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 text-[11px] font-semibold">
+                  <button type="button" (click)="audioCaptureMode = 'mic_only'"
+                    class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                    [ngClass]="audioCaptureMode === 'mic_only' ? 'bg-white text-clinical-textDark shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-700'">
+                    <span>🎙️ Presencial</span>
+                  </button>
+                  <button type="button" (click)="audioCaptureMode = 'videocall_dual'"
+                    class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                    [ngClass]="audioCaptureMode === 'videocall_dual' ? 'bg-indigo-600 text-white shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-700'">
+                    <span>💻 Meet / Zoom (Ambos parlantes)</span>
+                  </button>
+                </div>
+
+                <button (click)="startRealRecording()"
+                  class="px-4 py-2 rounded-xl font-bold text-xs bg-clinical-teal hover:bg-clinical-tealHover text-white transition-all flex items-center gap-2 cursor-pointer shadow-xs">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                  <span>{{ audioCaptureMode === 'videocall_dual' ? 'Conectar Meet/Zoom y Grabar' : 'Iniciar Grabación de Sesión' }}</span>
+                </button>
+              </ng-container>
 
               <!-- Estado GRABANDO -->
               <ng-container *ngIf="recordingState === 'GRABANDO'">
@@ -1172,12 +1187,21 @@
             </div>
           </div>
 
+          <!-- Aviso guía cuando está seleccionado el modo Videollamada (Meet / Zoom) -->
+          <div *ngIf="recordingState === 'IDLE' && audioCaptureMode === 'videocall_dual'"
+            class="px-3.5 py-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-[11px] text-indigo-900 flex items-center gap-2">
+            <span class="font-bold">💻 Modo Videollamada Online:</span>
+            <span>Al iniciar, selecciona la pestaña de <strong>Google Meet / Zoom</strong> y activa <strong>"Compartir también el audio de la pestaña"</strong>. Así se grabará tu micrófono y la voz del paciente aunque uses audífonos.</span>
+          </div>
+
           <!-- Visualizador Dinámico de Nivel de Entrada de Audio (Web Audio API) -->
           <div *ngIf="recordingState === 'GRABANDO'" class="bg-slate-950 rounded-xl p-4 flex flex-col gap-2.5 border border-slate-800 shadow-inner">
             <div class="flex items-center justify-between text-xs">
               <div class="flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full" [ngClass]="isPaused ? 'bg-amber-400' : 'bg-red-500 animate-ping'"></span>
-                <span class="text-white font-medium">{{ isPaused ? 'Grabación en pausa' : 'Capturando micrófono en vivo...' }}</span>
+                <span class="text-white font-medium">
+                  {{ isPaused ? 'Grabación en pausa' : (audioCaptureMode === 'videocall_dual' ? 'Capturando Micrófono (Terapeuta) + Audio Meet/Zoom (Paciente)...' : 'Capturando micrófono en vivo...') }}
+                </span>
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-slate-400 font-mono text-[11px]">Nivel: <strong class="text-clinical-teal font-mono">{{ audioLevel }}%</strong></span>

@@ -5,9 +5,9 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { ClinicalLockComponent } from '../../core/components/clinical-lock/clinical-lock.component';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { hoyLocal } from '../../core/utils/fecha';
-import { AudioRecorderService } from '../../core/services/audio-recorder.service';
+import { AudioRecorderService, AudioCaptureMode } from '../../core/services/audio-recorder.service';
 import { LevaSessionService, LevaProposalResponse } from '../../core/services/leva-session.service';
 import { BitacoraNueva, ConstanciaNueva, ExpedienteRepository, PagoNuevo, SesionParcial } from './ports/expediente.repository';
 import { ExpedienteLocalStorageAdapter } from './adapters/expediente-localstorage.adapter';
@@ -392,6 +392,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
   // Real Audio Recording & LEVA Copilot State
   recordingState: AudioRecordingUiState = 'IDLE';
+  audioCaptureMode: AudioCaptureMode = 'mic_only';
   isRecording = false;
   isPaused = false;
   recordingSeconds = 0;
@@ -405,6 +406,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   audioObjectUrl: string | null = null;
   audioSource: 'local' | 'server' | null = null;
   storedAudioAvailable = false;
+  resolvedAudioSessionId: string | null = null;
   private audioSubs: Subscription[] = [];
 
   constructor(
@@ -509,6 +511,8 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         } else if (s.length > 0) {
           this.selectedSession = s[0];
           this.cargarPropuestaDeSesion(s[0].id);
+        } else if (this.pacienteId) {
+          this.cargarPropuestaDeSesion(`${this.pacienteId}-s1`);
         }
       }
       if (this.queryModoGrabacion) {
@@ -763,7 +767,10 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   // Real Audio Recording with MediaRecorder API & LEVA Copilot
-  async startRealRecording(): Promise<void> {
+  async startRealRecording(mode?: AudioCaptureMode): Promise<void> {
+    if (mode) {
+      this.audioCaptureMode = mode;
+    }
     this.recordingErrorMessage = null;
     this.transcriptText = '';
     this.levaAdvice = '';
@@ -773,8 +780,9 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     this.audioSource = null;
 
     try {
+      await this.ensureActiveSessionId();
       this.recordingState = 'GRABANDO';
-      await this.audioRecorder.startRecording();
+      await this.audioRecorder.startRecording(this.audioCaptureMode);
     } catch (err: any) {
       this.recordingErrorMessage = err.message || 'No se pudo iniciar la captura de audio.';
       this.recordingState = 'ERROR';
@@ -814,15 +822,59 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   }
 
   private get currentSessionId(): string {
-    return this.selectedSession?.id ?? '';
+    return this.selectedSession?.id || this.querySesionId || (this.pacienteId ? `ses-${this.pacienteId}` : 'ses-general');
+  }
+
+  /**
+   * Garantiza que exista una sesión activa en el expediente antes de grabar o subir audio.
+   * Si el expediente aún no tiene ninguna sesión creada, crea automáticamente la Sesión #1.
+   */
+  private async ensureActiveSessionId(): Promise<string> {
+    if (this.selectedSession?.id) {
+      return this.selectedSession.id;
+    }
+    if (this.sessions.length > 0 && this.sessions[0]?.id) {
+      this.selectedSession = this.sessions[0];
+      return this.selectedSession.id;
+    }
+    if (this.pacienteId) {
+      try {
+        const draft: Omit<Session, 'id' | 'patientId' | 'status'> = {
+          number: 1,
+          date: hoyLocal(),
+          phase: 'Definición del problema',
+          protocol: this.record?.trastornoEstrategico || 'TBE',
+          dxOp: this.record?.dxOpInicial || '',
+          px: [],
+          f1: '',
+          f2: '',
+          oss: '',
+          add: '',
+          rss: '',
+          eff: '',
+          notes: '',
+          observationsNextSession: '',
+          situation: ''
+        };
+        const created = await firstValueFrom(this.expedienteRepo.agregarSesion(this.pacienteId, draft));
+        if (created?.id) {
+          this.selectedSession = created;
+          this.sessions = [created, ...this.sessions];
+          return created.id;
+        }
+      } catch {
+        // Si falla la creación automática, usar fallback determinista con el ID del paciente
+      }
+    }
+    return this.currentSessionId;
   }
 
   /** Sube el audio retenido (también usado para "Reintentar envío"). */
-  uploadPendingAudio(): void {
+  async uploadPendingAudio(): Promise<void> {
     if (!this.pendingAudioBlob) return;
-    const sessionId = this.currentSessionId;
     this.recordingState = 'ENVIANDO_AUDIO';
     this.recordingErrorMessage = null;
+    const sessionId = await this.ensureActiveSessionId();
 
     this.levaSessionService.uploadSessionAudio(sessionId, this.pendingAudioBlob, 'sesion_clinica.webm', 'es')
       .subscribe({
@@ -847,7 +899,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
 
   /** Reprocesa en el servidor el audio ya guardado (sin volver a grabar). */
   retranscribeStoredAudio(): void {
-    const sessionId = this.currentSessionId;
+    const sessionId = this.resolvedAudioSessionId || this.currentSessionId;
     this.recordingState = 'PROCESANDO_IA';
     this.recordingErrorMessage = null;
     this.currentProposal = null;
@@ -871,7 +923,7 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
   checkAnalysisResult(): void {
     this.recordingState = 'PROCESANDO_IA';
     this.recordingErrorMessage = null;
-    this.pollAnalysis(this.currentSessionId);
+    this.pollAnalysis(this.resolvedAudioSessionId || this.currentSessionId);
   }
 
   private pollAnalysis(sessionId: string): void {
@@ -922,19 +974,43 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
     }
   }
 
+  private get legacySessionId(): string | null {
+    if (!this.pacienteId) return null;
+    const num = this.selectedSession?.number ?? 1;
+    return `${this.pacienteId}-s${num}`;
+  }
+
   /** Carga el audio persistido en el servidor para la sesión seleccionada (si existe). */
-  cargarAudioDeSesion(sessionId: string): void {
+  cargarAudioDeSesion(sessionId: string, triedLegacy = false): void {
     this.storedAudioAvailable = false;
     this.levaSessionService.getTaskStatus(sessionId).subscribe({
       next: (task) => {
-        this.storedAudioAvailable = (task.audioSizeBytes ?? 0) > 0;
+        const hasAudio = (task.audioSizeBytes ?? 0) > 0;
+        if (!hasAudio) {
+          const legacy = this.legacySessionId;
+          if (!triedLegacy && legacy && legacy !== sessionId) {
+            this.cargarAudioDeSesion(legacy, true);
+            return;
+          }
+        }
+        this.storedAudioAvailable = hasAudio;
+        this.resolvedAudioSessionId = hasAudio ? sessionId : null;
         if (!this.storedAudioAvailable || this.pendingAudioBlob) return;
         this.levaSessionService.getStoredAudio(sessionId).subscribe({
           next: (blob) => this.setAudioPlayback(blob, 'server'),
           error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
         });
       },
-      error: () => { this.storedAudioAvailable = false; this.revokeAudioUrl(); }
+      error: () => {
+        const legacy = this.legacySessionId;
+        if (!triedLegacy && legacy && legacy !== sessionId) {
+          this.cargarAudioDeSesion(legacy, true);
+          return;
+        }
+        this.storedAudioAvailable = false;
+        this.resolvedAudioSessionId = null;
+        this.revokeAudioUrl();
+      }
     });
   }
 
@@ -1101,6 +1177,14 @@ export class ExpedienteClinicoComponent implements OnInit, OnDestroy {
         this.currentProposal = proposal;
       },
       error: () => {
+        const legacy = this.legacySessionId;
+        if (legacy && legacy !== sessionId) {
+          this.levaSessionService.getProposal(legacy).subscribe({
+            next: (proposal) => { this.currentProposal = proposal; },
+            error: () => { this.currentProposal = null; }
+          });
+          return;
+        }
         this.currentProposal = null;
       }
     });
